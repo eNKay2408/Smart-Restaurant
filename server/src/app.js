@@ -24,6 +24,7 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import menuItemRoutes from "./routes/menuItemRoutes.js";
 import tableRoutes from "./routes/tableRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 // Connect to database
 connectDB();
@@ -96,6 +97,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/menu-items", menuItemRoutes);
 app.use("/api/tables", tableRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {
@@ -128,9 +130,8 @@ const server = httpServer.listen(PORT, () => {
 ║                                                       ║
 ║   🍽️  Smart Restaurant API Server                    ║
 ║                                                       ║
-║   Environment: ${
-		process.env.NODE_ENV?.toUpperCase() || "DEVELOPMENT"
-	}                              ║
+║   Environment: ${process.env.NODE_ENV?.toUpperCase() || "DEVELOPMENT"
+		}                              ║
 ║   Port: ${PORT}                                        ║
 ║   URL: http://localhost:${PORT}                        ║
 ║   Socket.IO: ✅ Enabled                                ║

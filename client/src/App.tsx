@@ -15,6 +15,8 @@ function App() {
 			<Routes>
 				<Route path="/" element={<Home />} />
 				<Route path="/menu" element={<Menu />} />
+				<Route path="/menu/table/:tableId" element={<Menu />} />
+				<Route path="/table" element={<Menu />} /> {/* For QR token access */}
 				<Route path="/about" element={<About />} />
 				<Route path="/login" element={<Login />} />
 				<Route path="/waiter/orders" element={<WaiterOrders />} />

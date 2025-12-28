@@ -36,18 +36,25 @@ const app = express();
 app.use(helmet());
 
 // CORS configuration
+const allowedOrigins = [
+	"http://localhost:5173",
+	"http://localhost:5174",
+	process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(
 	cors({
-		origin: process.env.CLIENT_URL || "http://localhost:5173",
+		origin: allowedOrigins,
 		credentials: true,
 	})
 );
 
-// Rate limiting
+// Rate limiting - more lenient in development
 const limiter = rateLimit({
 	windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-	max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+	max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (process.env.NODE_ENV === 'development' ? 1000 : 100),
 	message: "Too many requests from this IP, please try again later",
+	skip: (req) => process.env.NODE_ENV === 'development' && req.ip === '::1' || req.ip === '127.0.0.1',
 });
 app.use("/api/", limiter);
 

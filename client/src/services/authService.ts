@@ -1,4 +1,5 @@
-import axiosInstance from '../config/axiosInterceptors';
+import axiosInstance from '../config/axiosConfig';
+import '../config/axiosInterceptors'; // Import interceptors để đăng ký chúng
 import type { LoginRequest, LoginResponse, User } from '../types/auth.types';
 
 class AuthService {
@@ -7,12 +8,17 @@ class AuthService {
      */
     async login(loginData: LoginRequest): Promise<LoginResponse> {
         try {
-            const response = await axiosInstance.post<LoginResponse>('/auth/login', loginData);
+            const response = await axiosInstance.post<LoginResponse>('/auth/login', {
+                email: loginData.email,
+                password: loginData.password
+                // Note: role is not sent to backend, only used for UI
+            });
 
             // Store token and user info in localStorage
-            if (response.data.success && response.data.token) {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+            if (response.data.success && response.data.data) {
+                localStorage.setItem('token', response.data.data.accessToken);
+                localStorage.setItem('refreshToken', response.data.data.refreshToken);
+                localStorage.setItem('user', JSON.stringify(response.data.data.user));
             }
 
             return response.data;
@@ -77,4 +83,5 @@ class AuthService {
 }
 
 // Export a singleton instance
-export default new AuthService();
+export const authService = new AuthService();
+export default authService;

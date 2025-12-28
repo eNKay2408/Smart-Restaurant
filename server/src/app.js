@@ -75,6 +75,17 @@ app.get("/health", (req, res) => {
 	});
 });
 
+// API test endpoint
+app.get("/api/test", (req, res) => {
+	res.json({
+		success: true,
+		message: "API connection successful! Frontend and Backend are connected properly.",
+		timestamp: new Date().toISOString(),
+		server: "Smart Restaurant API",
+		version: "1.0.0"
+	});
+});
+
 // Swagger API Documentation
 app.use(
 	"/api/docs",

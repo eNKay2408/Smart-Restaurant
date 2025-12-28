@@ -1,25 +1,52 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/authService';
+import type { LoginRequest, ApiError } from '../types/auth.types';
 
 function Login() {
-    const [formData, setFormData] = useState({
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState<LoginRequest>({
         email: '',
         password: '',
         role: 'admin' // admin or staff
     });
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        setError('');
+        setSuccess('');
 
-        // TODO: Replace with actual API call
-        setTimeout(() => {
-            console.log('Login attempt:', formData);
+        try {
+            const response = await authService.login(formData);
+            
+            if (response.success) {
+                setSuccess('Login successful! Redirecting...');
+                
+                // Redirect based on user role
+                setTimeout(() => {
+                    const userRole = response.data.user.role;
+                    if (userRole === 'admin') {
+                        navigate('/');
+                    } else if (userRole === 'waiter') {
+                        navigate('/waiter/orders');
+                    } else if (userRole === 'kitchen') {
+                        navigate('/kitchen/kds');
+                    } else {
+                        navigate('/');
+                    }
+                }, 1500);
+            }
+        } catch (error: any) {
+            const apiError = error as ApiError;
+            setError(apiError.message || 'Login failed. Please try again.');
+        } finally {
             setIsLoading(false);
-            // Navigate to dashboard after successful login
-            // navigate('/dashboard');
-        }, 1500);
+        }
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -27,6 +54,24 @@ function Login() {
             ...formData,
             [e.target.name]: e.target.value
         });
+    };
+
+    const fillDemoCredentials = (role: string) => {
+        const credentials = {
+            admin: { email: 'admin@restaurant.com', password: 'Admin123' },
+            waiter: { email: 'waiter@restaurant.com', password: 'Waiter123' },
+            kitchen: { email: 'kitchen@restaurant.com', password: 'Kitchen123' },
+            customer: { email: 'customer@example.com', password: 'Customer123' },
+        };
+        
+        const creds = credentials[role as keyof typeof credentials];
+        if (creds) {
+            setFormData({
+                ...formData,
+                email: creds.email,
+                password: creds.password
+            });
+        }
     };
 
     return (
@@ -50,6 +95,53 @@ function Login() {
                         </div>
                         <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
                         <p className="text-purple-200">Sign in to access your dashboard</p>
+                    </div>
+
+                    {/* Error/Success Messages */}
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-100 text-sm">
+                            {error}
+                        </div>
+                    )}
+                    {success && (
+                        <div className="mb-6 p-4 bg-green-500/20 border border-green-500/50 rounded-xl text-green-100 text-sm">
+                            {success}
+                        </div>
+                    )}
+
+                    {/* Demo Credentials */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+                        <h3 className="text-sm font-semibold text-purple-100 mb-3">🎭 Demo Credentials - Click to fill:</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => fillDemoCredentials('admin')}
+                                className="text-xs px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-100 rounded-lg transition-colors"
+                            >
+                                👨‍💼 Admin
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => fillDemoCredentials('waiter')}
+                                className="text-xs px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-100 rounded-lg transition-colors"
+                            >
+                                👨‍🍳 Waiter
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => fillDemoCredentials('kitchen')}
+                                className="text-xs px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-100 rounded-lg transition-colors"
+                            >
+                                🍳 Kitchen
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => fillDemoCredentials('customer')}
+                                className="text-xs px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-100 rounded-lg transition-colors"
+                            >
+                                👤 Customer
+                            </button>
+                        </div>
                     </div>
 
                     {/* Login Form */}

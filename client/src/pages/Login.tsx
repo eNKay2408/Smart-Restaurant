@@ -8,7 +8,7 @@ function Login() {
     const [formData, setFormData] = useState<LoginRequest>({
         email: '',
         password: '',
-        role: 'admin' // admin or staff
+        role: 'admin' // admin, staff, or customer
     });
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -31,11 +31,13 @@ function Login() {
                 setTimeout(() => {
                     const userRole = response.data.user.role;
                     if (userRole === 'admin') {
-                        navigate('/');
+                        navigate('/admin/dashboard');
                     } else if (userRole === 'waiter') {
                         navigate('/waiter/orders');
                     } else if (userRole === 'kitchen') {
                         navigate('/kitchen/kds');
+                    } else if (userRole === 'customer') {
+                        navigate('/menu');
                     } else {
                         navigate('/');
                     }
@@ -67,9 +69,9 @@ function Login() {
         const creds = credentials[role as keyof typeof credentials];
         if (creds) {
             setFormData({
-                ...formData,
                 email: creds.email,
-                password: creds.password
+                password: creds.password,
+                role: role === 'waiter' || role === 'kitchen' ? 'staff' : role
             });
         }
     };
@@ -151,7 +153,7 @@ function Login() {
                             <label className="block text-sm font-medium text-purple-100 mb-2">
                                 Login As
                             </label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-3 gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setFormData({ ...formData, role: 'admin' })}
@@ -171,6 +173,16 @@ function Login() {
                                         }`}
                                 >
                                     👨‍🍳 Staff
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, role: 'customer' })}
+                                    className={`py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${formData.role === 'customer'
+                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105'
+                                        : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                                        }`}
+                                >
+                                    👤 Customer
                                 </button>
                             </div>
                         </div>

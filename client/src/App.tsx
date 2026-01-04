@@ -1,5 +1,6 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Menu from "./pages/Menu";
 import About from "./pages/About";
@@ -8,19 +9,132 @@ import NotFound from "./pages/NotFound";
 import WaiterOrders from "./pages/waiter/Orders";
 import KDS from "./pages/kitchen/KDS";
 
+// Admin Pages
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminMenuManagement from "./pages/admin/MenuManagement";
+import AdminMenuItemForm from "./pages/admin/MenuItemForm";
+import AdminTableManagement from "./pages/admin/TableManagement";
+import AdminKDS from "./pages/admin/KDS";
+import AdminReports from "./pages/admin/Reports";
+
+// Customer Pages
+import MenuItemDetail from "./pages/customer/MenuItemDetail";
+import Cart from "./pages/customer/Cart";
+import OrderStatus from "./pages/customer/OrderStatus";
+import Payment from "./pages/customer/Payment";
+
 function App() {
+	const location = useLocation();
+	
+	// Don't show navbar on admin pages or customer detail pages
+	const isAdminPage = location.pathname.startsWith('/admin');
+	const isCustomerDetailPage = ['/item/', '/cart', '/order-status', '/payment'].some(path => 
+		location.pathname.includes(path)
+	);
+
 	return (
 		<div>
-			<Navbar />
+			{!isAdminPage && !isCustomerDetailPage && <Navbar />}
 			<Routes>
+				{/* Public Routes */}
 				<Route path="/" element={<Home />} />
 				<Route path="/menu" element={<Menu />} />
 				<Route path="/menu/table/:tableId" element={<Menu />} />
 				<Route path="/table" element={<Menu />} /> {/* For QR token access */}
 				<Route path="/about" element={<About />} />
 				<Route path="/login" element={<Login />} />
-				<Route path="/waiter/orders" element={<WaiterOrders />} />
-				<Route path="/kitchen/kds" element={<KDS />} />
+
+				{/* Customer Routes */}
+				<Route path="/item/:itemId" element={<MenuItemDetail />} />
+				<Route path="/cart" element={<Cart />} />
+				<Route path="/order-status" element={<OrderStatus />} />
+				<Route path="/payment" element={<Payment />} />
+
+				{/* Staff Routes */}
+				<Route 
+					path="/waiter/orders" 
+					element={
+						<ProtectedRoute requiredRole="waiter">
+							<WaiterOrders />
+						</ProtectedRoute>
+					} 
+				/>
+				<Route 
+					path="/kitchen/kds" 
+					element={
+						<ProtectedRoute requiredRole="kitchen">
+							<KDS />
+						</ProtectedRoute>
+					} 
+				/>
+
+				{/* Admin Routes */}
+				<Route 
+					path="/admin/dashboard" 
+					element={
+						<ProtectedRoute requiredRole="admin">
+							<AdminDashboard />
+						</ProtectedRoute>
+					} 
+				/>
+				<Route 
+					path="/admin/menu" 
+					element={
+						<ProtectedRoute requiredRole="admin">
+							<AdminMenuManagement />
+						</ProtectedRoute>
+					} 
+				/>
+				<Route 
+					path="/admin/menu/add" 
+					element={
+						<ProtectedRoute requiredRole="admin">
+							<AdminMenuItemForm />
+						</ProtectedRoute>
+					} 
+				/>
+				<Route 
+					path="/admin/menu/edit/:id" 
+					element={
+						<ProtectedRoute requiredRole="admin">
+							<AdminMenuItemForm />
+						</ProtectedRoute>
+					} 
+				/>
+				<Route 
+					path="/admin/tables" 
+					element={
+						<ProtectedRoute requiredRole="admin">
+							<AdminTableManagement />
+						</ProtectedRoute>
+					} 
+				/>
+				<Route 
+					path="/admin/orders" 
+					element={
+						<ProtectedRoute requiredRole="admin">
+							<AdminKDS />
+						</ProtectedRoute>
+					} 
+				/>
+				<Route 
+					path="/admin/kds" 
+					element={
+						<ProtectedRoute requiredRole="admin">
+							<AdminKDS />
+						</ProtectedRoute>
+					} 
+				/>
+				<Route 
+					path="/admin/reports" 
+					element={
+						<ProtectedRoute requiredRole="admin">
+							<AdminReports />
+						</ProtectedRoute>
+					} 
+				/>
+
+				{/* Catch all */}
 				<Route path="*" element={<NotFound />} />
 			</Routes>
 		</div>

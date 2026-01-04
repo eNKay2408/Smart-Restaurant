@@ -1,7 +1,7 @@
 export interface LoginRequest {
     email: string;
     password: string;
-    role?: 'admin' | 'staff'; // Optional for UI, backend doesn't use this
+    role?: 'admin' | 'staff' | 'customer'; // Optional for UI, backend doesn't use this
 }
 
 export interface User {

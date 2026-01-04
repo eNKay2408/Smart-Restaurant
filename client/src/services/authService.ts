@@ -8,6 +8,33 @@ class AuthService {
      */
     async login(loginData: LoginRequest): Promise<LoginResponse> {
         try {
+            // For customer demo/testing - bypass API call
+            if (loginData.role === 'customer' && loginData.email === 'customer@example.com') {
+                const mockResponse: LoginResponse = {
+                    success: true,
+                    message: 'Customer login successful',
+                    data: {
+                        user: {
+                            id: 'customer-1',
+                            fullName: 'Demo Customer',
+                            email: 'customer@example.com',
+                            role: 'customer',
+                            avatar: '👤'
+                        },
+                        accessToken: 'mock-customer-token',
+                        refreshToken: 'mock-refresh-token'
+                    }
+                };
+
+                // Store mock data
+                localStorage.setItem('token', mockResponse.data.accessToken);
+                localStorage.setItem('refreshToken', mockResponse.data.refreshToken);
+                localStorage.setItem('user', JSON.stringify(mockResponse.data.user));
+
+                return mockResponse;
+            }
+
+            // Regular API call for staff/admin
             const response = await axiosInstance.post<LoginResponse>('/auth/login', {
                 email: loginData.email,
                 password: loginData.password

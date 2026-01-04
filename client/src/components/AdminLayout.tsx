@@ -29,8 +29,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             icon: '🍽️',
             submenu: [
                 { path: '/admin/menu', name: 'Items' },
-                { path: '/admin/menu/categories', name: 'Categories' },
-                { path: '/admin/menu/modifiers', name: 'Modifiers' },
+                { path: '/admin/categories', name: 'Categories' },
+                { path: '/admin/modifiers', name: 'Modifiers' },
             ]
         },
         {

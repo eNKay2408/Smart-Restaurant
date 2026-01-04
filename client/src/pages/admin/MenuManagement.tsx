@@ -1,68 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
+import { menuService } from '../../services/menuService';
+import type { MenuItem as BackendMenuItem } from '../../types/menu.types';
 
-interface MenuItem {
-    id: string;
-    name: string;
-    price: number;
-    category: string;
-    status: 'available' | 'unavailable' | 'sold_out' | 'low_stock';
-    image?: string;
-    description?: string;
-}
+// Use backend MenuItem type
+type MenuItem = BackendMenuItem & {
+    category: string; // Display category name instead of full object
+};
 
 const AdminMenuManagement: React.FC = () => {
-    const [menuItems, setMenuItems] = useState<MenuItem[]>([
-        {
-            id: '1',
-            name: 'Grilled Salmon',
-            price: 18,
-            category: 'Main Dishes',
-            status: 'available',
-            description: 'Fresh Atlantic salmon grilled to perfection'
-        },
-        {
-            id: '2',
-            name: 'Caesar Salad',
-            price: 12,
-            category: 'Appetizers',
-            status: 'available',
-            description: 'Crisp romaine lettuce with parmesan and croutons'
-        },
-        {
-            id: '3',
-            name: 'Beef Steak',
-            price: 25,
-            category: 'Main Dishes',
-            status: 'sold_out',
-            description: 'Prime cut beef steak cooked to your preference'
-        },
-        {
-            id: '4',
-            name: 'Pasta Carbonara',
-            price: 15,
-            category: 'Main Dishes',
-            status: 'available',
-            description: 'Creamy pasta with bacon and parmesan'
-        },
-        {
-            id: '5',
-            name: 'Mushroom Soup',
-            price: 8,
-            category: 'Appetizers',
-            status: 'low_stock',
-            description: 'Rich and creamy mushroom soup'
-        },
-    ]);
+    const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const [filteredItems, setFilteredItems] = useState<MenuItem[]>(menuItems);
+    const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
+    // Fetch menu items from backend
+    const fetchMenuItems = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await menuService.getMenuItems();
+            
+            if (response.success) {
+                // Transform backend data to match local format
+                const transformedItems: MenuItem[] = response.data.map(item => ({
+                    ...item,
+                    id: item._id,
+                    category: typeof item.categoryId === 'object' ? item.categoryId.name : 'Unknown'
+                }));
+                setMenuItems(transformedItems);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch menu items');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const categories = ['All', 'Appetizers', 'Main Dishes', 'Desserts', 'Drinks'];
+
+    // Fetch data on component mount
+    useEffect(() => {
+        fetchMenuItems();
+    }, []);
 
     useEffect(() => {
         let filtered = menuItems;
@@ -101,16 +87,33 @@ const AdminMenuManagement: React.FC = () => {
         );
     };
 
-    const handleDelete = (id: string) => {
-        if (window.confirm('Are you sure you want to delete this item?')) {
-            setMenuItems(prev => prev.filter(item => item.id !== id));
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Are you sure you want to delete this item?')) return;
+        
+        try {
+            setLoading(true);
+            await menuService.deleteMenuItem(id);
+            // Refresh menu items
+            await fetchMenuItems();
+        } catch (err: any) {
+            setError(err.message || 'Failed to delete item');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleStatusChange = (id: string, newStatus: string) => {
-        setMenuItems(prev => prev.map(item => 
-            item.id === id ? { ...item, status: newStatus as any } : item
-        ));
+    const handleStatusChange = async (id: string, newStatus: string) => {
+        try {
+            setLoading(true);
+            // Update item status via API
+            await menuService.updateMenuItem(id, { status: newStatus });
+            // Refresh menu items
+            await fetchMenuItems();
+        } catch (err: any) {
+            setError(err.message || 'Failed to update item status');
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Pagination
@@ -136,10 +139,30 @@ const AdminMenuManagement: React.FC = () => {
                             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
-                            Add Item
+                            Add Menu Item
                         </Link>
                     </div>
                 </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+                        <div className="flex items-center">
+                            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                            {error}
+                        </div>
+                    </div>
+                )}
+
+                {/* Loading State */}
+                {loading && (
+                    <div className="flex justify-center items-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span className="ml-2 text-gray-600">Loading menu items...</span>
+                    </div>
+                )}
 
                 {/* Filters */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

@@ -3,21 +3,29 @@ import type { MenuResponse, CategoriesResponse, MenuItemResponse } from '../type
 
 class MenuService {
 	/**
-	 * Get all menu items with optional filtering
+	 * Get all menu items with comprehensive filtering and sorting
 	 */
 	async getMenuItems(params?: {
 		restaurantId?: string;
 		categoryId?: string;
-		status?: string;
+		status?: 'available' | 'unavailable';
 		search?: string;
-		sortBy?: string;
+		isAvailable?: boolean;
+		minPrice?: number;
+		maxPrice?: number;
+		sortBy?: 'name' | 'price' | 'popularity' | 'rating' | 'createdAt';
 		order?: 'asc' | 'desc';
 		page?: number;
 		limit?: number;
 	}): Promise<MenuResponse> {
 		try {
+			// Clean up params - remove undefined values
+			const cleanParams = Object.fromEntries(
+				Object.entries(params || {}).filter(([_, value]) => value !== undefined && value !== '')
+			);
+
 			const response = await axiosInstance.get<MenuResponse>('/menu-items', {
-				params,
+				params: cleanParams,
 			});
 			return response.data;
 		} catch (error: any) {
@@ -27,6 +35,96 @@ class MenuService {
 			throw {
 				success: false,
 				message: 'Failed to fetch menu items',
+				error: error.message,
+			};
+		}
+	}
+
+	/**
+	 * Get menu items by category with additional filters
+	 */
+	async getMenuItemsByCategory(categoryId: string, params?: {
+		restaurantId?: string;
+		search?: string;
+		sortBy?: string;
+		order?: 'asc' | 'desc';
+		page?: number;
+		limit?: number;
+	}): Promise<MenuResponse> {
+		try {
+			const response = await axiosInstance.get<MenuResponse>('/menu-items', {
+				params: {
+					categoryId,
+					...params,
+				},
+			});
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: 'Failed to fetch menu items by category',
+				error: error.message,
+			};
+		}
+	}
+
+	/**
+	 * Search menu items with text search
+	 */
+	async searchMenuItems(searchQuery: string, params?: {
+		restaurantId?: string;
+		categoryId?: string;
+		sortBy?: string;
+		order?: 'asc' | 'desc';
+		page?: number;
+		limit?: number;
+	}): Promise<MenuResponse> {
+		try {
+			const response = await axiosInstance.get<MenuResponse>('/menu-items', {
+				params: {
+					search: searchQuery,
+					...params,
+				},
+			});
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: 'Failed to search menu items',
+				error: error.message,
+			};
+		}
+	}
+
+	/**
+	 * Get popular menu items (sorted by totalOrders)
+	 */
+	async getPopularMenuItems(params?: {
+		restaurantId?: string;
+		limit?: number;
+	}): Promise<MenuResponse> {
+		try {
+			const response = await axiosInstance.get<MenuResponse>('/menu-items', {
+				params: {
+					sortBy: 'popularity',
+					order: 'desc',
+					...params,
+				},
+			});
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: 'Failed to fetch popular menu items',
 				error: error.message,
 			};
 		}
@@ -72,26 +170,7 @@ class MenuService {
 		}
 	}
 
-	/**
-	 * Search menu items
-	 */
-	async searchMenuItems(query: string, restaurantId?: string): Promise<MenuResponse> {
-		try {
-			const response = await axiosInstance.get<MenuResponse>('/menu-items', {
-				params: { search: query, restaurantId },
-			});
-			return response.data;
-		} catch (error: any) {
-			if (error.response && error.response.data) {
-				throw error.response.data;
-			}
-			throw {
-				success: false,
-				message: 'Failed to search menu items',
-				error: error.message,
-			};
-		}
-	}
+
 
 	/**
 	 * Get popular menu items
@@ -119,26 +198,7 @@ class MenuService {
 		}
 	}
 
-	/**
-	 * Get menu items by category
-	 */
-	async getMenuItemsByCategory(categoryId: string, restaurantId?: string): Promise<MenuResponse> {
-		try {
-			const response = await axiosInstance.get<MenuResponse>('/menu-items', {
-				params: { categoryId, restaurantId },
-			});
-			return response.data;
-		} catch (error: any) {
-			if (error.response && error.response.data) {
-				throw error.response.data;
-			}
-			throw {
-				success: false,
-				message: 'Failed to fetch category items',
-				error: error.message,
-			};
-		}
-	}
+
 
 	/**
 	 * Add item to cart/order for a specific table

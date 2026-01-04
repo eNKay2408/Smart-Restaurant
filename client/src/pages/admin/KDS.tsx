@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import orderService from '../../services/orderService';
+import type { Order } from '../../types/order.types';
 
+// Transform backend order to KDS format
 interface KDSOrder {
     id: string;
     orderNumber: string;
@@ -20,74 +23,63 @@ interface KDSOrderItem {
 }
 
 const AdminKDS: React.FC = () => {
-    const [orders, setOrders] = useState<KDSOrder[]>([
-        {
-            id: '1045',
-            orderNumber: '#1045',
-            table: 5,
-            items: [
-                { name: 'Grilled Salmon', quantity: 2, modifications: 'Large, No onions', completed: false },
-                { name: 'Caesar Salad', quantity: 1, modifications: undefined, completed: false }
-            ],
-            status: 'preparing',
-            time: '12:30 PM',
-            elapsed: 8
-        },
-        {
-            id: '1046',
-            orderNumber: '#1046',
-            table: 3,
-            items: [
-                { name: 'Caesar Salad', quantity: 1, modifications: undefined, completed: true },
-                { name: 'Pasta Carbonara', quantity: 1, modifications: undefined, completed: false }
-            ],
-            status: 'preparing',
-            time: '12:25 PM',
-            elapsed: 3
-        },
-        {
-            id: '1047',
-            orderNumber: '#1047',
-            table: 8,
-            items: [
-                { name: 'Beef Steak', quantity: 2, modifications: 'Medium rare', completed: false },
-                { name: 'Mushroom Soup', quantity: 1, modifications: undefined, completed: false }
-            ],
-            status: 'pending',
-            time: '12:35 PM',
-            elapsed: 15
-        },
-        {
-            id: '1048',
-            orderNumber: '#1048',
-            table: 2,
-            items: [
-                { name: 'Chocolate Cake', quantity: 1, modifications: undefined, completed: false }
-            ],
-            status: 'pending',
-            time: '12:38 PM',
-            elapsed: 1
-        },
-        {
-            id: '1049',
-            orderNumber: '#1049',
-            table: 1,
-            items: [
-                { name: 'Orange Juice', quantity: 2, modifications: undefined, completed: false },
-                { name: 'Coffee', quantity: 1, modifications: undefined, completed: false }
-            ],
-            status: 'pending',
-            time: '12:40 PM',
-            elapsed: 0
+    const [orders, setOrders] = useState<KDSOrder[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [selectedFilter, setSelectedFilter] = useState('active');
+
+    // Fetch orders from backend
+    const fetchOrders = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await orderService.getOrders();
+            
+            if (response.success) {
+                // Transform backend orders to KDS format
+                const kdsOrders: KDSOrder[] = response.data.map(order => ({
+                    id: order._id,
+                    orderNumber: `#${order.orderNumber || order._id.slice(-4)}`,
+                    table: order.tableId?.number || 0,
+                    items: order.items.map(item => ({
+                        name: item.menuItemId?.name || 'Unknown Item',
+                        quantity: item.quantity,
+                        modifications: item.modifiers?.map(m => m.name).join(', ') || undefined,
+                        completed: false // This would need to be tracked separately in the backend
+                    })),
+                    status: order.status as 'pending' | 'preparing' | 'ready' | 'completed',
+                    time: new Date(order.createdAt).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    }),
+                    elapsed: Math.floor((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60)),
+                    notes: order.notes
+                }));
+                
+                setOrders(kdsOrders.filter(order => 
+                    ['pending', 'preparing', 'ready'].includes(order.status)
+                ));
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch orders');
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
+
+    useEffect(() => {
+        fetchOrders();
+        // Refresh orders every 30 seconds
+        const interval = setInterval(fetchOrders, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [stats, setStats] = useState({
         pending: 0,
         preparing: 0,
         ready: 0,
-        completedToday: 45
+        completedToday: 0
     });
 
     useEffect(() => {
@@ -96,25 +88,20 @@ const AdminKDS: React.FC = () => {
             pending: orders.filter(o => o.status === 'pending').length,
             preparing: orders.filter(o => o.status === 'preparing').length,
             ready: orders.filter(o => o.status === 'ready').length,
-            completedToday: 45
+            completedToday: stats.completedToday // Keep previous value
         };
-        setStats(newStats);
+        setStats(prev => ({ ...prev, ...newStats }));
     }, [orders]);
 
-    useEffect(() => {
-        // Auto-refresh every 30 seconds
-        const interval = setInterval(() => {
-            // Update elapsed time for all orders
-            setOrders(prevOrders => 
-                prevOrders.map(order => ({
-                    ...order,
-                    elapsed: order.elapsed + 0.5
-                }))
-            );
-        }, 30000);
-
-        return () => clearInterval(interval);
-    }, []);
+    // Update order status via API
+    const updateOrderStatus = async (orderId: string, newStatus: KDSOrder['status']) => {
+        try {
+            await orderService.updateOrderStatus(orderId, newStatus);
+            await fetchOrders(); // Refresh orders
+        } catch (err: any) {
+            setError(err.message || 'Failed to update order status');
+        }
+    };
 
     const getStatusColor = (status: string) => {
         const colors = {
@@ -138,18 +125,16 @@ const AdminKDS: React.FC = () => {
         return '🔴';
     };
 
-    const handleStatusChange = (orderId: string, newStatus: 'preparing' | 'ready' | 'completed') => {
-        setOrders(prevOrders =>
-            prevOrders.map(order =>
-                order.id === orderId
-                    ? { ...order, status: newStatus }
-                    : order
-            ).filter(order => order.status !== 'completed') // Remove completed orders
-        );
-
-        if (soundEnabled) {
-            // Play notification sound
-            playNotificationSound();
+    const handleStatusChange = async (orderId: string, newStatus: 'preparing' | 'ready' | 'completed') => {
+        try {
+            await updateOrderStatus(orderId, newStatus);
+            
+            if (soundEnabled) {
+                // Play notification sound
+                playNotificationSound();
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to update order status');
         }
     };
 
@@ -192,9 +177,8 @@ const AdminKDS: React.FC = () => {
         }
     };
 
-    const handleRefresh = () => {
-        // In a real app, this would refetch data from the server
-        console.log('Refreshing KDS data...');
+    const handleRefresh = async () => {
+        await fetchOrders();
     };
 
     return (
@@ -213,22 +197,45 @@ const AdminKDS: React.FC = () => {
                         <button
                             onClick={() => setSoundEnabled(!soundEnabled)}
                             className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                                soundEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                                soundEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                             }`}
                         >
-                            <span>🔊 Sound: {soundEnabled ? 'ON' : 'OFF'}</span>
+                            <span>{soundEnabled ? '🔊' : '🔇'}</span>
+                            <span>{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
                         </button>
+                        
                         <button
                             onClick={handleRefresh}
-                            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            disabled={loading}
+                            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
-                            <span>↻</span>
+                            <span>Refresh</span>
                         </button>
                     </div>
                 </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+                        <div className="flex items-center">
+                            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                            {error}
+                        </div>
+                    </div>
+                )}
+
+                {/* Loading State */}
+                {loading && (
+                    <div className="flex justify-center items-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span className="ml-2 text-gray-600">Loading orders...</span>
+                    </div>
+                )}
 
                 {/* Orders Grid */}
                 <div className="min-h-96">

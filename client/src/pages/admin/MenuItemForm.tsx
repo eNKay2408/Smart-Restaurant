@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
+import { menuService } from '../../services/menuService';
+import { categoryService } from '../../services/categoryService';
+import type { MenuItem, MenuCategory } from '../../types/menu.types';
 
 interface MenuItemForm {
     name: string;
@@ -43,16 +46,64 @@ const AdminMenuItemForm: React.FC = () => {
         modifiers: []
     });
 
+    const [categories, setCategories] = useState<MenuCategory[]>([]);
     const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const categories = [
-        'Appetizers',
-        'Main Dishes', 
-        'Desserts',
-        'Drinks',
-        'Sides'
-    ];
+    // Fetch categories on component mount
+    const fetchCategories = async () => {
+        try {
+            const response = await categoryService.getCategories();
+            if (response.success) {
+                setCategories(response.data);
+                // Set first category as default
+                if (response.data.length > 0 && !formData.category) {
+                    setFormData(prev => ({ ...prev, category: response.data[0].name }));
+                }
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch categories');
+        }
+    };
+
+    // Fetch menu item data if editing
+    const fetchMenuItem = async (itemId: string) => {
+        try {
+            const response = await menuService.getMenuItem(itemId);
+            if (response.success) {
+                const item = response.data;
+                setFormData({
+                    name: item.name,
+                    category: typeof item.categoryId === 'object' ? item.categoryId.name : 'Main Dishes',
+                    price: item.price.toString(),
+                    prepTime: item.prepTime?.toString() || '',
+                    description: item.description,
+                    status: item.status,
+                    photos: item.images || [],
+                    modifiers: [] // Modifiers would need separate implementation
+                });
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch menu item');
+        }
+    };
+
+    useEffect(() => {
+        const initializeForm = async () => {
+            setInitialLoading(true);
+            await fetchCategories();
+            
+            if (isEditing && id) {
+                await fetchMenuItem(id);
+            }
+            
+            setInitialLoading(false);
+        };
+
+        initializeForm();
+    }, [id, isEditing]);
 
     const predefinedModifiers = [
         {
@@ -143,15 +194,32 @@ const AdminMenuItemForm: React.FC = () => {
         }
 
         setLoading(true);
+        setError(null);
         
         try {
-            // In a real app, make API call here
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+            // Find selected category
+            const selectedCategory = categories.find(cat => cat.name === formData.category);
             
-            console.log('Saving menu item:', formData);
+            const menuItemData = {
+                name: formData.name,
+                description: formData.description,
+                price: parseFloat(formData.price),
+                categoryId: selectedCategory?._id || categories[0]?._id,
+                status: formData.status,
+                prepTime: parseInt(formData.prepTime) || 15,
+                images: formData.photos,
+                restaurantId: 'default-restaurant' // You may want to get this from context
+            };
+
+            if (isEditing && id) {
+                await menuService.updateMenuItem(id, menuItemData);
+            } else {
+                await menuService.createMenuItem(menuItemData);
+            }
+            
             navigate('/admin/menu');
-        } catch (error) {
-            console.error('Error saving menu item:', error);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save menu item');
         } finally {
             setLoading(false);
         }
@@ -257,9 +325,13 @@ const AdminMenuItemForm: React.FC = () => {
                                         errors.category ? 'border-red-300' : 'border-gray-300'
                                     }`}
                                 >
-                                    {categories.map(category => (
-                                        <option key={category} value={category}>{category}</option>
-                                    ))}
+                                    {categories.length === 0 ? (
+                                        <option value="">Loading categories...</option>
+                                    ) : (
+                                        categories.map(category => (
+                                            <option key={category._id} value={category.name}>{category.name}</option>
+                                        ))
+                                    )}
                                 </select>
                                 {errors.category && <p className="text-red-600 text-sm mt-1">{errors.category}</p>}
                             </div>

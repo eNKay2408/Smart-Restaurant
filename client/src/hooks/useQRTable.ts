@@ -1,18 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import axiosInstance from '../config/axiosInterceptors';
+import { tableService } from '../services/tableService';
 import type { QRCodeData, TableInfo } from '../types/menu.types';
-
-// Table verification API call
-const verifyQRToken = async (token: string) => {
-	const response = await axiosInstance.get(`/tables/verify-qr/${token}`);
-	return response.data;
-};
-
-const getTableById = async (tableId: string) => {
-	const response = await axiosInstance.get(`/tables/${tableId}`);
-	return response.data;
-};
 
 /**
  * Custom hook for handling QR code URL parameters and table information
@@ -37,14 +26,14 @@ export function useQRTable() {
 				
 				if (qrToken) {
 					try {
-						const response = await verifyQRToken(qrToken);
+						const response = await tableService.verifyQRCode(qrToken);
 						
 						if (response.success) {
 							const tableData: TableInfo = {
-								tableId: response.data.table._id,
-								restaurantId: response.data.table.restaurantId,
-								tableNumber: parseInt(response.data.table.tableNumber),
-								area: response.data.table.location
+								tableId: response.data._id,
+								restaurantId: response.data.restaurantId,
+								tableNumber: response.data.number,
+								area: 'Main Dining' // Default area if not provided
 							};
 
 							setTableInfo(tableData);

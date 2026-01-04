@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { menuService } from '../services/menuService';
+import { categoryService } from '../services/categoryService';
 import type { 
 	MenuItem, 
 	MenuCategory, 
@@ -54,7 +55,7 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 		try {
 			// Fetch categories and menu items in parallel
 			const [categoriesResponse, menuResponse] = await Promise.all([
-				menuService.getCategories(restaurantId),
+				categoryService.getCategories(restaurantId),
 				menuService.getMenuItems({ 
 					restaurantId,
 					status: filters.showOnlyAvailable ? 'available' : undefined

@@ -148,45 +148,6 @@ function Login() {
 
                     {/* Login Form */}
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Role Selection */}
-                        <div>
-                            <label className="block text-sm font-medium text-purple-100 mb-2">
-                                Login As
-                            </label>
-                            <div className="grid grid-cols-3 gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, role: 'admin' })}
-                                    className={`py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${formData.role === 'admin'
-                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105'
-                                        : 'bg-white/10 text-purple-100 hover:bg-white/20'
-                                        }`}
-                                >
-                                    👨‍💼 Admin
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, role: 'staff' })}
-                                    className={`py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${formData.role === 'staff'
-                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105'
-                                        : 'bg-white/10 text-purple-100 hover:bg-white/20'
-                                        }`}
-                                >
-                                    👨‍🍳 Staff
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, role: 'customer' })}
-                                    className={`py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${formData.role === 'customer'
-                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105'
-                                        : 'bg-white/10 text-purple-100 hover:bg-white/20'
-                                        }`}
-                                >
-                                    👤 Customer
-                                </button>
-                            </div>
-                        </div>
-
                         {/* Email Input */}
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-purple-100 mb-2">

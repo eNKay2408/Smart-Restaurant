@@ -4,10 +4,17 @@ import { tableService } from '../../services/tableService';
 
 interface Table {
     _id: string;
-    number: number;
+    tableNumber: string;
     capacity: number;
+    location?: string;
     restaurantId: string;
-    qrCodeToken: string;
+    qrCode: {
+        token: string;
+        imageUrl?: string;
+        generatedAt: Date;
+    };
+    status: 'active' | 'inactive' | 'occupied' | 'reserved';
+    currentSessionId?: string;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -19,7 +26,7 @@ const AdminTableManagement: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedTable, setSelectedTable] = useState<Table | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
-    const [newTable, setNewTable] = useState({ capacity: 4, number: 1 });
+    const [newTable, setNewTable] = useState({ capacity: 4, tableNumber: '1', location: '' });
 
     // Fetch tables from backend
     const fetchTables = async () => {
@@ -42,18 +49,20 @@ const AdminTableManagement: React.FC = () => {
     }, []);
 
     const handleAddTable = async () => {
-        if (!newTable.number) return;
-        
+        if (!newTable.tableNumber) return;
+
         try {
             setLoading(true);
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
             await tableService.createTable({
-                number: newTable.number,
+                tableNumber: newTable.tableNumber,
                 capacity: newTable.capacity,
-                restaurantId: 'default-restaurant' // You may want to get this from context
+                location: newTable.location,
+                restaurantId: user.restaurantId || 'default-restaurant'
             });
-            
+
             // Reset form and refresh tables
-            setNewTable({ capacity: 4, number: 1 });
+            setNewTable({ capacity: 4, tableNumber: '1', location: '' });
             setShowAddForm(false);
             await fetchTables();
         } catch (err: any) {
@@ -80,14 +89,14 @@ const AdminTableManagement: React.FC = () => {
         }
     };
 
-    const generateQRCode = async (tableId: string) => {
+    const regenerateQRCode = async (tableId: string) => {
         try {
             setLoading(true);
-            await tableService.generateQRCode(tableId);
+            await tableService.regenerateQRCode(tableId);
             await fetchTables();
-            alert(`New QR code generated for Table ${tableId}`);
+            alert(`New QR code generated successfully`);
         } catch (err: any) {
-            setError(err.message || 'Failed to generate QR code');
+            setError(err.message || 'Failed to regenerate QR code');
         } finally {
             setLoading(false);
         }
@@ -95,22 +104,23 @@ const AdminTableManagement: React.FC = () => {
 
     const downloadQRCode = async (table: Table, format: 'png' | 'pdf') => {
         try {
-            const QRCode = (await import('qrcode')).default;
-            const qrUrl = `${window.location.origin}/menu?token=${table.qrCodeToken}`;
-            
-            if (format === 'png') {
-                const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 300 });
-                
-                // Create download link
+            // Use the QR code image from backend if available
+            if (table.qrCode.imageUrl) {
                 const link = document.createElement('a');
-                link.href = qrDataUrl;
-                link.download = `table-${table.number}-qr-code.png`;
+                link.href = table.qrCode.imageUrl;
+                link.download = `table-${table.tableNumber}-qr-code.${format}`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
             } else {
-                // For PDF, we could use jsPDF but for now show alert
-                alert(`PDF download feature coming soon. Use PNG for now.`);
+                // Generate QR code on client side
+                const qrCodeDataUrl = await tableService.generateQRCode(table);
+                const link = document.createElement('a');
+                link.href = qrCodeDataUrl;
+                link.download = `table-${table.tableNumber}-qr-code.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
         } catch (error) {
             alert(`Failed to download QR code: ${error}`);
@@ -119,17 +129,20 @@ const AdminTableManagement: React.FC = () => {
 
     const printQRCode = async (table: Table) => {
         try {
-            const QRCode = (await import('qrcode')).default;
-            const qrUrl = `${window.location.origin}/menu?token=${table.qrCodeToken}`;
-            const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 300 });
-            
+            let qrDataUrl = table.qrCode.imageUrl;
+
+            // If no image URL from backend, generate on client
+            if (!qrDataUrl) {
+                qrDataUrl = await tableService.generateQRCode(table);
+            }
+
             // Create print window
             const printWindow = window.open('', '_blank');
             if (printWindow) {
                 printWindow.document.write(`
                     <html>
                         <head>
-                            <title>Table ${table.number} QR Code</title>
+                            <title>Table ${table.tableNumber} QR Code</title>
                             <style>
                                 body { text-align: center; font-family: Arial, sans-serif; }
                                 .qr-container { margin: 50px auto; }
@@ -138,8 +151,9 @@ const AdminTableManagement: React.FC = () => {
                         </head>
                         <body>
                             <div class="qr-container">
-                                <h1>Table ${table.number}</h1>
-                                <img src="${qrDataUrl}" alt="QR Code for Table ${table.number}" />
+                                <h1>Table ${table.tableNumber}</h1>
+                                <img src="${qrDataUrl}" alt="QR Code for Table ${table.tableNumber}" />
+                                <p>Capacity: ${table.capacity} people</p>
                                 <p>Scan to view menu</p>
                             </div>
                         </body>
@@ -161,76 +175,85 @@ const AdminTableManagement: React.FC = () => {
 
     const QRCodePreview = ({ table }: { table: Table }) => {
         const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-        
+        const [generating, setGenerating] = useState(false);
+
         useEffect(() => {
             const generateQRCodeImage = async () => {
                 try {
-                    const QRCode = (await import('qrcode')).default;
-                    const qrUrl = `${window.location.origin}/menu?token=${table.qrCodeToken}`;
-                    const qrDataUrl = await QRCode.toDataURL(qrUrl, {
-                        width: 128,
-                        margin: 2,
-                        color: {
-                            dark: '#000000',
-                            light: '#FFFFFF'
-                        }
-                    });
-                    setQrCodeUrl(qrDataUrl);
+                    setGenerating(true);
+                    // Use backend image if available
+                    if (table.qrCode.imageUrl) {
+                        setQrCodeUrl(table.qrCode.imageUrl);
+                    } else {
+                        // Generate on client side
+                        const qrDataUrl = await tableService.generateQRCode(table);
+                        setQrCodeUrl(qrDataUrl);
+                    }
                 } catch (error) {
                     console.error('Failed to generate QR code:', error);
+                } finally {
+                    setGenerating(false);
                 }
             };
-            
-            if (table.qrCodeToken) {
+
+            if (table.qrCode?.token) {
                 generateQRCodeImage();
             }
-        }, [table.qrCodeToken]);
-        
+        }, [table]);
+
         return (
-        <div className="bg-white border-2 border-gray-200 p-4 rounded-lg text-center">
-            {/* QR Code Display */}
-            <div className="w-32 h-32 mx-auto mb-4">
-                {qrCodeUrl ? (
-                    <img src={qrCodeUrl} alt={`QR Code for Table ${table.number}`} className="w-full h-full" />
-                ) : (
-                    <div className="w-full h-full bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                        <div className="text-center">
-                            <div className="text-sm text-gray-500">Generating QR...</div>
+            <div className="bg-white border-2 border-gray-200 p-4 rounded-lg text-center">
+                {/* QR Code Display */}
+                <div className="w-32 h-32 mx-auto mb-4">
+                    {generating ? (
+                        <div className="w-full h-full bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                            <div className="text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                                <div className="text-sm text-gray-500 mt-2">Generating...</div>
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
-            
-            <div className="space-y-2">
-                <p className="font-semibold text-gray-900">Table #{table.number}</p>
-                <p className="text-sm text-gray-600">Capacity: {table.capacity} people</p>
-                <p className="text-xs text-gray-500">QR Token: {table.qrCodeToken?.substring(0, 10)}...</p>
-                <p className="text-xs text-gray-500">Status: {table.isActive ? 'Active' : 'Inactive'}</p>
-                
-                <div className="flex flex-col space-y-2 mt-4">
-                    <div className="flex space-x-2">
+                    ) : qrCodeUrl ? (
+                        <img src={qrCodeUrl} alt={`QR Code for Table ${table.tableNumber}`} className="w-full h-full" />
+                    ) : (
+                        <div className="w-full h-full bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                            <div className="text-center">
+                                <div className="text-sm text-gray-500">No QR Code</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-2">
+                    <p className="font-semibold text-gray-900">Table #{table.tableNumber}</p>
+                    <p className="text-sm text-gray-600">Capacity: {table.capacity} people</p>
+                    {table.location && <p className="text-sm text-gray-600">Location: {table.location}</p>}
+                    <p className="text-xs text-gray-500">QR Token: {table.qrCode.token?.substring(0, 10)}...</p>
+                    <p className="text-xs text-gray-500">Status: {table.isActive ? 'Active' : 'Inactive'}</p>
+
+                    <div className="flex flex-col space-y-2 mt-4">
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => downloadQRCode(table, 'png')}
+                                className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                📥 Download PNG
+                            </button>
+                            <button
+                                onClick={() => downloadQRCode(table, 'pdf')}
+                                className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                                📥 Download PDF
+                            </button>
+                        </div>
                         <button
-                            onClick={() => downloadQRCode(table, 'png')}
-                            className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                            onClick={() => printQRCode(table)}
+                            className="w-full px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
                         >
-                            Download PNG
-                        </button>
-                        <button
-                            onClick={() => downloadQRCode(table, 'pdf')}
-                            className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                            Download PDF
+                            🖨️ Print QR Code
                         </button>
                     </div>
-                    <button
-                        onClick={() => printQRCode(table)}
-                        className="w-full px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                        Print QR Code
-                    </button>
                 </div>
             </div>
-        </div>
         );
     };
 
@@ -283,6 +306,18 @@ const AdminTableManagement: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Table Number
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newTable.tableNumber}
+                                    onChange={(e) => setNewTable(prev => ({ ...prev, tableNumber: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="e.g., 1, A1, VIP-1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Capacity
                                 </label>
                                 <input
@@ -295,28 +330,15 @@ const AdminTableManagement: React.FC = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Table Number
+                                    Location
                                 </label>
                                 <input
-                                    type="number"
-                                    min="1"
-                                    value={newTable.number}
-                                    onChange={(e) => setNewTable(prev => ({ ...prev, number: parseInt(e.target.value) || 1 }))}
+                                    type="text"
+                                    value={newTable.location}
+                                    onChange={(e) => setNewTable(prev => ({ ...prev, location: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="e.g., Window, Corner"
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Status
-                                </label>
-                                <select
-                                    value={newTable.status}
-                                    onChange={(e) => setNewTable(prev => ({ ...prev, status: e.target.value as 'active' | 'inactive' }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                </select>
                             </div>
                         </div>
                         <div className="flex items-center justify-end space-x-3 mt-4">
@@ -337,77 +359,65 @@ const AdminTableManagement: React.FC = () => {
                 )}
 
                 {/* Tables List */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Table #</th>
-                                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
-                                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {tables.map((table) => (
-                                    <tr key={table._id} className="hover:bg-gray-50">
-                                        <td className="py-4 px-6 text-sm font-medium text-gray-900">#{table.number}</td>
-                                        <td className="py-4 px-6 text-sm text-gray-600">{table.capacity} people</td>
-                                        <td className="py-4 px-6 text-sm text-gray-600">{new Date(table.createdAt).toLocaleDateString()}</td>
-                                        <td className="py-4 px-6">{getStatusBadge(table.isActive)}</td>
-                                        <td className="py-4 px-6">
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => generateQRCode(table._id)}
-                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                                    title="Regenerate QR Code"
-                                                >
-                                                    🔄
-                                                </button>
-                                                <button
-                                                    onClick={() => handleStatusToggle(table._id)}
-                                                    className={`p-2 rounded-lg transition-colors ${table.isActive ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
-                                                    title={table.isActive ? 'Deactivate Table' : 'Activate Table'}
-                                                >
-                                                    {table.isActive ? '🔴' : '🟢'}
-                                                </button>
-                                                <button
-                                                    onClick={() => setSelectedTable(table)}
-                                                    className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                                                    title="View Details"
-                                                >
-                                                    👁️
-                                                </button>
-                                                <button
-                                                    onClick={() => handleStatusToggle(table._id)}
-                                                    className={`p-2 rounded-lg transition-colors ${
-                                                        table.isActive 
-                                                            ? 'text-red-600 hover:bg-red-50' 
-                                                            : 'text-green-600 hover:bg-green-50'
-                                                    }`}
-                                                    title={table.status === 'active' ? 'Deactivate' : 'Activate'}
-                                                >
-                                                    {table.status === 'active' ? '🔒' : '🔓'}
-                                                </button>
-                                            </div>
-                                        </td>
+                {!loading && tables.length > 0 && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Table #</th>
+                                        <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+                                        <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                        <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {tables.map((table) => (
+                                        <tr key={table._id} className="hover:bg-gray-50">
+                                            <td className="py-4 px-6 text-sm font-medium text-gray-900">#{table.tableNumber}</td>
+                                            <td className="py-4 px-6 text-sm text-gray-600">{table.capacity} people</td>
+                                            <td className="py-4 px-6 text-sm text-gray-600">{table.location || '-'}</td>
+                                            <td className="py-4 px-6">{getStatusBadge(table.isActive)}</td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center space-x-2">
+                                                    <button
+                                                        onClick={() => regenerateQRCode(table._id)}
+                                                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                        title="Regenerate QR Code"
+                                                    >
+                                                        🔄
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusToggle(table._id)}
+                                                        className={`p-2 rounded-lg transition-colors ${table.isActive ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
+                                                        title={table.isActive ? 'Deactivate Table' : 'Activate Table'}
+                                                    >
+                                                        {table.isActive ? '🔴' : '🟢'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setSelectedTable(table)}
+                                                        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                                        title="View QR Code"
+                                                    >
+                                                        👁️
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* QR Code Preview */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">QR Code Preview</h3>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <p className="text-gray-600 mb-4">
-                                📥 = Download QR &nbsp;&nbsp; 🔄 = Regenerate &nbsp;&nbsp; ✏️ = Edit
-                            </p>
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -425,7 +435,7 @@ const AdminTableManagement: React.FC = () => {
                                         <option value="">Select a table...</option>
                                         {tables.map(table => (
                                             <option key={table._id} value={table._id}>
-                                                Table {table.number} - {table.capacity} people
+                                                Table {table.tableNumber} - {table.capacity} people {table.location ? `(${table.location})` : ''}
                                             </option>
                                         ))}
                                     </select>

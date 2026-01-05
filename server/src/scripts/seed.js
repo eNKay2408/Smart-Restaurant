@@ -98,6 +98,16 @@ const seedDatabase = async () => {
         });
         console.log('✅ Created Customer');
 
+        // 7. Create Guest (Walk-in customer)
+        const guest = await User.create({
+            fullName: 'Guest User',
+            email: 'guest@example.com',
+            password: 'Guest12345',
+            role: 'guest',
+            isEmailVerified: false,
+        });
+        console.log('✅ Created Guest User');
+
         // 7. Create Categories
         const categories = await Category.insertMany([
             {
@@ -324,6 +334,7 @@ const seedDatabase = async () => {
         console.log(`   Waiter: waiter@restaurant.com / Waiter123`);
         console.log(`   Kitchen: kitchen@restaurant.com / Kitchen123`);
         console.log(`   Customer: customer@example.com / Customer123`);
+        console.log(`   Guest: guest@example.com / Guest12345`);
         console.log(`\n📁 Categories: ${categories.length}`);
         console.log(`🍽️  Menu Items: ${menuItems.length}`);
         console.log(`🪑 Tables: ${tableNumbers.length}`);

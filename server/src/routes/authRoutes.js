@@ -38,6 +38,10 @@ const registerValidation = [
         .withMessage('Password must be at least 8 characters')
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
         .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    body('role')
+        .optional()
+        .isIn(['guest', 'customer', 'waiter', 'kitchen_staff', 'admin', 'super_admin'])
+        .withMessage('Role must be one of: guest, customer, waiter, kitchen_staff, admin, super_admin'),
 ];
 
 const loginValidation = [
@@ -70,7 +74,7 @@ const updatePasswordValidation = [
  *   post:
  *     tags: [Authentication]
  *     summary: Register a new user
- *     description: Create a new user account
+ *     description: Create a new user account with optional role (defaults to customer)
  *     requestBody:
  *       required: true
  *       content:
@@ -94,6 +98,12 @@ const updatePasswordValidation = [
  *               phoneNumber:
  *                 type: string
  *                 example: +84123456789
+ *               role:
+ *                 type: string
+ *                 enum: [guest, customer, waiter, kitchen_staff, admin, super_admin]
+ *                 default: customer
+ *                 example: customer
+ *                 description: User role (optional, defaults to customer). Use 'guest' for walk-in customers.
  *     responses:
  *       201:
  *         description: User registered successfully

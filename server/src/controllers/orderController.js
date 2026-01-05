@@ -377,29 +377,77 @@ export const rejectOrder = async (req, res) => {
 	}
 };
 
-// @desc    Update order status
+// State Machine Configuration
+const STATE_MACHINE = {
+	// Valid state transitions
+	transitions: {
+		pending: ['preparing', 'cancelled'],
+		preparing: ['ready', 'cancelled'],
+		ready: ['served', 'cancelled'],
+		served: ['completed'],
+		completed: [], // Terminal state
+		cancelled: [], // Terminal state
+	},
+
+	// Role-based permissions for state changes
+	permissions: {
+		preparing: ['kitchen_staff', 'admin', 'super_admin'],
+		ready: ['kitchen_staff', 'admin', 'super_admin'],
+		served: ['waiter', 'admin', 'super_admin'],
+		completed: ['waiter', 'admin', 'super_admin'],
+		cancelled: ['waiter', 'admin', 'super_admin'],
+	},
+};
+
+// Helper function to validate state transition
+const validateStateTransition = (currentStatus, newStatus, userRole) => {
+	// Check if transition is valid
+	const allowedTransitions = STATE_MACHINE.transitions[currentStatus];
+	if (!allowedTransitions || !allowedTransitions.includes(newStatus)) {
+		return {
+			valid: false,
+			message: `Invalid state transition: ${currentStatus} -> ${newStatus}. Allowed transitions: ${allowedTransitions?.join(', ') || 'none'}`,
+		};
+	}
+
+	// Check if user has permission for this state
+	const allowedRoles = STATE_MACHINE.permissions[newStatus];
+	if (allowedRoles && !allowedRoles.includes(userRole)) {
+		return {
+			valid: false,
+			message: `Unauthorized: ${userRole} cannot change status to ${newStatus}. Required roles: ${allowedRoles.join(', ')}`,
+		};
+	}
+
+	return { valid: true };
+};
+
+// @desc    Update order status with state machine validation
 // @route   PATCH /api/orders/:id/status
 // @access  Private (Kitchen Staff, Waiter, Admin)
 export const updateOrderStatus = async (req, res) => {
 	try {
 		const { status } = req.body;
+		const userRole = req.user.role;
 
+		// Validate status format
 		const validStatuses = [
 			"pending",
-			"accepted",
 			"preparing",
 			"ready",
 			"served",
 			"completed",
 			"cancelled",
 		];
+
 		if (!validStatuses.includes(status)) {
 			return res.status(400).json({
 				success: false,
-				message: "Invalid status",
+				message: `Invalid status. Valid statuses: ${validStatuses.join(', ')}`,
 			});
 		}
 
+		// Find order
 		const order = await Order.findById(req.params.id);
 
 		if (!order) {
@@ -409,23 +457,69 @@ export const updateOrderStatus = async (req, res) => {
 			});
 		}
 
+		// Validate state transition
+		const validation = validateStateTransition(order.status, status, userRole);
+		if (!validation.valid) {
+			return res.status(403).json({
+				success: false,
+				message: validation.message,
+				currentStatus: order.status,
+				requestedStatus: status,
+				userRole: userRole,
+			});
+		}
+
+		// Store previous status for logging
+		const previousStatus = order.status;
+
+		// Update status
 		order.status = status;
 
 		// Update timestamps based on status
-		if (status === "preparing") {
-			order.preparingAt = new Date();
-		} else if (status === "ready") {
-			order.readyAt = new Date();
-		} else if (status === "served") {
-			order.servedAt = new Date();
-		} else if (status === "completed") {
-			order.completedAt = new Date();
+		const now = new Date();
+		switch (status) {
+			case "preparing":
+				order.preparingAt = now;
+				// Update all pending items to preparing
+				order.items.forEach(item => {
+					if (item.status === 'pending') {
+						item.status = 'preparing';
+						item.prepStartTime = now;
+					}
+				});
+				break;
+			case "ready":
+				order.readyAt = now;
+				// Update all preparing items to ready
+				order.items.forEach(item => {
+					if (item.status === 'preparing') {
+						item.status = 'ready';
+						item.prepEndTime = now;
+					}
+				});
+				break;
+			case "served":
+				order.servedAt = now;
+				// Update all ready items to served
+				order.items.forEach(item => {
+					if (item.status === 'ready') {
+						item.status = 'served';
+					}
+				});
+				break;
+			case "completed":
+				order.completedAt = now;
+				break;
+			case "cancelled":
+				// Don't update item statuses for cancelled orders
+				break;
 		}
 
 		await order.save();
 
+		// Populate order for response
 		const populatedOrder = await Order.findById(order._id)
-			.populate("tableId", "tableNumber area")
+			.populate("tableId", "tableNumber location")
 			.populate("customerId", "fullName email")
 			.populate("waiterId", "fullName")
 			.populate("items.menuItemId", "name price images");
@@ -436,10 +530,19 @@ export const updateOrderStatus = async (req, res) => {
 			emitOrderStatusUpdate(io, order.restaurantId.toString(), populatedOrder);
 		}
 
+		// Log the status change
+		console.log(`Order ${order.orderNumber} status changed: ${previousStatus} -> ${status} by ${userRole}`);
+
 		res.json({
 			success: true,
-			message: "Order status updated",
+			message: `Order status updated from ${previousStatus} to ${status}`,
 			data: populatedOrder,
+			statusChange: {
+				from: previousStatus,
+				to: status,
+				changedBy: userRole,
+				timestamp: now,
+			},
 		});
 	} catch (error) {
 		console.error("Update order status error:", error);

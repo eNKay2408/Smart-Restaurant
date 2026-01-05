@@ -199,6 +199,96 @@ const options = {
                         },
                     },
                 },
+                ModifierOption: {
+                    type: 'object',
+                    properties: {
+                        _id: {
+                            type: 'string',
+                            example: '507f1f77bcf86cd799439011',
+                        },
+                        name: {
+                            type: 'string',
+                            example: 'Large',
+                        },
+                        priceAdjustment: {
+                            type: 'number',
+                            example: 5,
+                            description: 'Additional price for this option',
+                        },
+                        isDefault: {
+                            type: 'boolean',
+                            example: false,
+                            description: 'Whether this option is selected by default',
+                        },
+                        isActive: {
+                            type: 'boolean',
+                            example: true,
+                            description: 'Whether this option is currently available',
+                        },
+                    },
+                },
+                Modifier: {
+                    type: 'object',
+                    properties: {
+                        _id: {
+                            type: 'string',
+                            example: '507f1f77bcf86cd799439011',
+                        },
+                        name: {
+                            type: 'string',
+                            example: 'Size',
+                            description: 'Name of the modifier group',
+                        },
+                        type: {
+                            type: 'string',
+                            enum: ['single', 'multiple'],
+                            example: 'single',
+                            description: 'single: customer can select only one option, multiple: customer can select multiple options',
+                        },
+                        required: {
+                            type: 'boolean',
+                            example: false,
+                            description: 'Whether customer must select an option from this modifier',
+                        },
+                        displayOrder: {
+                            type: 'number',
+                            example: 1,
+                            description: 'Order in which modifiers are displayed',
+                        },
+                        options: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/ModifierOption',
+                            },
+                            description: 'Available options for this modifier',
+                        },
+                        isActive: {
+                            type: 'boolean',
+                            example: true,
+                            description: 'Whether this modifier is currently available',
+                        },
+                        restaurantId: {
+                            type: 'string',
+                            example: '507f1f77bcf86cd799439011',
+                            description: 'ID of the restaurant this modifier belongs to',
+                        },
+                        createdAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-01-05T12:00:00.000Z',
+                        },
+                        updatedAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-01-05T12:00:00.000Z',
+                        },
+                        optionCount: {
+                            type: 'number',
+                            example: 3,
+                            description: 'Virtual field: number of options in this modifier',
+                        },
+                    },
+                },
             },
         },
         security: [
@@ -220,8 +310,20 @@ const options = {
                 description: 'Menu item management',
             },
             {
+                name: 'Modifiers',
+                description: 'Menu item customization and modifier management',
+            },
+            {
                 name: 'Tables',
                 description: 'Table and QR code management',
+            },
+            {
+                name: 'Orders',
+                description: 'Order management and tracking',
+            },
+            {
+                name: 'Payments',
+                description: 'Payment processing and transactions',
             },
         ],
     },

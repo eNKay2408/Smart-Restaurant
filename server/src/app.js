@@ -25,6 +25,7 @@ import menuItemRoutes from "./routes/menuItemRoutes.js";
 import tableRoutes from "./routes/tableRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import modifierRoutes from "./routes/modifierRoutes.js";
 
 // Connect to database
 connectDB();
@@ -116,6 +117,7 @@ app.use("/api/menu-items", menuItemRoutes);
 app.use("/api/tables", tableRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/modifiers", modifierRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

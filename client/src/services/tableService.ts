@@ -2,10 +2,17 @@ import axiosInstance from '../config/axiosInterceptors';
 
 interface Table {
     _id: string;
-    number: number;
+    tableNumber: string;
     capacity: number;
+    location?: string;
     restaurantId: string;
-    qrCodeToken: string;
+    qrCode: {
+        token: string;
+        imageUrl?: string;
+        generatedAt: Date;
+    };
+    status: 'active' | 'inactive' | 'occupied' | 'reserved';
+    currentSessionId?: string;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -87,8 +94,9 @@ class TableService {
      * Create new table (Admin only)
      */
     async createTable(tableData: {
-        number: number;
+        tableNumber: string;
         capacity: number;
+        location?: string;
         restaurantId: string;
     }): Promise<TableResponse> {
         try {
@@ -110,8 +118,10 @@ class TableService {
      * Update table (Admin only)
      */
     async updateTable(tableId: string, tableData: Partial<{
-        number: number;
+        tableNumber: string;
         capacity: number;
+        location: string;
+        status: 'active' | 'inactive' | 'occupied' | 'reserved';
         isActive: boolean;
     }>): Promise<TableResponse> {
         try {
@@ -162,6 +172,46 @@ class TableService {
             throw {
                 success: false,
                 message: 'Failed to delete table',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Generate QR code image from table data (Client-side)
+     * This creates a QR code for preview without calling the backend
+     */
+    async generateQRCode(table: any): Promise<string> {
+        try {
+            // Import QRCode library dynamically
+            const QRCode = await import('qrcode');
+
+            // Get QR token from table data
+            const qrToken = table.qrCode?.token || table.qrCodeToken || '';
+
+            if (!qrToken) {
+                throw new Error('No QR token found for this table');
+            }
+
+            // Generate QR code URL
+            const qrUrl = `${window.location.origin}/table?token=${qrToken}`;
+
+            // Generate QR code image as data URL
+            const qrCodeDataUrl = await QRCode.toDataURL(qrUrl, {
+                width: 300,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            });
+
+            return qrCodeDataUrl;
+        } catch (error: any) {
+            console.error('Failed to generate QR code:', error);
+            throw {
+                success: false,
+                message: 'Failed to generate QR code',
                 error: error.message,
             };
         }

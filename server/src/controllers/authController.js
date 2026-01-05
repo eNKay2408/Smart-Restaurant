@@ -6,7 +6,7 @@ import { generateAccessToken, generateRefreshToken } from '../config/jwt.js';
 // @access  Public
 export const register = async (req, res) => {
     try {
-        const { fullName, email, password } = req.body;
+        const { fullName, email, password, role } = req.body;
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -17,12 +17,12 @@ export const register = async (req, res) => {
             });
         }
 
-        // Create user
+        // Create user with role (default to 'customer' if not provided)
         const user = await User.create({
             fullName,
             email,
             password,
-            role: 'customer',
+            role: role || 'customer',
         });
 
         // Generate email verification token

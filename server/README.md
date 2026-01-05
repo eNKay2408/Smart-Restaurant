@@ -1,52 +1,36 @@
-# 🍽️ Smart Restaurant - Backend Week 1
+# 🍽️ Smart Restaurant - Backend Week 2
 
 ## 📋 Tổng Quan
 
-Backend API cho hệ thống đặt món qua QR code của nhà hàng thông minh.
+Backend API cho hệ thống đặt món qua QR code của nhà hàng thông minh - **Week 2 Update**
 
-**Công nghệ**: Node.js + Express.js + MongoDB + JWT + Swagger UI
+**Công nghệ**: Node.js + Express.js + MongoDB + JWT + Swagger UI + **Stripe Payment** + Socket.IO
 
 ---
 
-## ✅ Đã Hoàn Thành
+## ✅ Đã Hoàn Thành Week 2
 
-### 🔐 Authentication System
-- Đăng ký, đăng nhập với JWT
-- Quản lý profile, đổi password
-- Role-based authorization (5 roles: superadmin, admin, waiter, kitchen, customer)
-- Password hashing với bcrypt
+### 💳 Payment Integration (NEW!)
+- ✅ **Stripe Payment Integration**
+  - Create Payment Intent
+  - Confirm Payment
+  - Payment Status Tracking
+  - Webhook Handler for real-time updates
+  - Refund Support
+  - Cash Payment (Manual by Waiter)
+- ✅ **Payment Methods Support**
+  - Card (Stripe)
+  - Cash
+  - Support for future: ZaloPay, Momo, VNPay
+- ✅ **Payment Security**
+  - Webhook signature verification
+  - Payment intent validation
+  - Amount verification
 
-### 📁 Category Management
-- CRUD đầy đủ cho danh mục món ăn
-- Chỉ admin mới được thao tác
-
-### 🍽️ Menu Item Management
-- CRUD đầy đủ cho món ăn
-- **Advanced features**:
-  - Tìm kiếm text (search)
-  - Lọc theo category, giá, trạng thái
-  - Sắp xếp (sort)
-  - Phân trang (pagination)
-  - Hỗ trợ modifiers (size, topping, etc.)
-
-### 🪑 Table Management & QR Code
-- CRUD đầy đủ cho bàn ăn
-- **QR Code generation** với JWT signing
-- Verify QR code
-- Regenerate QR code
-
-### 📚 Swagger UI Documentation
-- Interactive API docs tại `/api/docs`
-- Test API trực tiếp trong browser
-- Không cần Postman!
-
-### 🗄️ Database Models (7 models)
-- User, Restaurant, Category, MenuItem, Table, Order, Review
-
-### 🔒 Security
-- Helmet, CORS, Rate Limiting
-- Input validation
-- Error handling
+### 🔄 Real-time Updates (Enhanced)
+- ✅ Socket.IO integration with payment events
+- ✅ Real-time payment status notifications
+- ✅ Order completion notifications
 
 ---
 
@@ -58,27 +42,9 @@ cd server
 npm install
 ```
 
-### Bước 2: Cấu hình MongoDB
+### Bước 2: Cấu hình .env
 
-**Option A: MongoDB Local**
-```bash
-# Cài MongoDB Community Server
-# https://www.mongodb.com/try/download/community
-
-# Chạy MongoDB
-mongod
-```
-
-**Option B: MongoDB Atlas (Khuyến nghị)**
-1. Tạo tài khoản miễn phí: https://www.mongodb.com/cloud/atlas
-2. Tạo cluster (FREE tier)
-3. Tạo user: `smartrestaurant` / `SmartRestaurant123`
-4. Whitelist IP: Allow from anywhere (0.0.0.0/0)
-5. Lấy connection string
-
-### Bước 3: Cấu hình .env
-
-Tạo file `.env` trong folder `server/`:
+Thêm Stripe keys vào file `.env`:
 
 ```env
 # Server
@@ -88,10 +54,9 @@ CLIENT_URL=http://localhost:5173
 
 # Database
 MONGODB_URI=mongodb://localhost:27017/smart-restaurant
-# Hoặc dùng Atlas:
-# MONGODB_URI=mongodb+srv://smartrestaurant:SmartRestaurant123@cluster0.xxxxx.mongodb.net/smart-restaurant
+# Hoặc MongoDB Atlas
 
-# JWT - QUAN TRỌNG!
+# JWT
 JWT_SECRET=smart-restaurant-super-secret-jwt-key-2024
 JWT_EXPIRE=7d
 JWT_REFRESH_SECRET=smart-restaurant-refresh-token-secret-2024
@@ -101,26 +66,28 @@ JWT_REFRESH_EXPIRE=30d
 QR_CODE_BASE_URL=http://localhost:5173/table
 QR_CODE_SECRET=smart-restaurant-qr-signing-secret-2024
 
+# Stripe Payment (NEW!)
+STRIPE_SECRET_KEY=sk_test_51xxxxxxxxxxxxxxxxxxxxx
+STRIPE_PUBLISHABLE_KEY=pk_test_51xxxxxxxxxxxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxx
+
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 ```
 
+### Bước 3: Setup Stripe (NEW!)
+
+1. **Tạo Stripe Account**: https://dashboard.stripe.com/register
+2. **Lấy API Keys**: Developers → API Keys
+3. **Copy keys** vào `.env`
+4. **Test Mode**: Đảm bảo đang ở Test Mode
+
+Chi tiết: Xem `docs/PAYMENT.md`
+
 ### Bước 4: Seed Database
 ```bash
 npm run seed
-```
-
-Kết quả:
-```
-✅ Created Super Admin
-✅ Created Admin
-✅ Created Waiter
-✅ Created Kitchen Staff
-✅ Created Customer
-✅ Created Categories (4)
-✅ Created Menu Items (9)
-✅ Created Tables with QR Codes (8)
 ```
 
 ### Bước 5: Chạy Server
@@ -132,102 +99,46 @@ Server chạy tại: **http://localhost:5000**
 
 ---
 
-## 🧪 Cách Test API
-
-### 1. Swagger UI (Khuyến nghị)
-
-Mở: **http://localhost:5000/api/docs**
-
-**Workflow:**
-
-1. **Login** để lấy token:
-   - Tìm `POST /api/auth/login`
-   - Click "Try it out"
-   - Nhập:
-     ```json
-     {
-       "email": "admin@restaurant.com",
-       "password": "Admin123"
-     }
-     ```
-   - Click "Execute"
-   - **Copy `accessToken`**
-
-2. **Authorize**:
-   - Click nút "Authorize" (góc trên, icon khóa 🔒)
-   - Nhập: `Bearer YOUR_ACCESS_TOKEN`
-   - Click "Authorize" → "Close"
-
-3. **Test endpoints**:
-   - Bây giờ có thể test tất cả endpoints!
-   - Ví dụ: `GET /api/auth/me`, `GET /api/menu-items`, `POST /api/menu-items`
-
-### 2. Test Accounts
-
-```
-Admin:    admin@restaurant.com / Admin123
-Waiter:   waiter@restaurant.com / Waiter123
-Kitchen:  kitchen@restaurant.com / Kitchen123
-Customer: customer@example.com / Customer123
-```
-
-### 3. Test với curl
-
-```bash
-# Health check
-curl http://localhost:5000/health
-
-# Login
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@restaurant.com","password":"Admin123"}'
-
-# Get menu items
-curl http://localhost:5000/api/menu-items
-
-# Get menu items với filters
-curl "http://localhost:5000/api/menu-items?search=salmon&minPrice=10&maxPrice=50&sort=-price"
-```
-
----
-
-## 📊 API Endpoints (30+)
+## 📊 API Endpoints (40+)
 
 ### Authentication (9 endpoints)
 - `POST /api/auth/register` - Đăng ký
 - `POST /api/auth/login` - Đăng nhập
-- `GET /api/auth/me` 🔒 - Thông tin user hiện tại
+- `GET /api/auth/me` 🔒 - Thông tin user
 - `PUT /api/auth/profile` 🔒 - Cập nhật profile
 - `PUT /api/auth/password` 🔒 - Đổi password
-- `POST /api/auth/forgot-password` - Quên mật khẩu
-- `POST /api/auth/reset-password/:token` - Reset password
-- `GET /api/auth/verify-email/:token` - Xác thực email
-- `GET /api/auth/check-email/:email` - Kiểm tra email
+- ... (xem README cũ)
 
 ### Categories (5 endpoints)
 - `GET /api/categories` - Lấy tất cả
-- `GET /api/categories/:id` - Lấy 1 category
 - `POST /api/categories` 🔒 - Tạo mới (Admin)
-- `PUT /api/categories/:id` 🔒 - Cập nhật (Admin)
-- `DELETE /api/categories/:id` 🔒 - Xóa (Admin)
+- ... (xem README cũ)
 
 ### Menu Items (6 endpoints)
 - `GET /api/menu-items` - Lấy tất cả (có filters)
-  - Query params: `search`, `categoryId`, `minPrice`, `maxPrice`, `isAvailable`, `sort`, `page`, `limit`
-- `GET /api/menu-items/:id` - Lấy 1 món
 - `POST /api/menu-items` 🔒 - Tạo món (Admin)
-- `PUT /api/menu-items/:id` 🔒 - Cập nhật (Admin)
-- `PATCH /api/menu-items/:id/status` 🔒 - Đổi trạng thái (Admin)
-- `DELETE /api/menu-items/:id` 🔒 - Xóa (Admin)
+- ... (xem README cũ)
 
 ### Tables (7 endpoints)
-- `GET /api/tables` 🔒 - Lấy tất cả (Admin/Waiter)
-- `GET /api/tables/:id` - Lấy 1 bàn
-- `POST /api/tables` 🔒 - Tạo bàn (Admin)
-- `PUT /api/tables/:id` 🔒 - Cập nhật (Admin)
-- `POST /api/tables/:id/regenerate-qr` 🔒 - Tạo lại QR (Admin)
-- `DELETE /api/tables/:id` 🔒 - Xóa (Admin)
-- `GET /api/tables/verify-qr/:token` - Verify QR code
+- `GET /api/tables` 🔒 - Lấy tất cả
+- `POST /api/tables/:id/regenerate-qr` 🔒 - Tạo lại QR
+- ... (xem README cũ)
+
+### Orders (7 endpoints)
+- `GET /api/orders` 🔒 - Lấy tất cả
+- `POST /api/orders` - Tạo đơn
+- `PATCH /api/orders/:id/accept` 🔒 - Accept (Waiter)
+- `PATCH /api/orders/:id/reject` 🔒 - Reject (Waiter)
+- `PATCH /api/orders/:id/status` 🔒 - Cập nhật status
+- ... (xem README cũ)
+
+### 💳 Payments (6 endpoints) - NEW!
+- `POST /api/payments/create-intent` - Tạo payment intent
+- `POST /api/payments/confirm` - Xác nhận thanh toán
+- `GET /api/payments/status/:orderId` - Kiểm tra trạng thái
+- `POST /api/payments/webhook` - Stripe webhook handler
+- `POST /api/payments/cash` 🔒 - Thanh toán tiền mặt (Waiter)
+- `POST /api/payments/refund` 🔒 - Hoàn tiền (Admin)
 
 🔒 = Cần authentication
 
@@ -235,102 +146,91 @@ curl "http://localhost:5000/api/menu-items?search=salmon&minPrice=10&maxPrice=50
 
 ---
 
-## 🐛 Troubleshooting
+## 🧪 Testing Payment
 
-### Lỗi: MongoDB Connection
-```
-Error: connect ECONNREFUSED 127.0.0.1:27017
-```
-**Fix**: 
-- Chạy `mongod` (nếu dùng local)
-- Hoặc dùng MongoDB Atlas
+### Test với Swagger UI
+1. Mở: http://localhost:5000/api/docs
+2. Scroll xuống section **Payments**
+3. Test endpoints
 
-### Lỗi: Port 5000 đã được dùng
-```
-Error: listen EADDRINUSE :::5000
-```
-**Fix**:
+### Test với curl
+
 ```bash
-npx kill-port 5000
+# Create payment intent
+curl -X POST http://localhost:5000/api/payments/create-intent \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orderId": "YOUR_ORDER_ID",
+    "paymentMethod": "card"
+  }'
+
+# Check payment status
+curl http://localhost:5000/api/payments/status/YOUR_ORDER_ID
 ```
 
-### Lỗi: JWT Secret
-```
-secretOrPrivateKey must have a value
-```
-**Fix**: Kiểm tra file `.env` có đầy đủ:
-- `JWT_SECRET`
-- `JWT_REFRESH_SECRET`
-- `QR_CODE_SECRET`
+### Stripe Test Cards
 
-### Server không start
-1. Kiểm tra MongoDB đang chạy
-2. Kiểm tra file `.env`
-3. Chạy `npm install` lại
-4. Xem error logs trong terminal
+| Card Number         | Result    |
+|---------------------|-----------|
+| 4242 4242 4242 4242 | ✅ Success |
+| 4000 0000 0000 0002 | ❌ Declined |
+
+**Chi tiết testing**: Xem `docs/PAYMENT_TESTING.md`
 
 ---
 
-## 📁 Cấu Trúc Project
+## 📁 Cấu Trúc Project (Updated)
 
 ```
 server/
 ├── src/
 │   ├── config/
-│   │   ├── database.js      # MongoDB connection
-│   │   ├── jwt.js           # JWT utilities
-│   │   └── swagger.js       # Swagger config
-│   ├── controllers/         # Business logic
+│   │   ├── database.js
+│   │   ├── jwt.js
+│   │   ├── swagger.js
+│   │   └── stripe.js          # NEW!
+│   ├── controllers/
 │   │   ├── authController.js
 │   │   ├── categoryController.js
 │   │   ├── menuItemController.js
-│   │   └── tableController.js
-│   ├── middlewares/         # Custom middleware
-│   │   ├── auth.js          # JWT auth & authorization
-│   │   ├── errorHandler.js  # Error handling
-│   │   └── validator.js     # Input validation
-│   ├── models/              # Mongoose models
-│   │   ├── User.js
-│   │   ├── Restaurant.js
-│   │   ├── Category.js
-│   │   ├── MenuItem.js
-│   │   ├── Table.js
-│   │   ├── Order.js
-│   │   └── Review.js
-│   ├── routes/              # API routes
+│   │   ├── tableController.js
+│   │   ├── orderController.js
+│   │   └── paymentController.js  # NEW!
+│   ├── routes/
 │   │   ├── authRoutes.js
 │   │   ├── categoryRoutes.js
 │   │   ├── menuItemRoutes.js
-│   │   └── tableRoutes.js
-│   ├── scripts/
-│   │   └── seed.js          # Database seeding
-│   └── app.js               # Express app
-├── .env                     # Environment variables
-├── .env.example             # Template
-├── package.json
-└── README.md                # This file
+│   │   ├── tableRoutes.js
+│   │   ├── orderRoutes.js
+│   │   └── paymentRoutes.js      # NEW!
+│   ├── socket/
+│   │   └── index.js           # Real-time events
+│   └── app.js
+├── docs/                       # NEW!
+│   ├── PAYMENT.md             # Payment guide
+│   └── PAYMENT_TESTING.md     # Testing guide
+└── README.md
 ```
 
 ---
 
 ## 🎯 Thống Kê
 
-- **API Endpoints**: 30+
+- **API Endpoints**: 40+
 - **Database Models**: 7
-- **Lines of Code**: 2000+
+- **Lines of Code**: 3000+
 - **Dependencies**: 30+
-- **Test Accounts**: 5
-- **Seed Data**: 4 categories, 9 menu items, 8 tables
+- **Payment Methods**: 2 (Card, Cash) + 3 future (ZaloPay, Momo, VNPay)
 
 ---
 
-## 🔜 Week 2 (Kế hoạch)
+## 🔜 Week 3 (Kế hoạch)
 
-- [ ] Order creation API
-- [ ] Payment integration (Stripe)
-- [ ] Socket.IO real-time
-- [ ] Email service
-- [ ] File upload (Cloudinary)
+- [ ] Email service (Order confirmation, Payment receipt)
+- [ ] File upload (Cloudinary for menu images)
+- [ ] Advanced reporting API
+- [ ] Kitchen Display System enhancements
+- [ ] Performance optimization
 
 ---
 
@@ -338,9 +238,37 @@ server/
 
 - **Swagger UI**: http://localhost:5000/api/docs
 - **Health Check**: http://localhost:5000/health
-- **GitHub**: [Repository URL]
+- **Payment Guide**: `docs/PAYMENT.md`
+- **Testing Guide**: `docs/PAYMENT_TESTING.md`
 
 ---
 
-**Status**: ✅ Week 1 Complete  
-**Last Updated**: December 2024
+## 🐛 Troubleshooting
+
+### Payment Issues
+
+#### Error: "Invalid API Key"
+```bash
+# Check .env file
+cat .env | grep STRIPE_SECRET_KEY
+```
+
+#### Error: "Order not found"
+- Kiểm tra orderId có đúng không
+- Tạo order mới để test
+
+#### Webhook không hoạt động
+```bash
+# Test với Stripe CLI
+stripe listen --forward-to localhost:5000/api/payments/webhook
+```
+
+### General Issues
+
+Xem README cũ cho các lỗi khác.
+
+---
+
+**Status**: ✅ Week 2 Complete (Payment Integration)  
+**Last Updated**: December 28, 2024  
+**Next**: Week 3 - Email Service & File Upload

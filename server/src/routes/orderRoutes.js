@@ -230,7 +230,28 @@ router.patch(
  * /api/orders/{id}/status:
  *   patch:
  *     tags: [Orders]
- *     summary: Update order status
+ *     summary: Update order status with state machine validation
+ *     description: |
+ *       Updates order status following strict state machine rules.
+ *       
+ *       **State Machine Flow:**
+ *       - pending → [preparing, cancelled]
+ *       - preparing → [ready, cancelled]
+ *       - ready → [served, cancelled]
+ *       - served → [completed]
+ *       - completed → [] (terminal state)
+ *       - cancelled → [] (terminal state)
+ *       
+ *       **Role-Based Permissions:**
+ *       - `preparing`, `ready`: kitchen_staff, admin, super_admin
+ *       - `served`, `completed`, `cancelled`: waiter, admin, super_admin
+ *       
+ *       **Features:**
+ *       - Validates state transitions
+ *       - Checks role permissions
+ *       - Auto-updates item statuses
+ *       - Records timestamps
+ *       - Emits real-time Socket.IO events
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -239,6 +260,7 @@ router.patch(
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order ID
  *     requestBody:
  *       required: true
  *       content:
@@ -250,10 +272,110 @@ router.patch(
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [pending, accepted, preparing, ready, served, completed, cancelled]
+ *                 enum: [pending, preparing, ready, served, completed, cancelled]
+ *                 description: New status (must follow state machine rules)
+ *           examples:
+ *             kitchenStartsCooking:
+ *               summary: Kitchen starts preparing
+ *               value:
+ *                 status: preparing
+ *             kitchenFinishes:
+ *               summary: Kitchen marks as ready
+ *               value:
+ *                 status: ready
+ *             waiterServes:
+ *               summary: Waiter serves order
+ *               value:
+ *                 status: served
+ *             waiterCompletes:
+ *               summary: Waiter completes order
+ *               value:
+ *                 status: completed
  *     responses:
  *       200:
- *         description: Order status updated
+ *         description: Order status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Order status updated from pending to preparing"
+ *                 data:
+ *                   $ref: '#/components/schemas/Order'
+ *                 statusChange:
+ *                   type: object
+ *                   properties:
+ *                     from:
+ *                       type: string
+ *                       example: "pending"
+ *                     to:
+ *                       type: string
+ *                       example: "preparing"
+ *                     changedBy:
+ *                       type: string
+ *                       example: "kitchen_staff"
+ *                     timestamp:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Invalid status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid status. Valid statuses: pending, preparing, ready, served, completed, cancelled"
+ *       403:
+ *         description: Invalid state transition or unauthorized role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid state transition: pending -> served. Allowed transitions: preparing, cancelled"
+ *                 currentStatus:
+ *                   type: string
+ *                   example: "pending"
+ *                 requestedStatus:
+ *                   type: string
+ *                   example: "served"
+ *                 userRole:
+ *                   type: string
+ *                   example: "kitchen_staff"
+ *             examples:
+ *               invalidTransition:
+ *                 summary: Trying to skip states
+ *                 value:
+ *                   success: false
+ *                   message: "Invalid state transition: pending -> served. Allowed transitions: preparing, cancelled"
+ *                   currentStatus: "pending"
+ *                   requestedStatus: "served"
+ *                   userRole: "kitchen_staff"
+ *               unauthorizedRole:
+ *                 summary: Waiter trying kitchen action
+ *                 value:
+ *                   success: false
+ *                   message: "Unauthorized: waiter cannot change status to preparing. Required roles: kitchen_staff, admin, super_admin"
+ *                   currentStatus: "pending"
+ *                   requestedStatus: "preparing"
+ *                   userRole: "waiter"
+ *       404:
+ *         description: Order not found
  */
 router.patch(
 	"/:id/status",

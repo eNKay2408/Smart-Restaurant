@@ -6,3 +6,4 @@ export { default as MenuItem } from './MenuItem.js';
 export { default as Table } from './Table.js';
 export { default as Order } from './Order.js';
 export { default as Review } from './Review.js';
+export { default as Modifier } from './Modifier.js';

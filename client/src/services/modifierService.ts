@@ -44,7 +44,8 @@ class ModifierService {
             });
             return response.data;
         } catch (error: any) {
-            // Return mock data for demo since backend might not have modifiers endpoint yet
+            // Fallback to mock data if API fails
+            console.warn('Failed to fetch modifiers from API, using mock data:', error.message);
             return this.getMockModifiers();
         }
     }

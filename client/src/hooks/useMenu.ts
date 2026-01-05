@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { menuService } from '../services/menuService';
 import { categoryService } from '../services/categoryService';
-import type { 
-	MenuItem, 
-	MenuCategory, 
-	MenuFilters, 
-	SortOption, 
+import type {
+	MenuItem,
+	MenuCategory,
+	MenuFilters,
+	SortOption,
 	UseMenuReturn
 } from '../types/menu.types';
 
@@ -17,7 +17,7 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 	const [categories, setCategories] = useState<MenuCategory[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	
+
 	// Track ongoing requests to prevent duplicates
 	const isRequestInProgressRef = useRef(false);
 	const lastRequestParamsRef = useRef<string>('');
@@ -41,33 +41,42 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 			restaurantId,
 			status: filters.showOnlyAvailable ? 'available' : undefined
 		});
-		
+
 		// Skip if same request is already in progress or recently made
 		if (!forceRefresh && (isRequestInProgressRef.current || lastRequestParamsRef.current === requestParams)) {
 			return;
 		}
-		
+
 		isRequestInProgressRef.current = true;
 		lastRequestParamsRef.current = requestParams;
 		setIsLoading(true);
 		setError(null);
-		
+
 		try {
 			// Fetch categories and menu items in parallel
 			const [categoriesResponse, menuResponse] = await Promise.all([
 				categoryService.getCategories(restaurantId),
-				menuService.getMenuItems({ 
+				menuService.getMenuItems({
 					restaurantId,
 					status: filters.showOnlyAvailable ? 'available' : undefined
 				})
 			]);
 
+			console.log('Categories Response:', categoriesResponse);
+			console.log('Menu Response:', menuResponse);
+
 			if (categoriesResponse.success) {
 				setCategories(categoriesResponse.data);
+				console.log('Categories loaded:', categoriesResponse.data.length);
+			} else {
+				console.error('Failed to load categories:', categoriesResponse);
 			}
 
 			if (menuResponse.success) {
 				setMenuItems(menuResponse.data);
+				console.log('Menu items loaded:', menuResponse.data.length);
+			} else {
+				console.error('Failed to load menu items:', menuResponse);
 			}
 		} catch (err: any) {
 			setError(err.message || 'Failed to fetch menu data');
@@ -95,12 +104,12 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 		// Filter by search query
 		if (filters.searchQuery.trim()) {
 			const query = filters.searchQuery.toLowerCase().trim();
-			filtered = filtered.filter(item => 
+			filtered = filtered.filter(item =>
 				item.name.toLowerCase().includes(query) ||
 				item.description.toLowerCase().includes(query) ||
-				(typeof item.categoryId === 'object' && 
-				 item.categoryId.name.toLowerCase().includes(query)) ||
-				(item.allergens && item.allergens.some(allergen => 
+				(typeof item.categoryId === 'object' &&
+					item.categoryId.name.toLowerCase().includes(query)) ||
+				(item.allergens && item.allergens.some(allergen =>
 					allergen.toLowerCase().includes(query)
 				))
 			);
@@ -109,8 +118,8 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 		// Filter by category
 		if (filters.selectedCategory) {
 			filtered = filtered.filter(item => {
-				const categoryId = typeof item.categoryId === 'object' 
-					? item.categoryId._id 
+				const categoryId = typeof item.categoryId === 'object'
+					? item.categoryId._id
 					: item.categoryId;
 				return categoryId === filters.selectedCategory;
 			});
@@ -159,7 +168,7 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 	// Search items by query
 	const searchItems = useCallback(async (query: string) => {
 		updateFilters({ searchQuery: query });
-		
+
 		if (query.trim()) {
 			setIsLoading(true);
 			try {
@@ -183,7 +192,7 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 	// Filter by category
 	const filterByCategory = useCallback(async (categoryId: string | null) => {
 		updateFilters({ selectedCategory: categoryId });
-		
+
 		if (categoryId) {
 			setIsLoading(true);
 			try {
@@ -207,19 +216,19 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 	// Sort items (prefer client-side sorting to reduce API calls)
 	const sortItems = useCallback(async (sortBy: SortOption, order: 'asc' | 'desc' = 'asc') => {
 		updateFilters({ sortBy, sortOrder: order });
-		
+
 		// Use client-side sorting if we already have data
 		// Only fetch from server if we need fresh data or complex sorting
 		if (menuItems.length > 0) {
 			// Client-side sorting is handled by the filteredItems useMemo
 			return;
 		}
-		
+
 		// Only fetch from server if we don't have data yet
 		if (isRequestInProgressRef.current) {
 			return; // Prevent duplicate requests
 		}
-		
+
 		setIsLoading(true);
 		try {
 			// Map frontend sort options to backend
@@ -236,7 +245,7 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 				order,
 				status: filters.showOnlyAvailable ? 'available' : undefined
 			});
-			
+
 			if (response.success) {
 				setMenuItems(response.data);
 			}

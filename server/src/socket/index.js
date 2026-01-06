@@ -161,8 +161,9 @@ export const emitOrderStatusUpdate = (io, restaurantId, order) => {
 		order,
 	});
 
-	// Notify kitchen if status is preparing or ready
-	if (order.status === "preparing" || order.status === "ready") {
+	// Notify kitchen for all relevant status changes
+	// Kitchen needs to know when orders are served/completed to remove from their display
+	if (["preparing", "ready", "served", "completed"].includes(order.status)) {
 		console.log(
 			`🔍 [DEBUG] Emitting order:statusUpdate to room: ${kitchenRoom}`
 		);

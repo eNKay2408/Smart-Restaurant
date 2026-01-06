@@ -39,8 +39,25 @@ function KDS() {
 
 		const handleStatusUpdate = (data: any) => {
 			console.log("📢 Order status updated:", data);
-			// Refresh orders to show updates
-			fetchOrders();
+
+			// If order moved to served/completed, remove it from the list
+			// Otherwise refresh to show updates
+			if (data.order && ["served", "completed"].includes(data.order.status)) {
+				console.log("🗑️ Removing order from KDS:", data.order.orderNumber);
+				// Remove from list immediately using orderNumber for safer comparison
+				setOrders((prev) => {
+					const filtered = prev.filter(
+						(o) => o.orderNumber !== data.order.orderNumber
+					);
+					console.log(
+						`🗑️ Removed ${data.order.orderNumber}. Count: ${prev.length} → ${filtered.length}`
+					);
+					return filtered;
+				});
+			} else {
+				// Refresh to show status change
+				fetchOrders();
+			}
 		};
 
 		onOrderAccepted(handleOrderAccepted);
@@ -204,7 +221,7 @@ function KDS() {
 								: "bg-gray-700 hover:bg-gray-600"
 						}`}
 					>
-						New ({orders.filter((o) => o.status === "accepted").length})
+						🆕 New ({orders.filter((o) => o.status === "accepted").length})
 					</button>
 					<button
 						onClick={() => setFilter("preparing")}
@@ -214,7 +231,8 @@ function KDS() {
 								: "bg-gray-700 hover:bg-gray-600"
 						}`}
 					>
-						Preparing ({orders.filter((o) => o.status === "preparing").length})
+						🔥 Preparing (
+						{orders.filter((o) => o.status === "preparing").length})
 					</button>
 					<button
 						onClick={() => setFilter("all")}
@@ -224,7 +242,7 @@ function KDS() {
 								: "bg-gray-700 hover:bg-gray-600"
 						}`}
 					>
-						All ({orders.length})
+						📋 All ({orders.length})
 					</button>
 				</div>
 

@@ -10,7 +10,7 @@ function WaiterOrders() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
 	const [filter, setFilter] = useState<
-		"all" | "pending" | "accepted" | "preparing"
+		"all" | "pending" | "ready" | "served" | "completed"
 	>("pending");
 	const [showRejectModal, setShowRejectModal] = useState(false);
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -77,10 +77,9 @@ function WaiterOrders() {
 			if (response.success) {
 				// Refresh orders
 				fetchOrders();
-				alert("Order accepted successfully!");
 			}
 		} catch (err: any) {
-			alert(err.message || "Failed to accept order");
+			console.error("Failed to accept order:", err);
 		}
 	};
 
@@ -91,7 +90,6 @@ function WaiterOrders() {
 
 	const handleRejectSubmit = async () => {
 		if (!selectedOrder || !rejectionReason.trim()) {
-			alert("Please provide a rejection reason");
 			return;
 		}
 
@@ -105,10 +103,34 @@ function WaiterOrders() {
 				setRejectionReason("");
 				setSelectedOrder(null);
 				fetchOrders();
-				alert("Order rejected");
 			}
 		} catch (err: any) {
-			alert(err.message || "Failed to reject order");
+			console.error("Failed to reject order:", err);
+		}
+	};
+
+	const handleMarkAsServed = async (orderId: string) => {
+		try {
+			const response = await orderService.updateOrderStatus(orderId, "served");
+			if (response.success) {
+				fetchOrders();
+			}
+		} catch (err: any) {
+			console.error("Failed to mark order as served:", err);
+		}
+	};
+
+	const handleMarkAsCompleted = async (orderId: string) => {
+		try {
+			const response = await orderService.updateOrderStatus(
+				orderId,
+				"completed"
+			);
+			if (response.success) {
+				fetchOrders();
+			}
+		} catch (err: any) {
+			console.error("Failed to mark order as completed:", err);
 		}
 	};
 
@@ -208,27 +230,38 @@ function WaiterOrders() {
 								: "bg-white text-gray-700 hover:bg-gray-100"
 						}`}
 					>
-						Pending ({orders.filter((o) => o.status === "pending").length})
+						⏳ Pending ({orders.filter((o) => o.status === "pending").length})
 					</button>
 					<button
-						onClick={() => setFilter("accepted")}
+						onClick={() => setFilter("ready")}
 						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-							filter === "accepted"
+							filter === "ready"
+								? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg"
+								: "bg-white text-gray-700 hover:bg-gray-100"
+						}`}
+					>
+						✅ Ready ({orders.filter((o) => o.status === "ready").length})
+					</button>
+					<button
+						onClick={() => setFilter("served")}
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
+							filter === "served"
 								? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg"
 								: "bg-white text-gray-700 hover:bg-gray-100"
 						}`}
 					>
-						Accepted ({orders.filter((o) => o.status === "accepted").length})
+						🍽️ Served ({orders.filter((o) => o.status === "served").length})
 					</button>
 					<button
-						onClick={() => setFilter("preparing")}
+						onClick={() => setFilter("completed")}
 						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-							filter === "preparing"
+							filter === "completed"
 								? "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg"
 								: "bg-white text-gray-700 hover:bg-gray-100"
 						}`}
 					>
-						Preparing ({orders.filter((o) => o.status === "preparing").length})
+						💯 Completed (
+						{orders.filter((o) => o.status === "completed").length})
 					</button>
 					<button
 						onClick={() => setFilter("all")}
@@ -238,7 +271,7 @@ function WaiterOrders() {
 								: "bg-white text-gray-700 hover:bg-gray-100"
 						}`}
 					>
-						All Orders ({orders.length})
+						📋 All ({orders.length})
 					</button>
 				</div>
 
@@ -338,9 +371,49 @@ function WaiterOrders() {
 										</div>
 									)}
 
-									{(order.status === "ready" ||
-										order.status === "served" ||
-										order.status === "completed") && (
+									{order.status === "accepted" && (
+										<div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+											<p className="text-sm text-blue-700 text-center">
+												⏳ Waiting for kitchen to start preparing
+											</p>
+										</div>
+									)}
+
+									{order.status === "preparing" && (
+										<div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+											<p className="text-sm text-orange-700 text-center">
+												🔥 Kitchen is preparing the order
+											</p>
+										</div>
+									)}
+
+									{order.status === "ready" && (
+										<button
+											onClick={() => handleMarkAsServed(order._id)}
+											className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
+										>
+											🍽️ Mark as Served
+										</button>
+									)}
+
+									{order.status === "served" && (
+										<div className="flex gap-2">
+											<button
+												onClick={() => navigate(`/waiter/bill/${order._id}`)}
+												className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
+											>
+												📄 View Bill
+											</button>
+											<button
+												onClick={() => handleMarkAsCompleted(order._id)}
+												className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
+											>
+												✅ Complete
+											</button>
+										</div>
+									)}
+
+									{order.status === "completed" && (
 										<button
 											onClick={() => navigate(`/waiter/bill/${order._id}`)}
 											className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
@@ -376,10 +449,19 @@ function WaiterOrders() {
 							value={rejectionReason}
 							onChange={(e) => setRejectionReason(e.target.value)}
 							placeholder="Enter rejection reason..."
-							className="w-full border border-gray-300 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
+							className={`w-full border rounded-lg p-3 mb-2 focus:outline-none focus:ring-2 ${
+								!rejectionReason.trim()
+									? "border-gray-300 focus:ring-red-500"
+									: "border-gray-300 focus:ring-red-500"
+							}`}
 							rows={4}
 						/>
-						<div className="flex gap-2">
+						{!rejectionReason.trim() && (
+							<p className="text-xs text-red-500 mb-2">
+								Please provide a rejection reason
+							</p>
+						)}
+						<div className="flex gap-2 mt-2">
 							<button
 								onClick={() => {
 									setShowRejectModal(false);
@@ -392,7 +474,12 @@ function WaiterOrders() {
 							</button>
 							<button
 								onClick={handleRejectSubmit}
-								className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
+								disabled={!rejectionReason.trim()}
+								className={`flex-1 py-2 rounded-lg font-medium transition-all ${
+									!rejectionReason.trim()
+										? "bg-gray-300 text-gray-500 cursor-not-allowed"
+										: "bg-gradient-to-r from-red-500 to-red-600 text-white hover:shadow-lg"
+								}`}
 							>
 								Confirm Reject
 							</button>

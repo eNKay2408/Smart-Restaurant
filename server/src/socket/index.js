@@ -70,14 +70,37 @@ export const emitNewOrder = (io, restaurantId, order) => {
  * @param {Object} order - Order data
  */
 export const emitOrderAccepted = (io, restaurantId, order) => {
+	const kitchenRoom = `${restaurantId}:kitchen`;
+	const waiterRoom = `${restaurantId}:waiter`;
+	const tableRoom = `table:${order.tableId}`;
+
+	// Debug: Check rooms
+	console.log(`🔍 [DEBUG] Emitting order:accepted to room: ${kitchenRoom}`);
+	console.log(
+		`🔍 [DEBUG] Sockets in ${kitchenRoom}:`,
+		io.sockets.adapter.rooms.get(kitchenRoom)?.size || 0
+	);
+
+	console.log(`🔍 [DEBUG] Emitting order:statusUpdate to room: ${waiterRoom}`);
+	console.log(
+		`🔍 [DEBUG] Sockets in ${waiterRoom}:`,
+		io.sockets.adapter.rooms.get(waiterRoom)?.size || 0
+	);
+
 	// Notify kitchen staff
-	io.to(`${restaurantId}:kitchen_staff`).emit("order:accepted", {
+	io.to(kitchenRoom).emit("order:accepted", {
 		message: "Order accepted by waiter",
 		order,
 	});
 
+	// Notify waiters (so other waiters see the update too)
+	io.to(waiterRoom).emit("order:statusUpdate", {
+		message: "Order accepted",
+		order,
+	});
+
 	// Notify customer at table
-	io.to(`table:${order.tableId}`).emit("order:statusUpdate", {
+	io.to(tableRoom).emit("order:statusUpdate", {
 		message: "Your order has been accepted",
 		order,
 	});
@@ -91,10 +114,20 @@ export const emitOrderAccepted = (io, restaurantId, order) => {
  * @param {Object} order - Order data
  */
 export const emitOrderRejected = (io, order) => {
+	// Notify customer at table
 	io.to(`table:${order.tableId}`).emit("order:statusUpdate", {
 		message: "Your order has been rejected",
 		order,
 	});
+
+	// Notify waiters (so other waiters see the update too)
+	if (order.restaurantId) {
+		io.to(`${order.restaurantId}:waiter`).emit("order:statusUpdate", {
+			message: "Order rejected",
+			order,
+		});
+	}
+
 	console.log(`❌ Order rejected emitted: ${order.orderNumber}`);
 };
 
@@ -105,21 +138,40 @@ export const emitOrderRejected = (io, order) => {
  * @param {Object} order - Order data
  */
 export const emitOrderStatusUpdate = (io, restaurantId, order) => {
+	const waiterRoom = `${restaurantId}:waiter`;
+	const kitchenRoom = `${restaurantId}:kitchen`;
+	const tableRoom = `table:${order.tableId}`;
+
+	// Debug logs
+	console.log(`🔍 [DEBUG] Emitting order:statusUpdate to room: ${waiterRoom}`);
+	console.log(
+		`🔍 [DEBUG] Sockets in ${waiterRoom}:`,
+		io.sockets.adapter.rooms.get(waiterRoom)?.size || 0
+	);
+
 	// Notify customer
-	io.to(`table:${order.tableId}`).emit("order:statusUpdate", {
+	io.to(tableRoom).emit("order:statusUpdate", {
 		message: `Order status updated to ${order.status}`,
 		order,
 	});
 
 	// Notify waiters
-	io.to(`${restaurantId}:waiter`).emit("order:statusUpdate", {
+	io.to(waiterRoom).emit("order:statusUpdate", {
 		message: `Order ${order.orderNumber} status updated`,
 		order,
 	});
 
 	// Notify kitchen if status is preparing or ready
 	if (order.status === "preparing" || order.status === "ready") {
-		io.to(`${restaurantId}:kitchen_staff`).emit("order:statusUpdate", {
+		console.log(
+			`🔍 [DEBUG] Emitting order:statusUpdate to room: ${kitchenRoom}`
+		);
+		console.log(
+			`🔍 [DEBUG] Sockets in ${kitchenRoom}:`,
+			io.sockets.adapter.rooms.get(kitchenRoom)?.size || 0
+		);
+
+		io.to(kitchenRoom).emit("order:statusUpdate", {
 			message: `Order ${order.orderNumber} is ${order.status}`,
 			order,
 		});

@@ -40,8 +40,8 @@ const registerValidation = [
         .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
     body('role')
         .optional()
-        .isIn(['guest', 'customer', 'waiter', 'kitchen_staff', 'admin', 'super_admin'])
-        .withMessage('Role must be one of: guest, customer, waiter, kitchen_staff, admin, super_admin'),
+        .isIn(['guest', 'customer', 'waiter', 'kitchen', 'admin', 'super_admin'])
+        .withMessage('Role must be one of: guest, customer, waiter, kitchen, admin, super_admin'),
 ];
 
 const loginValidation = [
@@ -100,7 +100,7 @@ const updatePasswordValidation = [
  *                 example: +84123456789
  *               role:
  *                 type: string
- *                 enum: [guest, customer, waiter, kitchen_staff, admin, super_admin]
+ *                 enum: [guest, customer, waiter, kitchen, admin, super_admin]
  *                 default: customer
  *                 example: customer
  *                 description: User role (optional, defaults to customer). Use 'guest' for walk-in customers.

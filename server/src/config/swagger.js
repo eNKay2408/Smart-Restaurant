@@ -74,7 +74,7 @@ const options = {
                         },
                         role: {
                             type: 'string',
-                            enum: ['guest', 'customer', 'waiter', 'kitchen_staff', 'admin', 'super_admin'],
+                            enum: ['guest', 'customer', 'waiter', 'kitchen', 'admin', 'super_admin'],
                             example: 'customer',
                         },
                         phoneNumber: {

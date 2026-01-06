@@ -143,7 +143,7 @@ router.post("/", createOrderValidation, validate, createOrder);
 router.get(
 	"/",
 	protect,
-	authorize("admin", "waiter", "kitchen_staff"),
+	authorize("admin", "waiter", "kitchen"),
 	getOrders
 );
 
@@ -258,7 +258,7 @@ router.patch(
 router.patch(
 	"/:id/status",
 	protect,
-	authorize("admin", "waiter", "kitchen_staff"),
+	authorize("admin", "waiter", "kitchen"),
 	updateStatusValidation,
 	validate,
 	updateOrderStatus

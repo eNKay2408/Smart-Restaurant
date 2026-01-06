@@ -348,6 +348,8 @@ export const rejectOrder = async (req, res) => {
 		order.status = "rejected";
 		order.waiterId = req.user.id;
 		order.rejectionReason = rejectionReason || "No reason provided";
+		order.rejectedAt = new Date();
+		await order.save();
 		await order.save();
 
 		const populatedOrder = await Order.findById(order._id)

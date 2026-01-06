@@ -103,6 +103,10 @@ const orderSchema = new mongoose.Schema(
 			type: String,
 			default: null,
 		},
+		rejectedAt: {
+			type: Date,
+			default: null,
+		},
 		// Pricing
 		subtotal: {
 			type: Number,

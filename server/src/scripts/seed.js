@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { User, Restaurant, Category, MenuItem, Table, Modifier } from '../models/index.js';
+import { User, Restaurant, Category, MenuItem, Table, Modifier, Order } from '../models/index.js';
 import { generateQRToken } from '../config/jwt.js';
 import QRCode from 'qrcode';
 
@@ -19,6 +19,7 @@ const seedDatabase = async () => {
         await MenuItem.deleteMany({});
         await Table.deleteMany({});
         await Modifier.deleteMany({});
+        await Order.deleteMany({});
         console.log('🗑️  Cleared existing data');
 
         // 1. Create Super Admin
@@ -83,7 +84,7 @@ const seedDatabase = async () => {
             fullName: 'Chef Mike',
             email: 'kitchen@restaurant.com',
             password: 'Kitchen123',
-            role: 'kitchen_staff',
+            role: 'kitchen',
             restaurantId: restaurant._id,
             isEmailVerified: true,
         });
@@ -591,6 +592,363 @@ const seedDatabase = async () => {
             await table.save();
         }
         console.log('✅ Created 10 Tables with QR Codes');
+        // 11. Create Sample Orders (10 orders with different statuses)
+        const tables = await Table.find({ restaurantId: restaurant._id });
+        
+        // Helper function to generate order number
+        let orderCounter = 1;
+        const generateOrderNumber = () => {
+            return `ORD${String(orderCounter++).padStart(5, '0')}`;
+        };
+
+        const sampleOrders = [];
+
+        // Order 1: Pending (waiting for waiter)
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[0]._id,
+            customerId: customer._id,
+            guestName: customer.fullName,
+            items: [
+                {
+                    menuItemId: menuItems[4]._id, // Grilled Salmon
+                    name: menuItems[4].name,
+                    price: menuItems[4].price,
+                    quantity: 1,
+                    modifiers: [
+                        {
+                            name: 'Size',
+                            options: [{ name: 'Regular', priceAdjustment: 0 }]
+                        }
+                    ],
+                    specialInstructions: 'No garlic please',
+                    status: 'pending',
+                    subtotal: 28
+                },
+                {
+                    menuItemId: menuItems[10]._id, // Fresh Orange Juice
+                    name: menuItems[10].name,
+                    price: menuItems[10].price,
+                    quantity: 2,
+                    modifiers: [],
+                    specialInstructions: '',
+                    status: 'pending',
+                    subtotal: 12
+                }
+            ],
+            orderNotes: 'Please serve quickly',
+            status: 'pending',
+            subtotal: 40,
+            tax: 4,
+            discount: 0,
+            total: 44,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 5 * 60000) // 5 minutes ago
+        });
+
+        // Order 2: Pending
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[1]._id,
+            guestName: 'Walk-in Guest',
+            items: [
+                {
+                    menuItemId: menuItems[0]._id, // Caesar Salad
+                    name: menuItems[0].name,
+                    price: menuItems[0].price,
+                    quantity: 1,
+                    modifiers: [],
+                    specialInstructions: '',
+                    status: 'pending',
+                    subtotal: 12
+                }
+            ],
+            orderNotes: '',
+            status: 'pending',
+            subtotal: 12,
+            tax: 1.2,
+            discount: 0,
+            total: 13.2,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 3 * 60000) // 3 minutes ago
+        });
+
+        // Order 3: Accepted (waiter accepted, waiting for kitchen)
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[2]._id,
+            customerId: customer._id,
+            guestName: customer.fullName,
+            waiterId: waiter._id,
+            items: [
+                {
+                    menuItemId: menuItems[5]._id, // Beef Steak
+                    name: menuItems[5].name,
+                    price: menuItems[5].price,
+                    quantity: 1,
+                    modifiers: [
+                        {
+                            name: 'Cooking Level',
+                            options: [{ name: 'Medium Rare', priceAdjustment: 0 }]
+                        }
+                    ],
+                    specialInstructions: '',
+                    status: 'pending',
+                    subtotal: 35
+                }
+            ],
+            orderNotes: '',
+            status: 'accepted',
+            acceptedAt: new Date(Date.now() - 8 * 60000),
+            subtotal: 35,
+            tax: 3.5,
+            discount: 0,
+            total: 38.5,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 10 * 60000) // 10 minutes ago
+        });
+
+        // Order 4: Accepted
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[3]._id,
+            guestName: 'Birthday Party',
+            waiterId: waiter._id,
+            items: [
+                {
+                    menuItemId: menuItems[16]._id, // Chocolate Lava Cake
+                    name: menuItems[16].name,
+                    price: menuItems[16].price,
+                    quantity: 3,
+                    modifiers: [],
+                    specialInstructions: 'Add candles',
+                    status: 'pending',
+                    subtotal: 30
+                }
+            ],
+            orderNotes: 'Birthday celebration',
+            status: 'accepted',
+            acceptedAt: new Date(Date.now() - 6 * 60000),
+            subtotal: 30,
+            tax: 3,
+            discount: 0,
+            total: 33,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 7 * 60000) // 7 minutes ago
+        });
+
+        // Order 5: Preparing (kitchen is cooking)
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[4]._id,
+            customerId: customer._id,
+            guestName: customer.fullName,
+            waiterId: waiter._id,
+            items: [
+                {
+                    menuItemId: menuItems[6]._id, // Pasta Carbonara
+                    name: menuItems[6].name,
+                    price: menuItems[6].price,
+                    quantity: 2,
+                    modifiers: [],
+                    specialInstructions: 'Extra cheese',
+                    status: 'preparing',
+                    prepStartTime: new Date(Date.now() - 10 * 60000),
+                    subtotal: 36
+                }
+            ],
+            orderNotes: '',
+            status: 'preparing',
+            acceptedAt: new Date(Date.now() - 15 * 60000),
+            subtotal: 36,
+            tax: 3.6,
+            discount: 0,
+            total: 39.6,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 20 * 60000) // 20 minutes ago
+        });
+
+        // Order 6: Preparing
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[5]._id,
+            guestName: 'Corporate Lunch',
+            waiterId: waiter._id,
+            items: [
+                {
+                    menuItemId: menuItems[8]._id, // Seafood Paella
+                    name: menuItems[8].name,
+                    price: menuItems[8].price,
+                    quantity: 1,
+                    modifiers: [],
+                    specialInstructions: '',
+                    status: 'preparing',
+                    prepStartTime: new Date(Date.now() - 12 * 60000),
+                    subtotal: 32
+                }
+            ],
+            orderNotes: 'Business meeting',
+            status: 'preparing',
+            acceptedAt: new Date(Date.now() - 18 * 60000),
+            subtotal: 32,
+            tax: 3.2,
+            discount: 0,
+            total: 35.2,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 25 * 60000) // 25 minutes ago
+        });
+
+        // Order 7: Ready (food is ready for pickup)
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[6]._id,
+            customerId: customer._id,
+            guestName: customer.fullName,
+            waiterId: waiter._id,
+            items: [
+                {
+                    menuItemId: menuItems[2]._id, // Spring Rolls
+                    name: menuItems[2].name,
+                    price: menuItems[2].price,
+                    quantity: 2,
+                    modifiers: [],
+                    specialInstructions: '',
+                    status: 'ready',
+                    prepStartTime: new Date(Date.now() - 18 * 60000),
+                    prepEndTime: new Date(Date.now() - 2 * 60000),
+                    subtotal: 18
+                }
+            ],
+            orderNotes: '',
+            status: 'ready',
+            acceptedAt: new Date(Date.now() - 22 * 60000),
+            subtotal: 18,
+            tax: 1.8,
+            discount: 0,
+            total: 19.8,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 30 * 60000) // 30 minutes ago
+        });
+
+        // Order 8: Served (delivered to table)
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[7]._id,
+            customerId: customer._id,
+            guestName: customer.fullName,
+            waiterId: waiter._id,
+            items: [
+                {
+                    menuItemId: menuItems[7]._id, // Chicken Teriyaki
+                    name: menuItems[7].name,
+                    price: menuItems[7].price,
+                    quantity: 1,
+                    modifiers: [],
+                    specialInstructions: '',
+                    status: 'served',
+                    prepStartTime: new Date(Date.now() - 35 * 60000),
+                    prepEndTime: new Date(Date.now() - 15 * 60000),
+                    subtotal: 22
+                },
+                {
+                    menuItemId: menuItems[11]._id, // Iced Coffee
+                    name: menuItems[11].name,
+                    price: menuItems[11].price,
+                    quantity: 1,
+                    modifiers: [],
+                    specialInstructions: '',
+                    status: 'served',
+                    subtotal: 5
+                }
+            ],
+            orderNotes: '',
+            status: 'served',
+            acceptedAt: new Date(Date.now() - 40 * 60000),
+            servedAt: new Date(Date.now() - 10 * 60000),
+            subtotal: 27,
+            tax: 2.7,
+            discount: 0,
+            total: 29.7,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 45 * 60000) // 45 minutes ago
+        });
+
+        // Order 9: Completed (paid)
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[8]._id,
+            customerId: customer._id,
+            guestName: customer.fullName,
+            waiterId: waiter._id,
+            items: [
+                {
+                    menuItemId: menuItems[9]._id, // Lamb Chops
+                    name: menuItems[9].name,
+                    price: menuItems[9].price,
+                    quantity: 1,
+                    modifiers: [],
+                    specialInstructions: '',
+                    status: 'served',
+                    prepStartTime: new Date(Date.now() - 65 * 60000),
+                    prepEndTime: new Date(Date.now() - 45 * 60000),
+                    subtotal: 38
+                }
+            ],
+            orderNotes: '',
+            status: 'completed',
+            acceptedAt: new Date(Date.now() - 70 * 60000),
+            servedAt: new Date(Date.now() - 40 * 60000),
+            subtotal: 38,
+            tax: 3.8,
+            discount: 5,
+            total: 36.8,
+            paymentStatus: 'paid',
+            paymentMethod: 'stripe',
+            paidAt: new Date(Date.now() - 35 * 60000),
+            createdAt: new Date(Date.now() - 75 * 60000) // 75 minutes ago
+        });
+
+        // Order 10: Rejected
+        sampleOrders.push({
+            orderNumber: generateOrderNumber(),
+            restaurantId: restaurant._id,
+            tableId: tables[9]._id,
+            guestName: 'Guest Customer',
+            items: [
+                {
+                    menuItemId: menuItems[17]._id, // Tiramisu
+                    name: menuItems[17].name,
+                    price: menuItems[17].price,
+                    quantity: 1,
+                    modifiers: [],
+                    specialInstructions: '',
+                    status: 'pending',
+                    subtotal: 9
+                }
+            ],
+            orderNotes: '',
+            status: 'rejected',
+            rejectionReason: 'Item out of stock',
+            rejectedAt: new Date(Date.now() - 2 * 60000),
+            subtotal: 9,
+            tax: 0.9,
+            discount: 0,
+            total: 9.9,
+            paymentStatus: 'pending',
+            createdAt: new Date(Date.now() - 4 * 60000) // 4 minutes ago
+        });
+
+        await Order.insertMany(sampleOrders);
+        console.log('✅ Created 10 Sample Orders with different statuses');
 
         // Print summary
         console.log('\n' + '='.repeat(60));
@@ -599,7 +957,7 @@ const seedDatabase = async () => {
         console.log(`Restaurant: ${restaurant.name}`);
         console.log(`\n👥 Users Created:`);
         console.log(`   Super Admin: superadmin@smartrestaurant.com / Admin123`);
-        console.log(`   Admin: admin@restaurant.com / Admin123`);
+        console.log(`   Admin: admin@restaurant.com / Admin123456`);
         console.log(`   Waiter: waiter@restaurant.com / Waiter123`);
         console.log(`   Kitchen: kitchen@restaurant.com / Kitchen123`);
         console.log(`   Customer: customer@example.com / Customer123`);
@@ -608,12 +966,23 @@ const seedDatabase = async () => {
         console.log(`🔧 Modifiers: ${modifiers.length} (8 customization options)`);
         console.log(`🍽️  Menu Items: ${menuItems.length} (20 items with images)`);
         console.log(`🪑 Tables: ${tableNumbers.length} (10 tables with QR codes)`);
+        console.log(`📦 Orders: ${sampleOrders.length} (10 orders with various statuses)`);
+        console.log(`\n📋 Order Status Breakdown:`);
+        console.log(`   - Pending: 2 orders`);
+        console.log(`   - Accepted: 2 orders`);
+        console.log(`   - Preparing: 2 orders`);
+        console.log(`   - Ready: 1 order`);
+        console.log(`   - Served: 1 order`);
+        console.log(`   - Completed: 1 order`);
+        console.log(`   - Rejected: 1 order`);
         console.log('='.repeat(60));
         console.log('\n✅ Database seeded successfully!');
         console.log('🎉 All requirements met:');
         console.log('   ✅ 5 Categories');
         console.log('   ✅ 8 Modifiers');
         console.log('   ✅ 20 Menu Items with Images');
+        console.log('   ✅ 10 Tables with QR Codes');
+        console.log('   ✅ 10 Orders with Various Statusages');
         console.log('   ✅ 10 Tables with QR Codes');
         console.log('🚀 You can now start the server with: npm run dev\n');
 

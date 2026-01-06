@@ -9,15 +9,26 @@ function Navbar() {
 	useEffect(() => {
 		const currentUser = authService.getCurrentUser();
 		setUser(currentUser);
-		
+
+		// Listen for auth changes (login/logout)
+		const handleAuthChange = () => {
+			const currentUser = authService.getCurrentUser();
+			setUser(currentUser);
+		};
+
 		// Listen for storage changes (login/logout in other tabs)
 		const handleStorageChange = () => {
 			const currentUser = authService.getCurrentUser();
 			setUser(currentUser);
 		};
-		
-		window.addEventListener('storage', handleStorageChange);
-		return () => window.removeEventListener('storage', handleStorageChange);
+
+		window.addEventListener("auth-change", handleAuthChange);
+		window.addEventListener("storage", handleStorageChange);
+
+		return () => {
+			window.removeEventListener("auth-change", handleAuthChange);
+			window.removeEventListener("storage", handleStorageChange);
+		};
 	}, []);
 
 	const handleLogout = () => {
@@ -64,7 +75,7 @@ function Navbar() {
 						{/* Show role-based navigation only when logged in */}
 						{user && (
 							<>
-								{user.role === 'waiter' && (
+								{user.role === "waiter" && (
 									<NavLink
 										to="/waiter/orders"
 										className={({ isActive }) =>
@@ -78,7 +89,7 @@ function Navbar() {
 										👔 Orders
 									</NavLink>
 								)}
-								{user.role === 'kitchen' && (
+								{user.role === "kitchen" && (
 									<NavLink
 										to="/kitchen/kds"
 										className={({ isActive }) =>

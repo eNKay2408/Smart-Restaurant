@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import orderService from "../../services/orderService";
+import { useSocket } from "../../hooks/useSocket";
 import type { Order } from "../../types/order.types";
 
 function WaiterOrders() {
+	const navigate = useNavigate();
 	const [orders, setOrders] = useState<Order[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
@@ -13,9 +16,45 @@ function WaiterOrders() {
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [rejectionReason, setRejectionReason] = useState("");
 
+	// Get user from localStorage to get restaurantId
+	const user = JSON.parse(localStorage.getItem("user") || "{}");
+	const restaurantId = user?.restaurantId || "";
+
+	// Socket.IO real-time connection
+	const { isConnected, onNewOrder, onOrderStatusUpdate } = useSocket({
+		role: "waiter",
+		restaurantId: restaurantId,
+		autoConnect: true,
+	});
+
+	// Separate effect for fetching orders on filter change
 	useEffect(() => {
 		fetchOrders();
 	}, [filter]);
+
+	// Separate effect for setting up real-time listeners (only once)
+	useEffect(() => {
+		// Set up real-time listeners
+		const handleNewOrder = (data: any) => {
+			console.log("🔔 New order received:", data);
+			playNotificationSound();
+			// Refresh orders to show the new one
+			fetchOrders();
+		};
+
+		const handleStatusUpdate = (data: any) => {
+			console.log("📢 Order status updated:", data);
+			// Refresh orders to show updates
+			fetchOrders();
+		};
+
+		onNewOrder(handleNewOrder);
+		onOrderStatusUpdate(handleStatusUpdate);
+
+		return () => {
+			// Cleanup if needed
+		};
+	}, []);
 
 	const fetchOrders = async () => {
 		try {
@@ -98,6 +137,32 @@ function WaiterOrders() {
 		});
 	};
 
+	const playNotificationSound = () => {
+		// Simple beep sound for new orders
+		try {
+			const audioContext = new (window.AudioContext ||
+				(window as any).webkitAudioContext)();
+			const oscillator = audioContext.createOscillator();
+			const gainNode = audioContext.createGain();
+
+			oscillator.connect(gainNode);
+			gainNode.connect(audioContext.destination);
+
+			oscillator.frequency.value = 1000;
+			oscillator.type = "sine";
+
+			gainNode.gain.exponentialRampToValueAtTime(
+				0.01,
+				audioContext.currentTime + 0.3
+			);
+
+			oscillator.start(audioContext.currentTime);
+			oscillator.stop(audioContext.currentTime + 0.3);
+		} catch (error) {
+			console.log("Unable to play notification sound");
+		}
+	};
+
 	if (loading) {
 		return (
 			<div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center">
@@ -111,9 +176,21 @@ function WaiterOrders() {
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100">
 			<div className="container mx-auto px-4 py-8">
-				<h1 className="text-3xl md:text-4xl font-bold mb-6 md:mb-8 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent text-center md:text-left">
-					👔 Waiter Dashboard
-				</h1>
+				<div className="flex justify-between items-center mb-6 md:mb-8">
+					<h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent text-center md:text-left">
+						👔 Waiter Dashboard
+					</h1>
+					<div className="flex items-center gap-2">
+						<div
+							className={`w-3 h-3 rounded-full ${
+								isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+							}`}
+						></div>
+						<span className="text-sm text-gray-600">
+							{isConnected ? "Live" : "Offline"}
+						</span>
+					</div>
+				</div>
 
 				{error && (
 					<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -259,6 +336,17 @@ function WaiterOrders() {
 												❌ Reject
 											</button>
 										</div>
+									)}
+
+									{(order.status === "ready" ||
+										order.status === "served" ||
+										order.status === "completed") && (
+										<button
+											onClick={() => navigate(`/waiter/bill/${order._id}`)}
+											className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
+										>
+											📄 View Bill
+										</button>
 									)}
 
 									{order.status === "rejected" && order.rejectionReason && (

@@ -7,6 +7,7 @@ import About from "./pages/About";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import WaiterOrders from "./pages/waiter/Orders";
+import WaiterBill from "./pages/waiter/Bill";
 import KDS from "./pages/kitchen/KDS";
 
 // Admin Pages
@@ -27,12 +28,15 @@ import Payment from "./pages/customer/Payment";
 
 function App() {
 	const location = useLocation();
-	
+
 	// Don't show navbar on admin pages or customer detail pages
-	const isAdminPage = location.pathname.startsWith('/admin');
-	const isCustomerDetailPage = ['/item/', '/cart', '/order-status', '/payment'].some(path => 
-		location.pathname.includes(path)
-	);
+	const isAdminPage = location.pathname.startsWith("/admin");
+	const isCustomerDetailPage = [
+		"/item/",
+		"/cart",
+		"/order-status",
+		"/payment",
+	].some((path) => location.pathname.includes(path));
 
 	return (
 		<div>
@@ -45,113 +49,117 @@ function App() {
 				<Route path="/table" element={<Menu />} /> {/* For QR token access */}
 				<Route path="/about" element={<About />} />
 				<Route path="/login" element={<Login />} />
-
 				{/* Customer Routes */}
 				<Route path="/item/:itemId" element={<MenuItemDetail />} />
 				<Route path="/cart" element={<Cart />} />
 				<Route path="/order-status" element={<OrderStatus />} />
 				<Route path="/payment" element={<Payment />} />
-
 				{/* Staff Routes */}
-				<Route 
-					path="/waiter/orders" 
+				<Route
+					path="/waiter/orders"
 					element={
 						<ProtectedRoute requiredRole="waiter">
 							<WaiterOrders />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/kitchen/kds" 
+				<Route
+					path="/waiter/bill/:orderId"
+					element={
+						<ProtectedRoute requiredRole="waiter">
+							<WaiterBill />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path="/kitchen/kds"
 					element={
 						<ProtectedRoute requiredRole="kitchen">
 							<KDS />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-
 				{/* Admin Routes */}
-				<Route 
-					path="/admin/dashboard" 
+				<Route
+					path="/admin/dashboard"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminDashboard />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/menu" 
+				<Route
+					path="/admin/menu"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminMenuManagement />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/menu/add" 
+				<Route
+					path="/admin/menu/add"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminMenuItemForm />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/menu/edit/:id" 
+				<Route
+					path="/admin/menu/edit/:id"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminMenuItemForm />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/tables" 
+				<Route
+					path="/admin/tables"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminTableManagement />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/orders" 
+				<Route
+					path="/admin/orders"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminKDS />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/kds" 
+				<Route
+					path="/admin/kds"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminKDS />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/reports" 
+				<Route
+					path="/admin/reports"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminReports />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/categories" 
+				<Route
+					path="/admin/categories"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminCategoryManagement />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-				<Route 
-					path="/admin/modifiers" 
+				<Route
+					path="/admin/modifiers"
 					element={
 						<ProtectedRoute requiredRole="admin">
 							<AdminModifierManagement />
 						</ProtectedRoute>
-					} 
+					}
 				/>
-
 				{/* Catch all */}
 				<Route path="*" element={<NotFound />} />
 			</Routes>

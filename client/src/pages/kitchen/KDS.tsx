@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import orderService from "../../services/orderService";
+import { useSocket } from "../../hooks/useSocket";
 import type { Order } from "../../types/order.types";
 
 function KDS() {
@@ -10,12 +11,45 @@ function KDS() {
 		"accepted"
 	);
 
+	// Get user from localStorage to get restaurantId
+	const user = JSON.parse(localStorage.getItem("user") || "{}");
+	const restaurantId = user?.restaurantId || "";
+
+	// Socket.IO real-time connection
+	const { isConnected, onOrderAccepted, onOrderStatusUpdate } = useSocket({
+		role: "kitchen",
+		restaurantId: restaurantId,
+		autoConnect: true,
+	});
+
+	// Separate effect for fetching orders on filter change
 	useEffect(() => {
 		fetchOrders();
-		// Auto-refresh every 10 seconds
-		const interval = setInterval(fetchOrders, 10000);
-		return () => clearInterval(interval);
 	}, [filter]);
+
+	// Separate effect for setting up real-time listeners (only once)
+	useEffect(() => {
+		// Set up real-time listeners
+		const handleOrderAccepted = (data: any) => {
+			console.log("🔔 Order accepted by waiter:", data);
+			playNotificationSound();
+			// Refresh orders to show the new accepted order
+			fetchOrders();
+		};
+
+		const handleStatusUpdate = (data: any) => {
+			console.log("📢 Order status updated:", data);
+			// Refresh orders to show updates
+			fetchOrders();
+		};
+
+		onOrderAccepted(handleOrderAccepted);
+		onOrderStatusUpdate(handleStatusUpdate);
+
+		return () => {
+			// Cleanup if needed
+		};
+	}, []);
 
 	const fetchOrders = async () => {
 		try {
@@ -124,9 +158,21 @@ function KDS() {
 			<div className="container mx-auto px-4 py-6">
 				{/* Header */}
 				<div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-					<h1 className="text-3xl md:text-4xl font-bold text-center md:text-left">
-						🍳 Kitchen Display System
-					</h1>
+					<div className="flex items-center gap-3">
+						<h1 className="text-3xl md:text-4xl font-bold text-center md:text-left">
+							🍳 Kitchen Display System
+						</h1>
+						<div className="flex items-center gap-2">
+							<div
+								className={`w-3 h-3 rounded-full ${
+									isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+								}`}
+							></div>
+							<span className="text-sm text-gray-400">
+								{isConnected ? "Live" : "Offline"}
+							</span>
+						</div>
+					</div>
 					<div className="text-center md:text-right">
 						<p className="text-xl md:text-2xl font-bold">
 							{new Date().toLocaleTimeString()}

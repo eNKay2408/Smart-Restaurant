@@ -1,104 +1,100 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-interface OrderItem {
-    id: string;
-    name: string;
-    quantity: number;
-    price: number;
-    modifiers: string[];
-}
-
-interface OrderStatus {
-    id: string;
-    status: 'preparing' | 'ready' | 'served' | 'completed';
-    estimatedTime: number; // in minutes
-    actualTime?: number;
-    timestamp: Date;
-}
+import orderService from '../../services/orderService';
 
 const OrderStatus: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { cartItems, orderTotal, orderTime } = location.state || {};
+    const { orderId, orderNumber } = location.state || {};
 
-    const [orderNumber] = useState('ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase());
-    const [currentStatus, setCurrentStatus] = useState<OrderStatus['status']>('preparing');
-    const [estimatedTime, setEstimatedTime] = useState(25); // minutes
+    const [order, setOrder] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [needsAssistance, setNeedsAssistance] = useState(false);
 
     const statusSteps = [
-        { 
-            id: 'preparing', 
-            title: 'Order Confirmed', 
+        {
+            id: 'pending',
+            title: 'Order Received',
+            description: 'Your order has been received',
+            icon: '📝',
+        },
+        {
+            id: 'accepted',
+            title: 'Order Confirmed',
             description: 'Your order is being prepared in the kitchen',
             icon: '👨‍🍳',
-            completed: true
         },
-        { 
-            id: 'ready', 
-            title: 'Almost Ready', 
-            description: 'Final touches being added to your order',
-            icon: '⏰',
-            completed: currentStatus === 'ready' || currentStatus === 'served' || currentStatus === 'completed'
+        {
+            id: 'preparing',
+            title: 'Preparing',
+            description: 'Chef is working on your order',
+            icon: '🔥',
         },
-        { 
-            id: 'served', 
-            title: 'Ready to Serve', 
+        {
+            id: 'ready',
+            title: 'Ready to Serve',
             description: 'Your order is ready! Server will bring it to your table',
             icon: '🍽️',
-            completed: currentStatus === 'served' || currentStatus === 'completed'
         },
-        { 
-            id: 'completed', 
-            title: 'Served', 
+        {
+            id: 'served',
+            title: 'Served',
             description: 'Enjoy your meal!',
             icon: '✨',
-            completed: currentStatus === 'completed'
         }
     ];
 
-    // Mock items from cart or default
-    const orderItems: OrderItem[] = cartItems || [
-        {
-            id: '1',
-            name: 'Grilled Salmon',
-            quantity: 2,
-            price: 25,
-            modifiers: ['Large', 'Extra sauce']
-        },
-        {
-            id: '2',
-            name: 'Caesar Salad',
-            quantity: 1,
-            price: 18,
-            modifiers: ['Add chicken']
+    // Load order and setup Socket.IO listener
+    useEffect(() => {
+        if (!orderId) {
+            setError('No order ID provided');
+            setLoading(false);
+            return;
         }
-    ];
 
-    const total = orderTotal || 68.00;
+        loadOrder();
 
-    // Timer effect
+        // Listen to real-time order status updates
+        orderService.onOrderStatusUpdate(orderId, (updatedOrder) => {
+            console.log('📡 Order updated:', updatedOrder);
+            setOrder(updatedOrder);
+        });
+
+        // Cleanup on unmount
+        return () => {
+            orderService.disconnect();
+        };
+    }, [orderId]);
+
+    // Timer for elapsed time
     useEffect(() => {
         const timer = setInterval(() => {
             setElapsedTime(prev => prev + 1);
-            
-            // Mock status progression
-            if (elapsedTime === 300) { // 5 minutes
-                setCurrentStatus('ready');
-                setEstimatedTime(20);
-            } else if (elapsedTime === 900) { // 15 minutes
-                setCurrentStatus('served');
-                setEstimatedTime(10);
-            } else if (elapsedTime === 1500) { // 25 minutes
-                setCurrentStatus('completed');
-                setEstimatedTime(0);
-            }
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [elapsedTime]);
+    }, []);
+
+    const loadOrder = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await orderService.getOrder(orderId);
+
+            if (!response.success || !response.data) {
+                throw new Error(response.message || 'Failed to load order');
+            }
+
+            setOrder(response.data);
+        } catch (err: any) {
+            console.error('Load order error:', err);
+            setError(err.message || 'Failed to load order');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -108,19 +104,18 @@ const OrderStatus: React.FC = () => {
 
     const handleCallWaiter = () => {
         setNeedsAssistance(true);
-        // In real app, this would send a notification to waitstaff
+        // TODO: Send notification to waiter via Socket.IO
         setTimeout(() => {
             setNeedsAssistance(false);
         }, 3000);
     };
 
     const handleViewReceipt = () => {
-        navigate('/payment', { 
-            state: { 
-                orderNumber,
-                orderItems,
-                total,
-                showReceipt: true
+        navigate('/payment', {
+            state: {
+                orderId: order._id,
+                orderNumber: order.orderNumber,
+                order: order
             }
         });
     };
@@ -134,8 +129,56 @@ const OrderStatus: React.FC = () => {
     };
 
     const getCurrentStatusIndex = () => {
-        return statusSteps.findIndex(step => step.id === currentStatus);
+        if (!order) return 0;
+        return statusSteps.findIndex(step => step.id === order.status);
     };
+
+    const getStepCompleted = (stepId: string) => {
+        if (!order) return false;
+        const currentIndex = getCurrentStatusIndex();
+        const stepIndex = statusSteps.findIndex(s => s.id === stepId);
+        return stepIndex <= currentIndex;
+    };
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                    <p className="text-gray-600">Loading order...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error || !order) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center px-4">
+                    <div className="text-6xl mb-4">⚠️</div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Order</h2>
+                    <p className="text-gray-600 mb-4">{error || 'Order not found'}</p>
+                    <button
+                        onClick={loadOrder}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 mr-2"
+                    >
+                        Try Again
+                    </button>
+                    <button
+                        onClick={handleBackToMenu}
+                        className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-200"
+                    >
+                        Back to Menu
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const currentStatus = order.status;
+    const isCompleted = currentStatus === 'completed' || currentStatus === 'served';
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -153,11 +196,13 @@ const OrderStatus: React.FC = () => {
                         </button>
                         <div>
                             <h1 className="text-lg font-semibold text-gray-900">Order Status</h1>
-                            <p className="text-sm text-gray-600">#{orderNumber}</p>
+                            <p className="text-sm text-gray-600">#{order.orderNumber}</p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-sm text-gray-600">Table 12</p>
+                        <p className="text-sm text-gray-600">
+                            {order.tableId?.tableNumber ? `Table ${order.tableId.tableNumber}` : 'Takeout'}
+                        </p>
                         <p className="text-xs text-gray-500">{formatTime(elapsedTime)} elapsed</p>
                     </div>
                 </div>
@@ -166,7 +211,7 @@ const OrderStatus: React.FC = () => {
             <div className="pb-6">
                 {/* Status Progress */}
                 <div className="bg-white px-4 py-6 border-b border-gray-200">
-                    {currentStatus !== 'completed' && (
+                    {!isCompleted && (
                         <div className="text-center mb-6">
                             <div className="text-3xl mb-2">
                                 {statusSteps[getCurrentStatusIndex()]?.icon}
@@ -177,12 +222,12 @@ const OrderStatus: React.FC = () => {
                             <p className="text-gray-600 mb-3">
                                 {statusSteps[getCurrentStatusIndex()]?.description}
                             </p>
-                            {estimatedTime > 0 && (
+                            {order.estimatedTime && order.estimatedTime > 0 && (
                                 <div className="inline-flex items-center bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
                                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    Est. {estimatedTime} min
+                                    Est. {order.estimatedTime} min
                                 </div>
                             )}
                         </div>
@@ -190,38 +235,40 @@ const OrderStatus: React.FC = () => {
 
                     {/* Progress Steps */}
                     <div className="space-y-4">
-                        {statusSteps.map((step, index) => (
-                            <div key={step.id} className="flex items-center">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                    step.completed 
-                                        ? 'bg-green-500 text-white' 
-                                        : step.id === currentStatus
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-gray-200 text-gray-600'
-                                }`}>
-                                    {step.completed ? '✓' : index + 1}
-                                </div>
-                                
-                                <div className="ml-4 flex-1">
-                                    <p className={`font-medium ${
-                                        step.completed || step.id === currentStatus ? 'text-gray-900' : 'text-gray-500'
-                                    }`}>
-                                        {step.title}
-                                    </p>
-                                    <p className={`text-sm ${
-                                        step.completed || step.id === currentStatus ? 'text-gray-600' : 'text-gray-400'
-                                    }`}>
-                                        {step.description}
-                                    </p>
-                                </div>
+                        {statusSteps.map((step, index) => {
+                            const isStepCompleted = getStepCompleted(step.id);
+                            const isCurrentStep = step.id === currentStatus;
 
-                                {step.id === currentStatus && (
-                                    <div className="ml-2">
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                            return (
+                                <div key={step.id} className="flex items-center">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isStepCompleted
+                                            ? 'bg-green-500 text-white'
+                                            : isCurrentStep
+                                                ? 'bg-blue-500 text-white'
+                                                : 'bg-gray-200 text-gray-600'
+                                        }`}>
+                                        {isStepCompleted ? '✓' : index + 1}
                                     </div>
-                                )}
-                            </div>
-                        ))}
+
+                                    <div className="ml-4 flex-1">
+                                        <p className={`font-medium ${isStepCompleted || isCurrentStep ? 'text-gray-900' : 'text-gray-500'
+                                            }`}>
+                                            {step.title}
+                                        </p>
+                                        <p className={`text-sm ${isStepCompleted || isCurrentStep ? 'text-gray-600' : 'text-gray-400'
+                                            }`}>
+                                            {step.description}
+                                        </p>
+                                    </div>
+
+                                    {isCurrentStep && !isCompleted && (
+                                        <div className="ml-2">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -229,27 +276,34 @@ const OrderStatus: React.FC = () => {
                 <div className="bg-white mt-2 px-4 py-6 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Order</h3>
                     <div className="space-y-3">
-                        {orderItems.map((item) => (
-                            <div key={item.id} className="flex justify-between items-start">
+                        {order.items.map((item: any, index: number) => (
+                            <div key={index} className="flex justify-between items-start">
                                 <div className="flex-1">
                                     <div className="flex items-center">
                                         <span className="font-medium text-gray-900">{item.name}</span>
                                         <span className="ml-2 text-gray-500">× {item.quantity}</span>
                                     </div>
-                                    {item.modifiers.length > 0 && (
+                                    {item.modifiers && item.modifiers.length > 0 && (
                                         <p className="text-sm text-gray-600 mt-1">
-                                            {item.modifiers.join(', ')}
+                                            {item.modifiers.map((mod: any) =>
+                                                mod.options.map((opt: any) => opt.name).join(', ')
+                                            ).join(', ')}
+                                        </p>
+                                    )}
+                                    {item.specialInstructions && (
+                                        <p className="text-xs text-gray-500 italic mt-1">
+                                            Note: {item.specialInstructions}
                                         </p>
                                     )}
                                 </div>
-                                <span className="font-medium text-gray-900">${item.price.toFixed(2)}</span>
+                                <span className="font-medium text-gray-900">${item.subtotal.toFixed(2)}</span>
                             </div>
                         ))}
-                        
+
                         <div className="border-t border-gray-200 pt-3 mt-3">
                             <div className="flex justify-between items-center font-bold text-lg">
                                 <span>Total</span>
-                                <span>${total.toFixed(2)}</span>
+                                <span>${order.total.toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
@@ -260,11 +314,10 @@ const OrderStatus: React.FC = () => {
                     <button
                         onClick={handleCallWaiter}
                         disabled={needsAssistance}
-                        className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                            needsAssistance
+                        className={`w-full py-3 rounded-lg font-semibold transition-colors ${needsAssistance
                                 ? 'bg-green-100 text-green-800 border border-green-200'
                                 : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
-                        }`}
+                            }`}
                     >
                         {needsAssistance ? (
                             <div className="flex items-center justify-center">
@@ -299,7 +352,7 @@ const OrderStatus: React.FC = () => {
                 </div>
 
                 {/* Completion Message */}
-                {currentStatus === 'completed' && (
+                {isCompleted && (
                     <div className="mx-4 p-6 bg-green-50 border border-green-200 rounded-lg">
                         <div className="text-center">
                             <div className="text-4xl mb-3">🎉</div>

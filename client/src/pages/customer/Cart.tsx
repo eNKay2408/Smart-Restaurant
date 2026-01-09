@@ -1,89 +1,133 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import cartService, { Cart as CartType } from '../../services/cartService';
+import orderService from '../../services/orderService';
+import { tableService } from '../../services/tableService';
+import { useQRTable } from '../../hooks/useQRTable';
 
-interface CartItem {
-    id: string;
-    itemId: string;
-    name: string;
-    price: number;
-    quantity: number;
-    modifiers: Array<{
-        id: string;
-        name: string;
-        price: number;
-    }>;
-    specialInstructions?: string;
-    totalPrice: number;
-}
 
 const Cart: React.FC = () => {
     const navigate = useNavigate();
-    const [cartItems, setCartItems] = useState<CartItem[]>([
-        {
-            id: '1',
-            itemId: '1',
-            name: 'Grilled Salmon',
-            price: 18,
-            quantity: 2,
-            modifiers: [
-                { id: '1-2', name: 'Large', price: 5 },
-                { id: '2-2', name: 'Extra sauce', price: 2 }
-            ],
-            specialInstructions: 'Medium-rare please',
-            totalPrice: 50
-        },
-        {
-            id: '2',
-            itemId: '2',
-            name: 'Caesar Salad',
-            price: 12,
-            quantity: 1,
-            modifiers: [
-                { id: '3-1', name: 'Add chicken', price: 6 }
-            ],
-            totalPrice: 18
-        }
-    ]);
+    const [searchParams] = useSearchParams();
+    const { tableInfo: qrTableInfo, isLoading: qrLoading } = useQRTable();
 
+    const [cart, setCart] = useState<CartType | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [promoCode, setPromoCode] = useState('');
     const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number; type: 'percentage' | 'fixed' } | null>(null);
+    const [placingOrder, setPlacingOrder] = useState(false);
+    const [tableInfo, setTableInfo] = useState<{ tableNumber: number; area?: string; tableId?: string } | null>(null);
 
-    const subtotal = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
-    const tax = subtotal * 0.08; // 8% tax
-    const tip = subtotal * 0.18; // 18% tip
-    const discount = appliedPromo 
-        ? appliedPromo.type === 'percentage' 
-            ? subtotal * (appliedPromo.discount / 100)
-            : appliedPromo.discount
-        : 0;
-    const total = subtotal + tax + tip - discount;
+    // Load cart on mount and when table info changes
+    useEffect(() => {
+        loadCart();
+    }, [qrTableInfo]);
 
-    const handleQuantityChange = (id: string, newQuantity: number) => {
+    const loadCart = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await cartService.getCart();
+
+            // Priority order for table info:
+            // 1. From URL/QR code (qrTableInfo)
+            // 2. From cart data
+            // 3. From localStorage
+            let currentTableId = qrTableInfo?.tableId || data.tableId;
+
+            // Ensure tableId is a string, not an object
+            if (currentTableId && typeof currentTableId === 'object') {
+                currentTableId = (currentTableId as any)._id || String(currentTableId);
+            }
+
+            if (!currentTableId) {
+                // Try to get table info from localStorage as last resort
+                const savedTableInfo = localStorage.getItem('current_table_info');
+                if (savedTableInfo) {
+                    try {
+                        const tableData = JSON.parse(savedTableInfo);
+                        if (tableData.tableId) {
+                            currentTableId = tableData.tableId;
+                            console.log('🔄 Using tableId from localStorage:', currentTableId);
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse saved table info:', e);
+                    }
+                }
+            }
+
+            console.log('📦 Current tableId:', currentTableId, 'Type:', typeof currentTableId);
+
+            setCart(data);
+
+            // Fetch table information if tableId exists
+            if (currentTableId) {
+                try {
+                    const tableResponse = await tableService.getTable(currentTableId);
+                    if (tableResponse.success && tableResponse.data) {
+                        const tableData = {
+                            tableId: currentTableId,
+                            tableNumber: typeof tableResponse.data.tableNumber === 'string'
+                                ? parseInt(tableResponse.data.tableNumber)
+                                : tableResponse.data.tableNumber,
+                            area: tableResponse.data.location
+                        };
+                        setTableInfo(tableData);
+
+                        // Update URL to include table info if not already there
+                        if (!searchParams.get('table_id')) {
+                            const newUrl = `/cart?table_id=${currentTableId}`;
+                            window.history.replaceState({}, '', newUrl);
+                        }
+                    }
+                } catch (tableError) {
+                    console.error('Failed to load table info:', tableError);
+                    // Don't fail the whole cart load if table info fails
+                }
+            } else {
+                setTableInfo(null);
+            }
+        } catch (err: any) {
+            console.error('Load cart error:', err);
+            setError('Failed to load cart');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleQuantityChange = async (itemId: string, newQuantity: number) => {
         if (newQuantity <= 0) {
-            handleRemoveItem(id);
+            handleRemoveItem(itemId);
             return;
         }
 
-        setCartItems(prev => prev.map(item => {
-            if (item.id === id) {
-                const basePrice = item.price;
-                const modifierPrice = item.modifiers.reduce((sum, mod) => sum + mod.price, 0);
-                const totalPrice = (basePrice + modifierPrice) * newQuantity;
-                return { ...item, quantity: newQuantity, totalPrice };
-            }
-            return item;
-        }));
+        try {
+            const updatedCart = await cartService.updateCartItem(itemId, {
+                quantity: newQuantity
+            });
+            setCart(updatedCart);
+        } catch (err: any) {
+            console.error('Update quantity error:', err);
+            alert('Failed to update quantity');
+        }
     };
 
-    const handleRemoveItem = (id: string) => {
-        setCartItems(prev => prev.filter(item => item.id !== id));
+    const handleRemoveItem = async (itemId: string) => {
+        try {
+            const updatedCart = await cartService.removeCartItem(itemId);
+            setCart(updatedCart);
+        } catch (err: any) {
+            console.error('Remove item error:', err);
+            alert('Failed to remove item');
+        }
     };
 
     const handleApplyPromo = () => {
-        // Mock promo validation
-        const promos = {
-            'SAVE10': { code: 'SAVE10', discount: 10, type: 'percentage' as const },
-            'FIRST5': { code: 'FIRST5', discount: 5, type: 'fixed' as const }
+        // Mock promo validation (TODO: Replace with API call)
+        const promos: Record<string, { code: string; discount: number; type: 'percentage' | 'fixed' }> = {
+            'SAVE10': { code: 'SAVE10', discount: 10, type: 'percentage' },
+            'FIRST5': { code: 'FIRST5', discount: 5, type: 'fixed' }
         };
 
         const promo = promos[promoCode as keyof typeof promos];
@@ -99,14 +143,62 @@ const Cart: React.FC = () => {
         setAppliedPromo(null);
     };
 
-    const handleCheckout = () => {
-        navigate('/order-status', { 
-            state: { 
-                cartItems,
-                orderTotal: total,
-                orderTime: new Date()
+    const handleCheckout = async () => {
+        if (!cart || cart.items.length === 0) {
+            alert('Your cart is empty');
+            return;
+        }
+
+        try {
+            setPlacingOrder(true);
+
+            // Get tableId from tableInfo state (already resolved from URL/cart/localStorage)
+            const finalTableId = tableInfo?.tableId || cart.tableId;
+
+            // Validate tableId is present (required for dine-in)
+            if (!finalTableId) {
+                throw new Error('Table information is required. Please scan the QR code on your table.');
             }
-        });
+
+            // Create order from cart
+            const orderData: any = {
+                restaurantId: cart.restaurantId,
+                tableId: finalTableId, // Use finalTableId from cart or localStorage
+                customerId: cart.customerId,
+                guestName: 'Guest',
+                items: cart.items.map(item => ({
+                    menuItemId: item.menuItemId,
+                    quantity: item.quantity,
+                    modifiers: item.modifiers,
+                    specialInstructions: item.specialInstructions
+                })),
+                orderNotes: ''
+            };
+
+            const response = await orderService.createOrder(orderData);
+
+            if (!response.success || !response.data) {
+                throw new Error(response.message || 'Failed to create order');
+            }
+
+            const order = response.data;
+
+            // Clear cart after successful order
+            await cartService.clearCart();
+
+            // Navigate to order status with order ID
+            navigate('/order-status', {
+                state: {
+                    orderId: order._id,
+                    orderNumber: order.orderNumber
+                }
+            });
+        } catch (error: any) {
+            console.error('Create order error:', error);
+            alert(error.message || 'Failed to place order. Please try again.');
+        } finally {
+            setPlacingOrder(false);
+        }
     };
 
     const handleContinueShopping = () => {
@@ -117,7 +209,50 @@ const Cart: React.FC = () => {
         navigate(-1);
     };
 
-    if (cartItems.length === 0) {
+    // Calculate totals
+    const subtotal = cart?.total || 0;
+    const tax = subtotal * 0.08; // 8% tax
+    const tip = subtotal * 0.18; // 18% tip
+    const discount = appliedPromo
+        ? appliedPromo.type === 'percentage'
+            ? subtotal * (appliedPromo.discount / 100)
+            : appliedPromo.discount
+        : 0;
+    const total = subtotal + tax + tip - discount;
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                    <p className="text-gray-600">Loading cart...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-6xl mb-4">⚠️</div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Cart</h2>
+                    <p className="text-gray-600 mb-4">{error}</p>
+                    <button
+                        onClick={loadCart}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Empty cart state
+    if (!cart || cart.items.length === 0) {
         return (
             <div className="min-h-screen bg-gray-50">
                 {/* Header */}
@@ -166,38 +301,72 @@ const Cart: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
                     </button>
-                    <h1 className="text-lg font-semibold text-gray-900">Your Cart</h1>
+                    <div className="flex-1">
+                        <h1 className="text-lg font-semibold text-gray-900">Your Cart</h1>
+                        {tableInfo && (
+                            <p className="text-sm text-blue-600 font-medium">
+                                🪑 Table {tableInfo.tableNumber}
+                                {tableInfo.area && ` - ${tableInfo.area}`}
+                            </p>
+                        )}
+                    </div>
                     <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                        {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}
+                        {cart.totalItems} {cart.totalItems === 1 ? 'item' : 'items'}
                     </span>
                 </div>
             </div>
 
             <div className="pb-32">
+                {/* Warning if no table info */}
+                {!cart.tableId && !tableInfo && (
+                    <div className="mx-4 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="flex items-start">
+                            <span className="text-yellow-500 text-xl mr-3">⚠️</span>
+                            <div className="flex-1">
+                                <h4 className="text-sm font-semibold text-yellow-800 mb-1">No Table Selected</h4>
+                                <p className="text-sm text-yellow-700 mb-3">
+                                    Please scan the QR code on your table to place an order.
+                                    Orders must be associated with a table.
+                                </p>
+                                <button
+                                    onClick={() => navigate('/menu')}
+                                    className="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-700 transition-colors"
+                                >
+                                    Scan QR Code
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Cart Items */}
                 <div className="divide-y divide-gray-200">
-                    {cartItems.map((item) => (
-                        <div key={item.id} className="bg-white px-4 py-6">
+                    {cart.items.map((item) => (
+                        <div key={item._id} className="bg-white px-4 py-6">
                             <div className="flex items-start space-x-4">
                                 <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
                                     <span className="text-2xl">🍽️</span>
                                 </div>
-                                
+
                                 <div className="flex-1 min-w-0">
                                     <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
-                                    <p className="text-gray-600 text-sm mb-2">${item.price}</p>
-                                    
-                                    {item.modifiers.length > 0 && (
+                                    <p className="text-gray-600 text-sm mb-2">${item.price.toFixed(2)}</p>
+
+                                    {item.modifiers && item.modifiers.length > 0 && (
                                         <div className="mb-2">
-                                            {item.modifiers.map((modifier, index) => (
-                                                <span key={modifier.id} className="text-xs text-gray-600">
-                                                    + {modifier.name} (+${modifier.price})
-                                                    {index < item.modifiers.length - 1 && ', '}
-                                                </span>
+                                            {item.modifiers.map((modifier, modIdx) => (
+                                                <div key={modIdx}>
+                                                    {modifier.options.map((option, optIdx) => (
+                                                        <span key={optIdx} className="text-xs text-gray-600">
+                                                            + {option.name} (+${option.priceAdjustment.toFixed(2)})
+                                                            {optIdx < modifier.options.length - 1 && ', '}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             ))}
                                         </div>
                                     )}
-                                    
+
                                     {item.specialInstructions && (
                                         <p className="text-xs text-gray-500 italic mb-3">
                                             Note: {item.specialInstructions}
@@ -207,24 +376,24 @@ const Cart: React.FC = () => {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
                                             <button
-                                                onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                                onClick={() => handleQuantityChange(item._id!, item.quantity - 1)}
                                                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                                             >
                                                 <span className="text-lg font-bold text-gray-600">-</span>
                                             </button>
                                             <span className="text-lg font-semibold w-6 text-center">{item.quantity}</span>
                                             <button
-                                                onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                                                onClick={() => handleQuantityChange(item._id!, item.quantity + 1)}
                                                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                                             >
                                                 <span className="text-lg font-bold text-gray-600">+</span>
                                             </button>
                                         </div>
-                                        
+
                                         <div className="text-right">
-                                            <p className="text-lg font-bold text-gray-900">${item.totalPrice.toFixed(2)}</p>
+                                            <p className="text-lg font-bold text-gray-900">${item.subtotal.toFixed(2)}</p>
                                             <button
-                                                onClick={() => handleRemoveItem(item.id)}
+                                                onClick={() => handleRemoveItem(item._id!)}
                                                 className="text-red-500 text-sm hover:text-red-600"
                                             >
                                                 Remove
@@ -240,15 +409,15 @@ const Cart: React.FC = () => {
                 {/* Promo Code Section */}
                 <div className="bg-white mt-2 px-4 py-6 border-t border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Promo Code</h3>
-                    
+
                     {appliedPromo ? (
                         <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="flex items-center">
                                 <span className="text-green-600 mr-2">✓</span>
                                 <span className="font-medium text-green-800">{appliedPromo.code}</span>
                                 <span className="text-green-600 ml-2 text-sm">
-                                    -{appliedPromo.type === 'percentage' 
-                                        ? `${appliedPromo.discount}%` 
+                                    -{appliedPromo.type === 'percentage'
+                                        ? `${appliedPromo.discount}%`
                                         : `$${appliedPromo.discount}`}
                                 </span>
                             </div>
@@ -282,30 +451,48 @@ const Cart: React.FC = () => {
                 {/* Order Summary */}
                 <div className="bg-white mt-2 px-4 py-6 border-t border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
-                    
+
+                    {/* Table Information */}
+                    {tableInfo && (
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <span className="text-2xl mr-2">🪑</span>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-700">Dining at</p>
+                                        <p className="text-base font-bold text-blue-700">
+                                            Table {tableInfo.tableNumber}
+                                            {tableInfo.area && ` - ${tableInfo.area}`}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="space-y-3">
                         <div className="flex justify-between text-gray-600">
                             <span>Subtotal</span>
                             <span>${subtotal.toFixed(2)}</span>
                         </div>
-                        
+
                         {appliedPromo && (
                             <div className="flex justify-between text-green-600">
                                 <span>Discount ({appliedPromo.code})</span>
                                 <span>-${discount.toFixed(2)}</span>
                             </div>
                         )}
-                        
+
                         <div className="flex justify-between text-gray-600">
                             <span>Tax</span>
                             <span>${tax.toFixed(2)}</span>
                         </div>
-                        
+
                         <div className="flex justify-between text-gray-600">
                             <span>Tip (18%)</span>
                             <span>${tip.toFixed(2)}</span>
                         </div>
-                        
+
                         <div className="border-t border-gray-200 pt-3">
                             <div className="flex justify-between text-lg font-bold text-gray-900">
                                 <span>Total</span>
@@ -330,9 +517,21 @@ const Cart: React.FC = () => {
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-4">
                 <button
                     onClick={handleCheckout}
-                    className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors"
+                    disabled={placingOrder}
+                    className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${placingOrder
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
                 >
-                    Place Order - ${total.toFixed(2)}
+                    {placingOrder ? (
+                        <span className="flex items-center justify-center">
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Placing Order...
+                        </span>
+                    ) : `Place Order - $${total.toFixed(2)}`}
                 </button>
             </div>
         </div>

@@ -31,13 +31,29 @@ axiosInstance.interceptors.response.use(
 
             // Unauthorized - Token expired or invalid
             if (status === 401) {
+                // Check if this is a guest request (cart or order)
+                const isGuestRequest =
+                    error.config?.url?.includes('/cart/session_') ||
+                    error.config?.url?.includes('/cart/') ||
+                    error.config?.url?.includes('/orders') ||
+                    error.config?.url?.includes('/tables/');
+
+                // Don't redirect for guest requests
+                if (isGuestRequest && !localStorage.getItem('token')) {
+                    // Just return the error, let the component handle it
+                    return Promise.reject(error);
+                }
+
                 // Clear stored authentication data
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
 
                 // Redirect to login page
-                // Only redirect if not already on login page
-                if (window.location.pathname !== '/login') {
+                // Only redirect if not already on login page or customer pages
+                const customerPages = ['/menu', '/cart', '/order-status', '/item/', '/payment'];
+                const isCustomerPage = customerPages.some(page => window.location.pathname.includes(page));
+
+                if (window.location.pathname !== '/login' && !isCustomerPage) {
                     window.location.href = '/login';
                 }
             }

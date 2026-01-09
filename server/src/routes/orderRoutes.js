@@ -153,8 +153,7 @@ router.get(
  *   get:
  *     tags: [Orders]
  *     summary: Get single order
- *     security:
- *       - bearerAuth: []
+ *     description: Get order details (Public access for customers to track their orders)
  *     parameters:
  *       - in: path
  *         name: id
@@ -165,7 +164,7 @@ router.get(
  *       200:
  *         description: Order details
  */
-router.get("/:id", protect, getOrder);
+router.get("/:id", getOrder); // Public access for order tracking
 
 /**
  * @swagger

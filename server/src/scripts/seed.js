@@ -36,7 +36,7 @@ const seedDatabase = async () => {
         const admin = await User.create({
             fullName: 'Restaurant Owner',
             email: 'admin@restaurant.com',
-            password: 'Admin123456',
+            password: 'Admin123',
             role: 'admin',
             isEmailVerified: true,
         });

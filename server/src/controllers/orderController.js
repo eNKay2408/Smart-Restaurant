@@ -117,10 +117,11 @@ export const createOrder = async (req, res) => {
 		}
 
 		// Check if there's an existing unpaid order for this table
+		// Only merge with orders that are still being prepared (pending/accepted)
 		const existingOrder = await Order.findOne({
 			tableId,
 			paymentStatus: "pending",
-			status: { $nin: ["completed", "cancelled"] },
+			status: { $in: ["pending", "accepted"] }, // Only merge with active orders
 		});
 
 		// If there's an existing order, add items to it (merge orders)

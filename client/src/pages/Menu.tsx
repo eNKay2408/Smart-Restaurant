@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQRTable } from '../hooks/useQRTable';
 import { useMenu } from '../hooks/useMenu';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryFilter } from '../components/CategoryFilter';
+import cartService from '../services/cartService';
+import QRScanRequired from '../components/QRScanRequired';
+
 
 function Menu() {
     const navigate = useNavigate();
     const { tableInfo, isValidTable, error: qrError, isLoading: qrLoading } = useQRTable();
-    
+
     // Use backend data through useMenu hook
     const {
         filteredItems,
@@ -20,15 +23,81 @@ function Menu() {
         filterByCategory,
         resetFilters
     } = useMenu(tableInfo?.restaurantId);
-    
-    const [cartItems, setCartItems] = useState<string[]>([]);
 
-    const addToCart = (itemId: string) => {
-        setCartItems(prev => [...prev, itemId]);
+    const [cartItemsCount, setCartItemsCount] = useState(0);
+    const [addingToCart, setAddingToCart] = useState<string | null>(null);
+
+    // Load cart summary on mount
+    useEffect(() => {
+        loadCartSummary();
+    }, []);
+
+    const loadCartSummary = async () => {
+        try {
+            const summary = await cartService.getCartSummary();
+            setCartItemsCount(summary.itemsCount);
+        } catch (error) {
+            console.error('Failed to load cart summary:', error);
+        }
     };
 
+    const addToCart = async (itemId: string) => {
+        // Get restaurantId from tableInfo or from the menu item itself
+        const item = filteredItems.find(i => i._id === itemId);
+        const restaurantId = tableInfo?.restaurantId || item?.restaurantId;
+
+        if (!restaurantId) {
+            alert('Restaurant information not available');
+            return;
+        }
+
+        // Get tableId from tableInfo or localStorage
+        let currentTableId = tableInfo?.tableId;
+        if (!currentTableId) {
+            const savedTableInfo = localStorage.getItem('current_table_info');
+            if (savedTableInfo) {
+                try {
+                    const tableData = JSON.parse(savedTableInfo);
+                    currentTableId = tableData.tableId;
+                } catch (e) {
+                    console.error('Failed to parse table info:', e);
+                }
+            }
+        }
+
+        console.log('🛒 Adding to cart with tableId:', currentTableId);
+
+        setAddingToCart(itemId);
+        try {
+            await cartService.addItemToCart({
+                menuItemId: itemId,
+                quantity: 1,
+                restaurantId: restaurantId,
+                tableId: currentTableId, // Always include tableId if available
+                modifiers: [],
+                specialInstructions: ''
+            });
+
+            // Update cart count
+            await loadCartSummary();
+
+            // Show success feedback
+            alert('✅ Added to cart!');
+        } catch (error: any) {
+            console.error('Add to cart error:', error);
+            alert('Failed to add to cart. Please try again.');
+        } finally {
+            setAddingToCart(null);
+        }
+    };
+
+    // Block direct access - require QR scan
+    if (!qrLoading && !tableInfo?.tableId) {
+        return <QRScanRequired />;
+    }
+
     const viewItemDetails = (itemId: string) => {
-        navigate(`/item/${itemId}`, { 
+        navigate(`/item/${itemId}`, {
             state: { tableInfo, returnPath: `/menu${tableInfo ? `/table/${tableInfo.tableId}` : ''}` }
         });
     };
@@ -45,7 +114,7 @@ function Menu() {
     const getCategoryEmoji = (categoryName: string): string => {
         const emojiMap: { [key: string]: string } = {
             'Appetizers': '🥗',
-            'Main Dishes': '🍽️', 
+            'Main Dishes': '🍽️',
             'Drinks': '🥤',
             'Desserts': '🍰',
             'Main Course': '🍽️',
@@ -81,10 +150,10 @@ function Menu() {
                         </div>
                     )}
                 </div>
-                
+
                 {/* Search Bar */}
                 <div className="px-4 pb-3">
-                    <SearchBar 
+                    <SearchBar
                         onSearch={searchItems}
                         placeholder="🔍 Search menu items..."
                     />
@@ -154,7 +223,7 @@ function Menu() {
                                     {filteredItems.map((item) => {
                                         const isAvailable = item.status === 'available' && item.isActive;
                                         const categoryName = getCategoryName(item.categoryId);
-                                        
+
                                         return (
                                             <div
                                                 key={item._id}
@@ -166,7 +235,7 @@ function Menu() {
                                                     <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                                                         <span className="text-3xl">{getCategoryEmoji(categoryName)}</span>
                                                     </div>
-                                                    
+
                                                     {/* Item Details */}
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex justify-between items-start mb-1">
@@ -183,7 +252,7 @@ function Menu() {
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        
+
                                                         <div className="flex items-center space-x-2 mb-2">
                                                             <div className="flex text-yellow-400 text-sm">
                                                                 {[...Array(5)].map((_, i) => (
@@ -192,11 +261,11 @@ function Menu() {
                                                             </div>
                                                             <span className="text-sm text-gray-500">(24 reviews)</span>
                                                         </div>
-                                                        
+
                                                         <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                                                             {item.description}
                                                         </p>
-                                                        
+
                                                         <div className="flex items-center justify-between">
                                                             <span className="text-xs text-gray-500">{categoryName}</span>
                                                             <button
@@ -206,14 +275,21 @@ function Menu() {
                                                                         addToCart(item._id);
                                                                     }
                                                                 }}
-                                                                disabled={!isAvailable}
-                                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                                                    isAvailable 
-                                                                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                                                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                                }`}
+                                                                disabled={!isAvailable || addingToCart === item._id}
+                                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isAvailable
+                                                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                    } ${addingToCart === item._id ? 'opacity-50 cursor-wait' : ''}`}
                                                             >
-                                                                + Add
+                                                                {addingToCart === item._id ? (
+                                                                    <span className="flex items-center">
+                                                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                        </svg>
+                                                                        Adding...
+                                                                    </span>
+                                                                ) : '+ Add'}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -227,7 +303,7 @@ function Menu() {
                     </>
                 )}
             </div>
-                
+
             {/* Bottom Navigation */}
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
                 <div className="grid grid-cols-3 h-16">
@@ -237,16 +313,19 @@ function Menu() {
                         </svg>
                         <span className="text-xs font-medium">Menu</span>
                     </Link>
-                    <Link to="/cart" className="flex flex-col items-center justify-center text-gray-400 relative">
+                    <Link
+                        to={tableInfo?.tableId ? `/cart?table_id=${tableInfo.tableId}` : '/cart'}
+                        className="flex flex-col items-center justify-center text-gray-400 relative"
+                    >
                         <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5-6m0 0h15M7 13v6a1 1 0 001 1h8a1 1 0 001-1v-6" />
                         </svg>
-                        {cartItems.length > 0 && (
+                        {cartItemsCount > 0 && (
                             <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                {cartItems.length}
+                                {cartItemsCount}
                             </div>
                         )}
-                        <span className="text-xs">Cart({cartItems.length})</span>
+                        <span className="text-xs">Cart({cartItemsCount})</span>
                     </Link>
                     <Link to="/order-status" className="flex flex-col items-center justify-center text-gray-400">
                         <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

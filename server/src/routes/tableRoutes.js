@@ -79,9 +79,7 @@ router.get('/', protect, authorize('admin', 'waiter', 'super_admin'), getTables)
  *   get:
  *     tags: [Tables]
  *     summary: Get single table
- *     description: Retrieve a specific table by ID
- *     security:
- *       - bearerAuth: []
+ *     description: Retrieve a specific table by ID (Public access for QR code flow)
  *     parameters:
  *       - in: path
  *         name: id
@@ -95,7 +93,7 @@ router.get('/', protect, authorize('admin', 'waiter', 'super_admin'), getTables)
  *       404:
  *         description: Table not found
  */
-router.get('/:id', protect, authorize('admin', 'waiter', 'super_admin'), getTable);
+router.get('/:id', getTable); // Public access for guest customers
 
 // Admin only routes
 

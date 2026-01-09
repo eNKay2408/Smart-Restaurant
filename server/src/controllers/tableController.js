@@ -233,8 +233,7 @@ export const verifyQRCode = async (req, res) => {
     try {
         const { token } = req.params;
 
-        const table = await Table.findOne({ 'qrCode.token': token })
-            .populate('restaurantId', 'name logo');
+        const table = await Table.findOne({ 'qrCode.token': token });
 
         if (!table) {
             return res.status(404).json({
@@ -253,13 +252,15 @@ export const verifyQRCode = async (req, res) => {
         res.json({
             success: true,
             data: {
-                tableId: table._id,
+                _id: table._id,
                 tableNumber: table.tableNumber,
                 capacity: table.capacity,
-                restaurant: table.restaurantId,
+                restaurantId: table.restaurantId,
+                location: table.location,
             },
         });
     } catch (error) {
+        console.error('Verify QR Code Error:', error);
         res.status(500).json({
             success: false,
             message: 'Error verifying QR code',

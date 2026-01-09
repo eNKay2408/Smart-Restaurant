@@ -14,7 +14,7 @@ const orderSchema = new mongoose.Schema(
 		tableId: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "Table",
-			required: true,
+			required: true, // Required for dine-in orders
 		},
 		customerId: {
 			type: mongoose.Schema.Types.ObjectId,

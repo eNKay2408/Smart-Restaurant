@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { tableService } from '../services/tableService';
+import cartService from '../services/cartService';
 import type { QRCodeData, TableInfo } from '../types/menu.types';
 
 /**
@@ -23,25 +24,28 @@ export function useQRTable() {
 			try {
 				// Method 1: Extract QR token from URL
 				const qrToken = searchParams.get('token');
-				
+
 				if (qrToken) {
 					try {
 						const response = await tableService.verifyQRCode(qrToken);
-						
+
 						if (response.success) {
 							const tableData: TableInfo = {
 								tableId: response.data._id,
 								restaurantId: response.data.restaurantId,
-								tableNumber: response.data.number,
-								area: 'Main Dining' // Default area if not provided
+								tableNumber: typeof response.data.tableNumber === 'string' ? parseInt(response.data.tableNumber) : response.data.tableNumber,
+								area: response.data.location || 'Main Dining'
 							};
+
+							// Save to localStorage for persistence across navigation
+							localStorage.setItem('current_table_info', JSON.stringify(tableData));
 
 							setTableInfo(tableData);
 							setIsValidTable(true);
 							setError(null);
 							return;
 						} else {
-							throw new Error(response.message || 'Invalid QR token');
+							throw new Error('Invalid QR token');
 						}
 					} catch (tokenError: any) {
 						setError('Invalid or expired QR code');
@@ -60,15 +64,18 @@ export function useQRTable() {
 				if (tableId && restaurantId) {
 					try {
 						// Verify table exists in backend
-						const response = await getTableById(tableId);
-						
+						const response = await tableService.getTable(tableId);
+
 						if (response.success) {
 							const tableData: TableInfo = {
 								tableId,
 								restaurantId,
-								tableNumber: tableNumber ? parseInt(tableNumber) : parseInt(response.data.tableNumber),
+								tableNumber: tableNumber ? parseInt(tableNumber) : (typeof response.data.tableNumber === 'string' ? parseInt(response.data.tableNumber) : response.data.tableNumber),
 								area: response.data.location || area
 							};
+
+							// Save to localStorage for persistence
+							localStorage.setItem('current_table_info', JSON.stringify(tableData));
 
 							setTableInfo(tableData);
 							setIsValidTable(true);
@@ -84,23 +91,26 @@ export function useQRTable() {
 						return;
 					}
 				}
-				
+
 				// Method 3: Extract from URL path (e.g., /menu/table/123)
 				const pathSegments = location.pathname.split('/');
 				const tableIndex = pathSegments.indexOf('table');
-				
+
 				if (tableIndex !== -1 && pathSegments[tableIndex + 1]) {
 					const pathTableId = pathSegments[tableIndex + 1];
-					
+
 					try {
-						const response = await getTableById(pathTableId);
-						
+						const response = await tableService.getTable(pathTableId);
+
 						if (response.success) {
 							const tableData: TableInfo = {
 								tableId: pathTableId,
 								restaurantId: response.data.restaurantId,
-								tableNumber: parseInt(response.data.tableNumber)
+								tableNumber: typeof response.data.tableNumber === 'string' ? parseInt(response.data.tableNumber) : response.data.tableNumber
 							};
+
+							// Save to localStorage
+							localStorage.setItem('current_table_info', JSON.stringify(tableData));
 
 							setTableInfo(tableData);
 							setIsValidTable(true);
@@ -111,24 +121,27 @@ export function useQRTable() {
 						// Continue to other methods
 					}
 				}
-				
+
 				// Method 4: Check for encoded QR data in URL fragment
 				if (location.hash) {
 					try {
 						const hashData = location.hash.substring(1); // Remove #
 						const decodedData = decodeURIComponent(hashData);
 						const qrData: QRCodeData = JSON.parse(decodedData);
-						
+
 						if (qrData.tableId && qrData.restaurantId) {
 							// Verify with backend
-							const response = await getTableById(qrData.tableId);
-							
+							const response = await tableService.getTable(qrData.tableId);
+
 							if (response.success) {
 								const tableData: TableInfo = {
 									tableId: qrData.tableId,
 									restaurantId: qrData.restaurantId,
-									tableNumber: qrData.tableNumber || parseInt(response.data.tableNumber)
+									tableNumber: qrData.tableNumber || (typeof response.data.tableNumber === 'string' ? parseInt(response.data.tableNumber) : response.data.tableNumber)
 								};
+
+								// Save to localStorage
+								localStorage.setItem('current_table_info', JSON.stringify(tableData));
 
 								setTableInfo(tableData);
 								setIsValidTable(true);
@@ -145,12 +158,27 @@ export function useQRTable() {
 						return;
 					}
 				}
-				
+
+				// No table information found - check localStorage as fallback
+				const savedTableInfo = localStorage.getItem('current_table_info');
+				if (savedTableInfo) {
+					try {
+						const tableData: TableInfo = JSON.parse(savedTableInfo);
+						setTableInfo(tableData);
+						setIsValidTable(true);
+						setError(null);
+						return;
+					} catch (e) {
+						// Invalid saved data, clear it
+						localStorage.removeItem('current_table_info');
+					}
+				}
+
 				// No table information found - this might be normal for non-QR access
 				setTableInfo(null);
 				setIsValidTable(false);
 				setError(null); // Don't treat this as an error
-				
+
 			} catch (err: any) {
 				setError('Failed to process table information');
 				setIsValidTable(false);
@@ -163,6 +191,31 @@ export function useQRTable() {
 
 		extractTableInfo();
 	}, [searchParams, location]);
+
+	// Clear cart when switching to a different table
+	useEffect(() => {
+		const handleTableChange = async () => {
+			if (tableInfo?.tableId) {
+				const lastTableId = localStorage.getItem('last_table_id');
+
+				// If this is a different table, clear the cart
+				if (lastTableId && lastTableId !== tableInfo.tableId) {
+					console.log('🔄 Switching tables - clearing old cart');
+					try {
+						await cartService.clearCart();
+						console.log('✅ Cart cleared for new table');
+					} catch (error) {
+						console.error('Failed to clear cart:', error);
+					}
+				}
+
+				// Save current table as last table
+				localStorage.setItem('last_table_id', tableInfo.tableId);
+			}
+		};
+
+		handleTableChange();
+	}, [tableInfo?.tableId]);
 
 	// Helper function to generate QR code URL for testing
 	const generateQRUrl = (tableId: string, restaurantId: string, tableNumber?: number): string => {
@@ -177,6 +230,7 @@ export function useQRTable() {
 
 	// Helper function to clear table info (for logout or reset)
 	const clearTableInfo = () => {
+		localStorage.removeItem('current_table_info');
 		setTableInfo(null);
 		setIsValidTable(false);
 		setError(null);
@@ -197,23 +251,23 @@ export function useQRTable() {
  */
 export function useURLParams() {
 	const [searchParams, setSearchParams] = useSearchParams();
-	
+
 	const getParam = (key: string): string | null => {
 		return searchParams.get(key);
 	};
-	
+
 	const setParam = (key: string, value: string) => {
 		const newParams = new URLSearchParams(searchParams);
 		newParams.set(key, value);
 		setSearchParams(newParams);
 	};
-	
+
 	const removeParam = (key: string) => {
 		const newParams = new URLSearchParams(searchParams);
 		newParams.delete(key);
 		setSearchParams(newParams);
 	};
-	
+
 	const getAllParams = (): Record<string, string> => {
 		const params: Record<string, string> = {};
 		searchParams.forEach((value, key) => {

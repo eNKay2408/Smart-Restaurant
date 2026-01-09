@@ -1,4 +1,5 @@
 import axiosInstance from "../config/axiosInterceptors";
+import { io, Socket } from 'socket.io-client';
 import type {
 	OrderResponse,
 	OrdersResponse,
@@ -6,6 +7,88 @@ import type {
 } from "../types/order.types";
 
 class OrderService {
+	private socket: Socket | null = null;
+	private readonly socketUrl = 'http://localhost:5000';
+
+	/**
+	 * Initialize Socket.IO connection
+	 */
+	initSocket(): Socket {
+		if (!this.socket) {
+			this.socket = io(this.socketUrl, {
+				transports: ['websocket', 'polling'],
+				reconnection: true,
+				reconnectionAttempts: 5,
+				reconnectionDelay: 1000
+			});
+
+			this.socket.on('connect', () => {
+				console.log('✅ Socket.IO connected');
+			});
+
+			this.socket.on('disconnect', () => {
+				console.log('❌ Socket.IO disconnected');
+			});
+
+			this.socket.on('connect_error', (error) => {
+				console.error('Socket.IO connection error:', error);
+			});
+		}
+		return this.socket;
+	}
+
+	/**
+	 * Listen to order status updates via Socket.IO
+	 */
+	onOrderStatusUpdate(orderId: string, callback: (order: any) => void): void {
+		const socket = this.initSocket();
+
+		socket.on('orderStatusUpdated', (data: any) => {
+			if (data._id === orderId) {
+				console.log('📡 Order status updated:', data.status);
+				callback(data);
+			}
+		});
+	}
+
+	/**
+	 * Listen to all new orders (for kitchen/waiter)
+	 */
+	onNewOrder(callback: (order: any) => void): void {
+		const socket = this.initSocket();
+
+		socket.on('newOrder', (data: any) => {
+			console.log('📡 New order received:', data.orderNumber);
+			callback(data);
+		});
+	}
+
+	/**
+	 * Remove specific event listener
+	 */
+	off(event: string, callback?: any): void {
+		if (this.socket) {
+			this.socket.off(event, callback);
+		}
+	}
+
+	/**
+	 * Disconnect socket
+	 */
+	disconnect(): void {
+		if (this.socket) {
+			this.socket.disconnect();
+			this.socket = null;
+			console.log('🔌 Socket.IO disconnected');
+		}
+	}
+
+	/**
+	 * Check if socket is connected
+	 */
+	isConnected(): boolean {
+		return this.socket?.connected || false;
+	}
 	/**
 	 * Get all orders with filters
 	 */

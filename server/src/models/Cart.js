@@ -90,13 +90,14 @@ cartSchema.index({ sessionId: 1, restaurantId: 1 });
 cartSchema.index({ customerId: 1, restaurantId: 1 });
 cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
 
-// Ensure either sessionId or customerId is present
+// Ensure either sessionId, customerId, or tableId is present
 cartSchema.pre('save', function (next) {
-    if (!this.sessionId && !this.customerId) {
-        return next(new Error('Cart must have either sessionId or customerId'));
+    if (!this.sessionId && !this.customerId && !this.tableId) {
+        return next(new Error('Cart must have either sessionId, customerId, or tableId'));
     }
-    next();
+    next()
 });
+
 
 // Virtual for total items count
 cartSchema.virtual('totalItems').get(function () {

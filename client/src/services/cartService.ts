@@ -130,8 +130,100 @@ class CartService {
         }
     }
 
+    // ============================================
+    // Table-Based Cart Methods (Dine-in)
+    // ============================================
+
     /**
-     * Add item to cart
+     * Get cart by table ID (dine-in)
+     */
+    async getTableCart(tableId: string): Promise<Cart> {
+        try {
+            const response = await axiosInstance.get(`/cart/table/${tableId}`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Get table cart error:', error);
+            // Return empty cart instead of throwing
+            return {
+                _id: '',
+                items: [],
+                totalItems: 0,
+                total: 0,
+                restaurantId: '',
+                tableId: tableId,
+                expiresAt: '',
+                createdAt: '',
+                updatedAt: ''
+            } as Cart;
+        }
+    }
+
+    /**
+     * Add item to table cart (dine-in)
+     */
+    async addItemToTableCart(tableId: string, data: AddToCartData): Promise<Cart> {
+        try {
+            const response = await axiosInstance.post(`/cart/table/${tableId}/items`, data);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Add to table cart error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update table cart item (dine-in)
+     */
+    async updateTableCartItem(tableId: string, itemId: string, data: UpdateCartItemData): Promise<Cart> {
+        try {
+            const response = await axiosInstance.put(`/cart/table/${tableId}/items/${itemId}`, data);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Update table cart item error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Remove item from table cart (dine-in)
+     */
+    async removeTableCartItem(tableId: string, itemId: string): Promise<Cart> {
+        try {
+            const response = await axiosInstance.delete(`/cart/table/${tableId}/items/${itemId}`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Remove table cart item error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Clear table cart (dine-in)
+     */
+    async clearTableCart(tableId: string): Promise<void> {
+        try {
+            await axiosInstance.delete(`/cart/table/${tableId}`);
+        } catch (error: any) {
+            console.error('Clear table cart error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Clear table cart after payment (Waiter only)
+     */
+    async clearTableCartAfterPayment(tableId: string): Promise<{ clearedItems: number; clearedTotal: number }> {
+        try {
+            const response = await axiosInstance.delete(`/cart/table/${tableId}/complete`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Clear table cart after payment error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Add item to cart (auto-detect: table-based or user-based)
      */
     async addItemToCart(data: AddToCartData): Promise<Cart> {
         try {

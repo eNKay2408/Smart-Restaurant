@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { paymentService } from '../../services/paymentService';
+import cartService from '../../services/cartService';
+import { toast } from 'react-toastify';
 
 interface PaymentMethod {
     id: string;
@@ -12,7 +15,7 @@ interface PaymentMethod {
 const Payment: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { orderNumber, orderItems, total, showReceipt } = location.state || {};
+    const { orderNumber, orderItems, total, showReceipt, order } = location.state || {};
 
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('card');
     const [tipPercentage, setTipPercentage] = useState(18);
@@ -31,21 +34,27 @@ const Payment: React.FC = () => {
         { id: 'cash', name: 'Cash (Pay at counter)', type: 'cash', icon: '💵', enabled: true }
     ];
 
-    // Mock order data if not provided
-    const mockOrderItems = orderItems || [
+    const tipOptions = [15, 18, 20, 22];
+
+    // Get table number and ID from order data
+    const tableNumber = order?.tableId?.tableNumber || 'N/A';
+    const tableId = order?.tableId?._id || order?.tableId;
+
+    // Use real order items from order data
+    const displayOrderItems = order?.items || orderItems || [
         { id: '1', name: 'Grilled Salmon', quantity: 2, price: 25.00, modifiers: ['Large', 'Extra sauce'] },
         { id: '2', name: 'Caesar Salad', quantity: 1, price: 18.00, modifiers: ['Add chicken'] }
     ];
 
-    const subtotal = total ? total - (total * 0.26) : 50.00; // Assuming tax+tip is ~26%
+    // Calculate from real order data
+    const actualSubtotal = order?.total || total || 50.00;
+    const subtotal = actualSubtotal;
     const tax = subtotal * 0.08;
-    const tipAmount = showCustomTip && customTip ? 
-        parseFloat(customTip) || 0 : 
+    const tipAmount = showCustomTip && customTip ?
+        parseFloat(customTip) || 0 :
         subtotal * (tipPercentage / 100);
     const finalTotal = subtotal + tax + tipAmount;
     const perPersonAmount = splitBill ? finalTotal / splitAmount : finalTotal;
-
-    const tipOptions = [15, 18, 20, 22];
 
     const handleTipSelection = (percentage: number) => {
         setTipPercentage(percentage);
@@ -59,18 +68,57 @@ const Payment: React.FC = () => {
     };
 
     const handlePayment = async () => {
+        if (!order?._id) {
+            toast.error('Order information is missing');
+            return;
+        }
+
         setIsProcessing(true);
-        
-        // Simulate payment processing
-        setTimeout(() => {
+
+        try {
+            let paymentResult;
+
+            if (selectedPaymentMethod === 'cash') {
+                // Cash payment - show message to customer
+                toast.info('Please proceed to the counter to complete your cash payment. A waiter will assist you.');
+                setIsProcessing(false);
+                return;
+            } else {
+                // Online payment (card/digital wallet)
+                // Use mock payment for demo (replace with real Stripe integration later)
+                paymentResult = await paymentService.mockPayment(
+                    order._id,
+                    selectedPaymentMethod,
+                    finalTotal
+                );
+            }
+
+            if (paymentResult.success) {
+                // Clear table cart after successful payment
+                if (tableId) {
+                    try {
+                        await cartService.clearTableCart(tableId);
+                        console.log('✅ Table cart cleared after payment');
+                    } catch (error) {
+                        console.error('Failed to clear cart:', error);
+                    }
+                }
+
+                setIsProcessing(false);
+                setShowPaymentSuccess(true);
+
+                // Auto redirect after success
+                setTimeout(() => {
+                    navigate('/', { replace: true });
+                }, 3000);
+            } else {
+                throw new Error('Payment failed');
+            }
+        } catch (error: any) {
+            console.error('Payment error:', error);
             setIsProcessing(false);
-            setShowPaymentSuccess(true);
-            
-            // Auto redirect after success
-            setTimeout(() => {
-                navigate('/', { replace: true });
-            }, 3000);
-        }, 2000);
+            toast.error(error.message || 'Payment failed. Please try again.');
+        }
     };
 
     const handleBack = () => {
@@ -123,7 +171,7 @@ const Payment: React.FC = () => {
                         </div>
                     </div>
                     <div className="text-right text-sm text-gray-600">
-                        <p>Table 12</p>
+                        <p>Table {tableNumber}</p>
                         <p>{formatTime()}</p>
                     </div>
                 </div>
@@ -134,20 +182,22 @@ const Payment: React.FC = () => {
                 <div className="bg-white px-4 py-6 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
                     <div className="space-y-3">
-                        {mockOrderItems.map((item: any) => (
-                            <div key={item.id} className="flex justify-between items-start">
+                        {displayOrderItems.map((item: any) => (
+                            <div key={item._id || item.id} className="flex justify-between items-start">
                                 <div className="flex-1">
                                     <div className="flex items-center">
-                                        <span className="font-medium text-gray-900">{item.name}</span>
+                                        <span className="font-medium text-gray-900">{item.name || item.menuItemId?.name}</span>
                                         <span className="ml-2 text-gray-500">× {item.quantity}</span>
                                     </div>
                                     {item.modifiers?.length > 0 && (
                                         <p className="text-sm text-gray-600 mt-1">
-                                            {item.modifiers.join(', ')}
+                                            {item.modifiers.map((mod: any) =>
+                                                mod.options?.map((opt: any) => opt.name).join(', ') || mod
+                                            ).join(', ')}
                                         </p>
                                     )}
                                 </div>
-                                <span className="font-medium text-gray-900">${item.price.toFixed(2)}</span>
+                                <span className="font-medium text-gray-900">${(item.subtotal || item.price * item.quantity).toFixed(2)}</span>
                             </div>
                         ))}
                     </div>
@@ -194,25 +244,23 @@ const Payment: React.FC = () => {
                                     <button
                                         key={percentage}
                                         onClick={() => handleTipSelection(percentage)}
-                                        className={`py-2 px-3 rounded-lg border font-medium transition-colors ${
-                                            tipPercentage === percentage && !showCustomTip
-                                                ? 'bg-blue-600 text-white border-blue-600'
-                                                : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                                        }`}
+                                        className={`py-2 px-3 rounded-lg border font-medium transition-colors ${tipPercentage === percentage && !showCustomTip
+                                            ? 'bg-blue-600 text-white border-blue-600'
+                                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                                            }`}
                                     >
                                         {percentage}%
                                     </button>
                                 ))}
                             </div>
-                            
+
                             <div className="flex space-x-2">
                                 <button
                                     onClick={handleCustomTip}
-                                    className={`px-4 py-2 rounded-lg border font-medium transition-colors ${
-                                        showCustomTip
-                                            ? 'bg-blue-600 text-white border-blue-600'
-                                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg border font-medium transition-colors ${showCustomTip
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                                        }`}
                                 >
                                     Custom
                                 </button>
@@ -234,16 +282,14 @@ const Payment: React.FC = () => {
                                 <h3 className="text-lg font-semibold text-gray-900">Split Bill</h3>
                                 <button
                                     onClick={() => setSplitBill(!splitBill)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                        splitBill ? 'bg-blue-600' : 'bg-gray-300'
-                                    }`}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${splitBill ? 'bg-blue-600' : 'bg-gray-300'
+                                        }`}
                                 >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                        splitBill ? 'translate-x-6' : 'translate-x-1'
-                                    }`} />
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${splitBill ? 'translate-x-6' : 'translate-x-1'
+                                        }`} />
                                 </button>
                             </div>
-                            
+
                             {splitBill && (
                                 <div className="flex items-center space-x-4">
                                     <span className="text-gray-600">Split between</span>
@@ -270,11 +316,10 @@ const Payment: React.FC = () => {
                                 {paymentMethods.map((method) => (
                                     <label
                                         key={method.id}
-                                        className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
-                                            selectedPaymentMethod === method.id
-                                                ? 'border-blue-500 bg-blue-50'
-                                                : 'border-gray-200 hover:bg-gray-50'
-                                        } ${!method.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${selectedPaymentMethod === method.id
+                                            ? 'border-blue-500 bg-blue-50'
+                                            : 'border-gray-200 hover:bg-gray-50'
+                                            } ${!method.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         <input
                                             type="radio"

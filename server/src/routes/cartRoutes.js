@@ -7,8 +7,9 @@ import {
     clearCart,
     mergeCart,
     getCartSummary,
+    clearTableCartAfterPayment,
 } from '../controllers/cartController.js';
-import { protect, optionalAuth } from '../middlewares/auth.js';
+import { protect, optionalAuth, authorize } from '../middlewares/auth.js';
 
 const router = express.Router();
 
@@ -97,6 +98,229 @@ router.post('/merge', protect, mergeCart);
  *         description: Cart summary
  */
 router.get('/summary', optionalAuth, getCartSummary);
+
+// ============================================
+// Table-Based Cart Routes (Dine-in)
+// ============================================
+
+/**
+ * @swagger
+ * /api/cart/table/{tableId}:
+ *   get:
+ *     summary: Get cart by table ID (dine-in)
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: tableId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cart retrieved successfully
+ */
+router.get('/table/:tableId', getCart);
+
+/**
+ * @swagger
+ * /api/cart/table/{tableId}/items:
+ *   post:
+ *     summary: Add item to table cart (dine-in)
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: tableId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - menuItemId
+ *               - quantity
+ *               - restaurantId
+ *             properties:
+ *               menuItemId:
+ *                 type: string
+ *               quantity:
+ *                 type: number
+ *               modifiers:
+ *                 type: array
+ *               specialInstructions:
+ *                 type: string
+ *               restaurantId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Item added to cart
+ */
+router.post('/table/:tableId/items', addItemToCart);
+
+/**
+ * @swagger
+ * /api/cart/table/{tableId}/items/{itemId}:
+ *   put:
+ *     summary: Update table cart item quantity (dine-in)
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: tableId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - quantity
+ *             properties:
+ *               quantity:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Cart item updated
+ */
+router.put('/table/:tableId/items/:itemId', updateCartItem);
+
+/**
+ * @swagger
+ * /api/cart/table/{tableId}/items/{itemId}:
+ *   delete:
+ *     summary: Remove item from table cart (dine-in)
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: tableId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Item removed from cart
+ */
+router.delete('/table/:tableId/items/:itemId', removeCartItem);
+
+/**
+ * @swagger
+ * /api/cart/table/{tableId}:
+ *   delete:
+ *     summary: Clear table cart (dine-in)
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: tableId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cart cleared successfully
+ */
+router.delete('/table/:tableId', clearCart);
+
+/**
+ * @swagger
+ * /api/cart/table/{tableId}/items/{itemId}:
+ *   put:
+ *     summary: Update table cart item (dine-in)
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: tableId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - quantity
+ *             properties:
+ *               quantity:
+ *                 type: number
+ *               modifiers:
+ *                 type: array
+ *               specialInstructions:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Cart item updated
+ */
+router.put('/table/:tableId/items/:itemId', updateCartItem);
+
+/**
+ * @swagger
+ * /api/cart/table/{tableId}/items/{itemId}:
+ *   delete:
+ *     summary: Remove item from table cart (dine-in)
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: tableId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Item removed from cart
+ */
+router.delete('/table/:tableId/items/:itemId', removeCartItem);
+
+/**
+ * @swagger
+ * /api/cart/table/{tableId}/complete:
+ *   delete:
+ *     summary: Clear table cart after payment (Waiter only)
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: tableId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cart cleared successfully
+ *       404:
+ *         description: Cart not found
+ */
+router.delete('/table/:tableId/complete', protect, authorize('admin', 'waiter'), clearTableCartAfterPayment);
+
+// ============================================
+// User Cart Routes (Logged-in users)
+// ============================================
 
 /**
  * @swagger

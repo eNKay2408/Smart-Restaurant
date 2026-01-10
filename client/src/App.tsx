@@ -1,4 +1,6 @@
 import { Routes, Route, useLocation } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
@@ -41,6 +43,17 @@ function App() {
 	return (
 		<div>
 			{!isAdminPage && !isCustomerDetailPage && <Navbar />}
+			<ToastContainer
+				position="top-right"
+				autoClose={3000}
+				hideProgressBar={false}
+				newestOnTop
+				closeOnClick
+				rtl={false}
+				pauseOnFocusLoss
+				draggable
+				pauseOnHover
+			/>
 			<Routes>
 				{/* Public Routes */}
 				<Route path="/" element={<Home />} />
@@ -53,6 +66,7 @@ function App() {
 				<Route path="/item/:itemId" element={<MenuItemDetail />} />
 				<Route path="/cart" element={<Cart />} />
 				<Route path="/order-status" element={<OrderStatus />} />
+				<Route path="/order-status/:orderId" element={<OrderStatus />} />
 				<Route path="/payment" element={<Payment />} />
 				{/* Staff Routes */}
 				<Route

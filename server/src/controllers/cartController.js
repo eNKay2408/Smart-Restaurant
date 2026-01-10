@@ -2,32 +2,45 @@ import Cart from '../models/Cart.js';
 import MenuItem from '../models/MenuItem.js';
 
 /**
- * @desc    Get cart (session-based or user-based)
+ * @desc    Get cart (table-based, session-based, or user-based)
+ * @route   GET /api/cart/table/:tableId (dine-in)
  * @route   GET /api/cart/:sessionId (guest)
  * @route   GET /api/cart (logged-in user)
  * @access  Public
  */
 export const getCart = async (req, res, next) => {
     try {
-        const { sessionId } = req.params;
+        const { sessionId, tableId } = req.params;
         const userId = req.user?._id;
 
         let cart;
 
-        if (userId) {
+        if (tableId) {
+            // Dine-in: find by tableId (one cart per table)
+            cart = await Cart.findOne({
+                tableId,
+                // Only get active carts (not completed/paid)
+                $or: [
+                    { sessionId: { $exists: true } },
+                    { customerId: { $exists: true } }
+                ]
+            })
+                .populate('items.menuItemId', 'name price imageUrl status')
+                .populate('tableId', 'tableNumber location');
+        } else if (userId) {
             // Logged-in user: find by customerId
             cart = await Cart.findOne({ customerId: userId })
                 .populate('items.menuItemId', 'name price imageUrl status')
-                .populate('tableId', 'tableNumber');
+                .populate('tableId', 'tableNumber location');
         } else if (sessionId) {
             // Guest: find by sessionId
             cart = await Cart.findOne({ sessionId })
                 .populate('items.menuItemId', 'name price imageUrl status')
-                .populate('tableId', 'tableNumber');
+                .populate('tableId', 'tableNumber location');
         } else {
             return res.status(400).json({
                 success: false,
-                message: 'Session ID is required for guest users',
+                message: 'Table ID or Session ID is required',
             });
         }
 
@@ -56,15 +69,19 @@ export const getCart = async (req, res, next) => {
 
 /**
  * @desc    Add item to cart
+ * @route   POST /api/cart/table/:tableId/items (dine-in)
  * @route   POST /api/cart/:sessionId/items (guest)
  * @route   POST /api/cart/items (logged-in user)
  * @access  Public
  */
 export const addItemToCart = async (req, res, next) => {
     try {
-        const { sessionId } = req.params;
+        const { sessionId, tableId: urlTableId } = req.params;
         const userId = req.user?._id;
-        const { menuItemId, quantity, modifiers, specialInstructions, tableId, restaurantId } = req.body;
+        const { menuItemId, quantity, modifiers, specialInstructions, tableId: bodyTableId, restaurantId } = req.body;
+
+        // Use tableId from URL params (priority) or request body
+        const finalTableId = urlTableId || bodyTableId;
 
         // Validate required fields
         if (!menuItemId || !quantity || !restaurantId) {
@@ -92,16 +109,32 @@ export const addItemToCart = async (req, res, next) => {
 
         // Find or create cart
         let cart;
-        const query = userId ? { customerId: userId } : { sessionId };
+        let query;
+
+        if (finalTableId) {
+            // Dine-in: find by tableId (one cart per table)
+            query = { tableId: finalTableId };
+        } else if (userId) {
+            // Logged-in user: find by customerId
+            query = { customerId: userId };
+        } else if (sessionId) {
+            // Guest: find by sessionId
+            query = { sessionId };
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: 'Table ID or Session ID is required',
+            });
+        }
 
         cart = await Cart.findOne(query);
 
         if (!cart) {
             // Create new cart
             cart = new Cart({
-                sessionId: userId ? null : sessionId,
+                sessionId: finalTableId ? null : (userId ? null : sessionId),
                 customerId: userId || null,
-                tableId: tableId || null,
+                tableId: finalTableId || null,
                 restaurantId,
                 items: [],
             });
@@ -137,8 +170,8 @@ export const addItemToCart = async (req, res, next) => {
         }
 
         // Update table if provided
-        if (tableId) {
-            cart.tableId = tableId;
+        if (finalTableId) {
+            cart.tableId = finalTableId;
         }
 
         await cart.save();
@@ -162,7 +195,7 @@ export const addItemToCart = async (req, res, next) => {
  */
 export const updateCartItem = async (req, res, next) => {
     try {
-        const { sessionId, itemId } = req.params;
+        const { sessionId, itemId, tableId } = req.params;
         const userId = req.user?._id;
         const { quantity, modifiers, specialInstructions } = req.body;
 
@@ -173,8 +206,21 @@ export const updateCartItem = async (req, res, next) => {
             });
         }
 
-        // Find cart
-        const query = userId ? { customerId: userId } : { sessionId };
+        // Find cart - support table-based, user-based, or session-based
+        let query;
+        if (tableId) {
+            query = { tableId };
+        } else if (userId) {
+            query = { customerId: userId };
+        } else if (sessionId) {
+            query = { sessionId };
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: 'Table ID or Session ID is required',
+            });
+        }
+
         const cart = await Cart.findOne(query);
 
         if (!cart) {
@@ -222,11 +268,24 @@ export const updateCartItem = async (req, res, next) => {
  */
 export const removeCartItem = async (req, res, next) => {
     try {
-        const { sessionId, itemId } = req.params;
+        const { sessionId, itemId, tableId } = req.params;
         const userId = req.user?._id;
 
-        // Find cart
-        const query = userId ? { customerId: userId } : { sessionId };
+        // Find cart - support table-based, user-based, or session-based
+        let query;
+        if (tableId) {
+            query = { tableId };
+        } else if (userId) {
+            query = { customerId: userId };
+        } else if (sessionId) {
+            query = { sessionId };
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: 'Table ID or Session ID is required',
+            });
+        }
+
         const cart = await Cart.findOne(query);
 
         if (!cart) {
@@ -389,6 +448,46 @@ export const getCartSummary = async (req, res, next) => {
             data: {
                 itemsCount: cart.totalItems,
                 total: cart.total,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * @desc    Clear table cart after payment (Waiter only)
+ * @route   DELETE /api/cart/table/:tableId/complete
+ * @access  Private (Waiter, Admin)
+ */
+export const clearTableCartAfterPayment = async (req, res, next) => {
+    try {
+        const { tableId } = req.params;
+
+        if (!tableId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Table ID is required',
+            });
+        }
+
+        // Find and delete cart for this table
+        const cart = await Cart.findOneAndDelete({ tableId });
+
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found for this table',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Table cart cleared successfully after payment',
+            data: {
+                tableId,
+                clearedItems: cart.items.length,
+                clearedTotal: cart.total,
             },
         });
     } catch (error) {

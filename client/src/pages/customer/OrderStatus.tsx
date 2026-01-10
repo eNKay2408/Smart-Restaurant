@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import orderService from '../../services/orderService';
 
 const OrderStatus: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { orderId, orderNumber } = location.state || {};
+    const { orderId: urlOrderId } = useParams<{ orderId: string }>();
+
+    // Priority: URL param > location.state
+    const orderId = urlOrderId || location.state?.orderId;
+    const orderNumber = location.state?.orderNumber;
 
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -242,10 +246,10 @@ const OrderStatus: React.FC = () => {
                             return (
                                 <div key={step.id} className="flex items-center">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isStepCompleted
-                                            ? 'bg-green-500 text-white'
-                                            : isCurrentStep
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-gray-200 text-gray-600'
+                                        ? 'bg-green-500 text-white'
+                                        : isCurrentStep
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-gray-200 text-gray-600'
                                         }`}>
                                         {isStepCompleted ? '✓' : index + 1}
                                     </div>
@@ -315,8 +319,8 @@ const OrderStatus: React.FC = () => {
                         onClick={handleCallWaiter}
                         disabled={needsAssistance}
                         className={`w-full py-3 rounded-lg font-semibold transition-colors ${needsAssistance
-                                ? 'bg-green-100 text-green-800 border border-green-200'
-                                : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
                             }`}
                     >
                         {needsAssistance ? (

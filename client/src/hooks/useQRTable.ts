@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { tableService } from '../services/tableService';
-import cartService from '../services/cartService';
 import type { QRCodeData, TableInfo } from '../types/menu.types';
 
 /**
@@ -192,29 +191,18 @@ export function useQRTable() {
 		extractTableInfo();
 	}, [searchParams, location]);
 
-	// Clear cart when switching to a different table
+	// Track table changes (for analytics/logging)
 	useEffect(() => {
-		const handleTableChange = async () => {
-			if (tableInfo?.tableId) {
-				const lastTableId = localStorage.getItem('last_table_id');
+		if (tableInfo?.tableId) {
+			const lastTableId = localStorage.getItem('last_table_id');
 
-				// If this is a different table, clear the cart
-				if (lastTableId && lastTableId !== tableInfo.tableId) {
-					console.log('🔄 Switching tables - clearing old cart');
-					try {
-						await cartService.clearCart();
-						console.log('✅ Cart cleared for new table');
-					} catch (error) {
-						console.error('Failed to clear cart:', error);
-					}
-				}
-
-				// Save current table as last table
-				localStorage.setItem('last_table_id', tableInfo.tableId);
+			if (lastTableId && lastTableId !== tableInfo.tableId) {
+				console.log('🔄 Switched to table:', tableInfo.tableId);
 			}
-		};
 
-		handleTableChange();
+			// Save current table as last table
+			localStorage.setItem('last_table_id', tableInfo.tableId);
+		}
 	}, [tableInfo?.tableId]);
 
 	// Helper function to generate QR code URL for testing

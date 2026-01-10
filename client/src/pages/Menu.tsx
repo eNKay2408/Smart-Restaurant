@@ -6,6 +6,7 @@ import { SearchBar } from '../components/SearchBar';
 import { CategoryFilter } from '../components/CategoryFilter';
 import cartService from '../services/cartService';
 import QRScanRequired from '../components/QRScanRequired';
+import { toast } from 'react-toastify';
 
 
 function Menu() {
@@ -27,17 +28,39 @@ function Menu() {
     const [cartItemsCount, setCartItemsCount] = useState(0);
     const [addingToCart, setAddingToCart] = useState<string | null>(null);
 
-    // Load cart summary on mount
+    // Load cart summary on mount and when table changes
     useEffect(() => {
         loadCartSummary();
-    }, []);
+    }, [tableInfo?.tableId]);
 
     const loadCartSummary = async () => {
         try {
-            const summary = await cartService.getCartSummary();
-            setCartItemsCount(summary.itemsCount);
+            // Get tableId from tableInfo or localStorage
+            let currentTableId = tableInfo?.tableId;
+            if (!currentTableId) {
+                const savedTableInfo = localStorage.getItem('current_table_info');
+                if (savedTableInfo) {
+                    try {
+                        const tableData = JSON.parse(savedTableInfo);
+                        currentTableId = tableData.tableId;
+                    } catch (e) {
+                        console.error('Failed to parse table info:', e);
+                    }
+                }
+            }
+
+            if (currentTableId) {
+                // Load table cart
+                const cart = await cartService.getTableCart(currentTableId);
+                setCartItemsCount(cart.totalItems || 0);
+            } else {
+                // Fallback to regular cart summary
+                const summary = await cartService.getCartSummary();
+                setCartItemsCount(summary.itemsCount);
+            }
         } catch (error) {
             console.error('Failed to load cart summary:', error);
+            setCartItemsCount(0);
         }
     };
 
@@ -47,7 +70,7 @@ function Menu() {
         const restaurantId = tableInfo?.restaurantId || item?.restaurantId;
 
         if (!restaurantId) {
-            alert('Restaurant information not available');
+            toast.error('Restaurant information not available');
             return;
         }
 
@@ -65,15 +88,20 @@ function Menu() {
             }
         }
 
-        console.log('🛒 Adding to cart with tableId:', currentTableId);
+        if (!currentTableId) {
+            toast.warning('Please scan QR code first');
+            return;
+        }
+
+        console.log('🛒 Adding to table cart:', currentTableId);
 
         setAddingToCart(itemId);
         try {
-            await cartService.addItemToCart({
+            // Use table-based cart API
+            await cartService.addItemToTableCart(currentTableId, {
                 menuItemId: itemId,
                 quantity: 1,
                 restaurantId: restaurantId,
-                tableId: currentTableId, // Always include tableId if available
                 modifiers: [],
                 specialInstructions: ''
             });
@@ -82,10 +110,10 @@ function Menu() {
             await loadCartSummary();
 
             // Show success feedback
-            alert('✅ Added to cart!');
+            toast.success('✅ Added to cart!');
         } catch (error: any) {
             console.error('Add to cart error:', error);
-            alert('Failed to add to cart. Please try again.');
+            toast.error('Failed to add to cart. Please try again.');
         } finally {
             setAddingToCart(null);
         }

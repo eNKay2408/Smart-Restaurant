@@ -4,6 +4,7 @@ import cartService, { Cart as CartType } from '../../services/cartService';
 import orderService from '../../services/orderService';
 import { tableService } from '../../services/tableService';
 import { useQRTable } from '../../hooks/useQRTable';
+import { toast } from 'react-toastify';
 
 
 const Cart: React.FC = () => {
@@ -28,21 +29,14 @@ const Cart: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await cartService.getCart();
 
             // Priority order for table info:
             // 1. From URL/QR code (qrTableInfo)
-            // 2. From cart data
-            // 3. From localStorage
-            let currentTableId = qrTableInfo?.tableId || data.tableId;
-
-            // Ensure tableId is a string, not an object
-            if (currentTableId && typeof currentTableId === 'object') {
-                currentTableId = (currentTableId as any)._id || String(currentTableId);
-            }
+            // 2. From localStorage
+            let currentTableId = qrTableInfo?.tableId;
 
             if (!currentTableId) {
-                // Try to get table info from localStorage as last resort
+                // Try to get table info from localStorage
                 const savedTableInfo = localStorage.getItem('current_table_info');
                 if (savedTableInfo) {
                     try {
@@ -57,7 +51,17 @@ const Cart: React.FC = () => {
                 }
             }
 
-            console.log('📦 Current tableId:', currentTableId, 'Type:', typeof currentTableId);
+            // Ensure tableId is a string, not an object
+            if (currentTableId && typeof currentTableId === 'object') {
+                currentTableId = (currentTableId as any)._id || String(currentTableId);
+            }
+
+            console.log('📦 Loading cart for tableId:', currentTableId);
+
+            // Load cart by tableId (dine-in) or regular cart
+            const data = currentTableId
+                ? await cartService.getTableCart(currentTableId)
+                : await cartService.getCart();
 
             setCart(data);
 
@@ -103,23 +107,45 @@ const Cart: React.FC = () => {
         }
 
         try {
-            const updatedCart = await cartService.updateCartItem(itemId, {
-                quantity: newQuantity
-            });
-            setCart(updatedCart);
+            // Get tableId
+            const currentTableId = tableInfo?.tableId || cart?.tableId;
+
+            if (currentTableId) {
+                // Use table-based cart
+                const updatedCart = await cartService.updateTableCartItem(currentTableId, itemId, {
+                    quantity: newQuantity
+                });
+                setCart(updatedCart);
+            } else {
+                // Fallback to regular cart
+                const updatedCart = await cartService.updateCartItem(itemId, {
+                    quantity: newQuantity
+                });
+                setCart(updatedCart);
+            }
         } catch (err: any) {
             console.error('Update quantity error:', err);
-            alert('Failed to update quantity');
+            toast.error('Failed to update quantity');
         }
     };
 
     const handleRemoveItem = async (itemId: string) => {
         try {
-            const updatedCart = await cartService.removeCartItem(itemId);
-            setCart(updatedCart);
+            // Get tableId
+            const currentTableId = tableInfo?.tableId || cart?.tableId;
+
+            if (currentTableId) {
+                // Use table-based cart
+                const updatedCart = await cartService.removeTableCartItem(currentTableId, itemId);
+                setCart(updatedCart);
+            } else {
+                // Fallback to regular cart
+                const updatedCart = await cartService.removeCartItem(itemId);
+                setCart(updatedCart);
+            }
         } catch (err: any) {
             console.error('Remove item error:', err);
-            alert('Failed to remove item');
+            toast.error('Failed to remove item');
         }
     };
 
@@ -135,7 +161,7 @@ const Cart: React.FC = () => {
             setAppliedPromo(promo);
             setPromoCode('');
         } else {
-            alert('Invalid promo code');
+            toast.error('Invalid promo code');
         }
     };
 
@@ -145,7 +171,7 @@ const Cart: React.FC = () => {
 
     const handleCheckout = async () => {
         if (!cart || cart.items.length === 0) {
-            alert('Your cart is empty');
+            toast.warning('Your cart is empty');
             return;
         }
 
@@ -183,19 +209,22 @@ const Cart: React.FC = () => {
 
             const order = response.data;
 
-            // Clear cart after successful order
-            await cartService.clearCart();
+            // Clear cart after successful order (use table-based clear if tableId exists)
+            if (finalTableId) {
+                await cartService.clearTableCart(finalTableId);
+            } else {
+                await cartService.clearCart();
+            }
 
-            // Navigate to order status with order ID
-            navigate('/order-status', {
+            // Navigate to order status with order ID in URL
+            navigate(`/order-status/${order._id}`, {
                 state: {
-                    orderId: order._id,
                     orderNumber: order.orderNumber
                 }
             });
         } catch (error: any) {
             console.error('Create order error:', error);
-            alert(error.message || 'Failed to place order. Please try again.');
+            toast.error(error.message || 'Failed to place order. Please try again.');
         } finally {
             setPlacingOrder(false);
         }

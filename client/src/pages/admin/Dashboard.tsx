@@ -1,57 +1,102 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import dashboardService from '../../services/dashboardService';
+import type { DashboardStats, RecentOrder, TableStatus } from '../../services/dashboardService';
 
 const AdminDashboard: React.FC = () => {
-    const [stats, setStats] = useState({
-        todayRevenue: 1250,
-        revenueGrowth: 15,
-        activeOrders: 12,
-        pendingOrders: 5,
-        totalTables: 10,
-        completedOrders: 45
+    const [stats, setStats] = useState<DashboardStats>({
+        todayRevenue: 0,
+        revenueGrowth: 0,
+        activeOrders: 0,
+        pendingOrders: 0,
+        totalTables: 0,
+        completedOrders: 0
     });
 
-    const [recentOrders, setRecentOrders] = useState([
-        { id: '#1045', table: 5, items: 3, status: 'Preparing', time: '12:30 PM' },
-        { id: '#1044', table: 3, items: 2, status: 'Ready', time: '12:25 PM' },
-        { id: '#1043', table: 8, items: 5, status: 'Served', time: '12:15 PM' },
-        { id: '#1042', table: 2, items: 1, status: 'Completed', time: '12:00 PM' },
-        { id: '#1041', table: 7, items: 4, status: 'Preparing', time: '11:45 AM' },
-    ]);
+    const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+    const [tables, setTables] = useState<TableStatus[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const [tables, setTables] = useState([
-        { id: 1, status: 'free', label: 'Free' },
-        { id: 2, status: 'active', label: 'Active' },
-        { id: 3, status: 'bill', label: 'Bill' },
-        { id: 4, status: 'free', label: 'Free' },
-        { id: 5, status: 'active', label: 'Active' },
-        { id: 6, status: 'free', label: 'Free' },
-        { id: 7, status: 'bill', label: 'Bill' },
-        { id: 8, status: 'active', label: 'Active' },
-    ]);
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const [statsData, ordersData, tablesData] = await Promise.all([
+                dashboardService.getStats(),
+                dashboardService.getRecentOrders(5),
+                dashboardService.getTableStatus()
+            ]);
+
+            setStats(statsData);
+            setRecentOrders(ordersData);
+            setTables(tablesData);
+        } catch (err: any) {
+            console.error('Error fetching dashboard data:', err);
+            setError(err.response?.data?.message || 'Failed to load dashboard data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const getStatusColor = (status: string) => {
         const colors = {
-            'free': 'bg-green-500',
-            'active': 'bg-red-500',
-            'bill': 'bg-yellow-500',
-            'Preparing': 'bg-yellow-500',
-            'Ready': 'bg-green-500',
-            'Served': 'bg-blue-500',
-            'Completed': 'bg-gray-500'
+            'active': 'bg-green-500',      // Free/Available table
+            'available': 'bg-green-500',   // Alternative status
+            'occupied': 'bg-red-500',      // Table in use
+            'reserved': 'bg-yellow-500',   // Reserved table
+            'inactive': 'bg-gray-400',     // Inactive table
+            'pending': 'bg-yellow-500',
+            'preparing': 'bg-yellow-500',
+            'ready': 'bg-green-500',
+            'completed': 'bg-gray-500'
         };
-        return colors[status as keyof typeof colors] || 'bg-gray-400';
+        return colors[status.toLowerCase() as keyof typeof colors] || 'bg-gray-400';
     };
 
     const getStatusTextColor = (status: string) => {
         const colors = {
-            'Preparing': 'text-yellow-700',
-            'Ready': 'text-green-700',
-            'Served': 'text-blue-700',
-            'Completed': 'text-gray-700'
+            'pending': 'text-yellow-700',
+            'preparing': 'text-yellow-700',
+            'ready': 'text-green-700',
+            'completed': 'text-gray-700'
         };
-        return colors[status as keyof typeof colors] || 'text-gray-700';
+        return colors[status.toLowerCase() as keyof typeof colors] || 'text-gray-700';
     };
+
+    if (loading) {
+        return (
+            <AdminLayout>
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="mt-4 text-gray-600">Loading dashboard...</p>
+                    </div>
+                </div>
+            </AdminLayout>
+        );
+    }
+
+    if (error) {
+        return (
+            <AdminLayout>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800">Error: {error}</p>
+                    <button
+                        onClick={fetchDashboardData}
+                        className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </AdminLayout>
+        );
+    }
 
     return (
         <AdminLayout>
@@ -63,7 +108,10 @@ const AdminDashboard: React.FC = () => {
                         <p className="text-gray-600 mt-1">Monitor your restaurant's performance and activities</p>
                     </div>
                     <div className="flex space-x-2">
-                        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <button
+                            onClick={fetchDashboardData}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
                             <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
@@ -192,7 +240,7 @@ const AdminDashboard: React.FC = () => {
                                     <div key={table.id} className="text-center">
                                         <div className="relative">
                                             <div className="w-16 h-16 mx-auto bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center">
-                                                <span className="text-lg font-semibold text-gray-700">T{table.id}</span>
+                                                <span className="text-lg font-semibold text-gray-700">T{table.tableNumber}</span>
                                             </div>
                                             <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${getStatusColor(table.status)}`}></div>
                                         </div>
@@ -200,7 +248,7 @@ const AdminDashboard: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-                            
+
                             <div className="mt-6 pt-6 border-t border-gray-200">
                                 <div className="space-y-2">
                                     <div className="flex items-center text-sm">

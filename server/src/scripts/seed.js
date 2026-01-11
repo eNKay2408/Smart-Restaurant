@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { User, Restaurant, Category, MenuItem, Table, Modifier, Order } from '../models/index.js';
+import { User, Restaurant, Category, MenuItem, Table, Modifier, Order, Promotion } from '../models/index.js';
 import { generateQRToken } from '../config/jwt.js';
 import QRCode from 'qrcode';
 
@@ -20,6 +20,7 @@ const seedDatabase = async () => {
         await Table.deleteMany({});
         await Modifier.deleteMany({});
         await Order.deleteMany({});
+        await Promotion.deleteMany({});
         console.log('🗑️  Cleared existing data');
 
         // 1. Create Super Admin
@@ -269,7 +270,80 @@ const seedDatabase = async () => {
         ]);
         console.log('✅ Created 8 Modifiers');
 
-        // 9. Create Menu Items (20 items with images)
+        // 9. Create Promotions (5 promotions for testing)
+        const now = new Date();
+        const promotions = await Promotion.insertMany([
+            {
+                code: 'SAVE10',
+                description: 'Save 10% on your entire order',
+                discountType: 'percentage',
+                discountValue: 10,
+                minOrderAmount: 50,
+                maxDiscountAmount: 20,
+                startDate: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+                endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+                usageLimit: 100,
+                usedCount: 15,
+                isActive: true,
+                restaurantId: restaurant._id,
+            },
+            {
+                code: 'FIRST5',
+                description: 'Get $5 off your first order',
+                discountType: 'fixed',
+                discountValue: 5,
+                minOrderAmount: 20,
+                startDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+                endDate: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
+                usageLimit: 500,
+                usedCount: 87,
+                isActive: true,
+                restaurantId: restaurant._id,
+            },
+            {
+                code: 'WEEKEND20',
+                description: 'Weekend Special - 20% off on orders above $100',
+                discountType: 'percentage',
+                discountValue: 20,
+                minOrderAmount: 100,
+                maxDiscountAmount: 50,
+                startDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+                endDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+                usageLimit: 200,
+                usedCount: 42,
+                isActive: true,
+                restaurantId: restaurant._id,
+            },
+            {
+                code: 'LUNCH15',
+                description: 'Lunch time special - $15 off',
+                discountType: 'fixed',
+                discountValue: 15,
+                minOrderAmount: 75,
+                startDate: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+                endDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+                usageLimit: null, // Unlimited
+                usedCount: 128,
+                isActive: true,
+                restaurantId: restaurant._id,
+            },
+            {
+                code: 'EXPIRED',
+                description: 'This promotion has expired (for testing)',
+                discountType: 'percentage',
+                discountValue: 25,
+                minOrderAmount: 30,
+                startDate: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000), // 60 days ago
+                endDate: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago (expired)
+                usageLimit: 50,
+                usedCount: 50,
+                isActive: false,
+                restaurantId: restaurant._id,
+            },
+        ]);
+        console.log('✅ Created 5 Promotions');
+
+        // 10. Create Menu Items (20 items with images)
         const menuItems = await MenuItem.insertMany([
             // Appetizers (4 items)
             {
@@ -594,7 +668,7 @@ const seedDatabase = async () => {
         console.log('✅ Created 10 Tables with QR Codes');
         // 11. Create Sample Orders (10 orders with different statuses)
         const tables = await Table.find({ restaurantId: restaurant._id });
-        
+
         // Helper function to generate order number
         let orderCounter = 1;
         const generateOrderNumber = () => {
@@ -964,7 +1038,8 @@ const seedDatabase = async () => {
         console.log(`   Guest: guest@example.com / Guest12345`);
         console.log(`\n📁 Categories: ${categories.length} (5 categories)`);
         console.log(`🔧 Modifiers: ${modifiers.length} (8 customization options)`);
-        console.log(`🍽️  Menu Items: ${menuItems.length} (20 items with images)`);
+        console.log(`�️  Promotions: ${promotions.length} (5 promo codes)`);
+        console.log(`�🍽️  Menu Items: ${menuItems.length} (20 items with images)`);
         console.log(`🪑 Tables: ${tableNumbers.length} (10 tables with QR codes)`);
         console.log(`📦 Orders: ${sampleOrders.length} (10 orders with various statuses)`);
         console.log(`\n📋 Order Status Breakdown:`);
@@ -980,10 +1055,10 @@ const seedDatabase = async () => {
         console.log('🎉 All requirements met:');
         console.log('   ✅ 5 Categories');
         console.log('   ✅ 8 Modifiers');
+        console.log('   ✅ 5 Promotions');
         console.log('   ✅ 20 Menu Items with Images');
         console.log('   ✅ 10 Tables with QR Codes');
-        console.log('   ✅ 10 Orders with Various Statusages');
-        console.log('   ✅ 10 Tables with QR Codes');
+        console.log('   ✅ 10 Orders with Various Statuses');
         console.log('🚀 You can now start the server with: npm run dev\n');
 
         process.exit(0);

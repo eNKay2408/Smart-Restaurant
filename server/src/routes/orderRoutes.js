@@ -9,6 +9,10 @@ import {
 	updateOrderStatus,
 	deleteOrder,
 } from "../controllers/orderController.js";
+import {
+	requestCashPayment,
+	confirmCashPayment,
+} from "../controllers/cashPaymentController.js";
 import { protect, authorize } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validator.js";
 
@@ -282,5 +286,57 @@ router.patch(
  *         description: Order deleted
  */
 router.delete("/:id", protect, authorize("admin"), deleteOrder);
+
+// Cash payment routes
+
+/**
+ * @swagger
+ * /api/orders/{id}/request-cash-payment:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Request cash payment (Customer)
+ *     description: Customer requests to pay with cash, notifies waiter
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cash payment request sent
+ */
+router.post("/:id/request-cash-payment", requestCashPayment);
+
+/**
+ * @swagger
+ * /api/orders/{id}/confirm-cash-payment:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Confirm cash payment (Waiter)
+ *     description: Waiter confirms cash payment received and completes order
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amountReceived:
+ *                 type: number
+ *               tipAmount:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Cash payment confirmed
+ */
+router.post("/:id/confirm-cash-payment", protect, authorize("admin", "waiter"), confirmCashPayment);
 
 export default router;

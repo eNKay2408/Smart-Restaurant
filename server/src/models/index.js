@@ -8,3 +8,4 @@ export { default as Order } from './Order.js';
 export { default as Review } from './Review.js';
 export { default as Modifier } from './Modifier.js';
 export { default as Cart } from './Cart.js';
+export { default as Promotion } from './Promotion.js';

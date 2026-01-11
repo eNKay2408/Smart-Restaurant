@@ -1,6 +1,7 @@
 import Order from "../models/Order.js";
 import MenuItem from "../models/MenuItem.js";
 import Table from "../models/Table.js";
+import Cart from "../models/Cart.js";
 import {
 	emitNewOrder,
 	emitOrderAccepted,
@@ -121,7 +122,7 @@ export const createOrder = async (req, res) => {
 		const existingOrder = await Order.findOne({
 			tableId,
 			paymentStatus: "pending",
-			status: { $in: ["pending", "accepted"] }, // Only merge with active orders
+			status: { $in: ["pending", "accepted", "preparing", "ready", "served"] }, // Added "served" for bill merging
 		});
 
 		// If there's an existing order, add items to it (merge orders)
@@ -164,11 +165,20 @@ export const createOrder = async (req, res) => {
 				});
 			}
 
-			// Add new items to existing order
-			existingOrder.items.push(...processedItems);
+			// Add new items to existing order - preserve existing item statuses
+			const existingItems = existingOrder.items.map(item => item.toObject()); // Convert to plain objects to preserve
+			existingOrder.items = [...existingItems, ...processedItems];
 			existingOrder.subtotal += itemsSubtotal;
 			existingOrder.total =
 				existingOrder.subtotal + existingOrder.tax - existingOrder.discount;
+		
+		// ALWAYS reset order status to pending when new items are added (restart cycle)
+		const oldStatus = existingOrder.status;
+		existingOrder.status = "pending";
+		console.log(`🔄 Order ${existingOrder.orderNumber} status: ${oldStatus} → pending (new items added, restarting cycle)`);
+
+			// Debug: Log item statuses before save
+			console.log('📋 Items before save:', existingOrder.items.map(i => ({ name: i.name, status: i.status })));
 
 			await existingOrder.save();
 
@@ -177,10 +187,14 @@ export const createOrder = async (req, res) => {
 				.populate("customerId", "fullName email")
 				.populate("items.menuItemId", "name price images");
 
-			// Emit real-time event to waiters
+			// Clear cart after adding items to order
+			await Cart.findOneAndDelete({ tableId });
+
+			// Emit real-time event to waiters - use status update for merged orders
 			const io = req.app.get("io");
 			if (io) {
-				emitNewOrder(io, restaurantId, populatedOrder);
+				emitOrderStatusUpdate(io, restaurantId, populatedOrder);
+				console.log(`📡 Emitted order status update for merged order ${populatedOrder.orderNumber}`);
 			}
 
 			return res.status(200).json({
@@ -249,10 +263,18 @@ export const createOrder = async (req, res) => {
 			.populate("customerId", "fullName email")
 			.populate("items.menuItemId", "name price images");
 
-		// Emit real-time event to waiters
+	// Update table status to occupied
+	await Table.findByIdAndUpdate(tableId, { status: "occupied", currentOrder: order._id });
+	console.log(`🪑 Table status updated to occupied for order ${order.orderNumber}`);
+
+		// Clear cart after creating order
+		await Cart.findOneAndDelete({ tableId });
+
+		// Emit real-time event to waiters - use status update for merged orders
 		const io = req.app.get("io");
 		if (io) {
-			emitNewOrder(io, restaurantId, populatedOrder);
+			emitOrderStatusUpdate(io, restaurantId, populatedOrder);
+			console.log(`📡 Emitted order status update for merged order ${populatedOrder.orderNumber}`);
 		}
 
 		res.status(201).json({
@@ -423,6 +445,17 @@ export const updateOrderStatus = async (req, res) => {
 			order.servedAt = new Date();
 		} else if (status === "completed") {
 			order.completedAt = new Date();
+		}
+
+		// Update ALL item statuses to match order status (except for merged orders)
+		// Only update items that are still pending (don't override already served items)
+		if (status === "served" || status === "ready" || status === "completed") {
+			order.items.forEach(item => {
+				if (item.status === "pending" || item.status === "preparing") {
+					item.status = status;
+				}
+			});
+			console.log(`📋 Updated item statuses to ${status} for order ${order.orderNumber}`);
 		}
 
 		await order.save();

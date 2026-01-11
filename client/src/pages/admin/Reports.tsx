@@ -1,52 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import reportService from '../../services/reportService';
+import type { ReportStats, RevenueChartData, TopSellingItem, PerformanceInsights } from '../../services/reportService';
 
 interface DateRange {
     from: string;
     to: string;
 }
 
-interface TopSellingItem {
-    name: string;
-    orders: number;
-    revenue: number;
-}
-
 const AdminReports: React.FC = () => {
+    const today = new Date();
+    const tenDaysAgo = new Date(today);
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
     const [dateRange, setDateRange] = useState<DateRange>({
-        from: '2024-12-01',
-        to: '2024-12-10'
+        from: tenDaysAgo.toISOString().split('T')[0],
+        to: today.toISOString().split('T')[0]
     });
 
-    const [stats, setStats] = useState({
-        totalRevenue: 12500,
-        revenueGrowth: 12,
-        ordersCount: 245,
-        ordersGrowth: 8,
-        avgOrderValue: 51.02,
-        avgOrderGrowth: 3
+    const [stats, setStats] = useState<ReportStats>({
+        totalRevenue: 0,
+        revenueGrowth: 0,
+        ordersCount: 0,
+        ordersGrowth: 0,
+        avgOrderValue: 0,
+        avgOrderGrowth: 0
     });
 
-    const [topSellingItems] = useState<TopSellingItem[]>([
-        { name: 'Grilled Salmon', orders: 85, revenue: 1530 },
-        { name: 'Caesar Salad', orders: 72, revenue: 864 },
-        { name: 'Beef Steak', orders: 58, revenue: 1450 },
-        { name: 'Pasta Carbonara', orders: 45, revenue: 675 },
-        { name: 'Mushroom Soup', orders: 38, revenue: 304 },
-    ]);
+    const [topSellingItems, setTopSellingItems] = useState<TopSellingItem[]>([]);
+    const [revenueChartData, setRevenueChartData] = useState<RevenueChartData[]>([]);
+    const [insights, setInsights] = useState<PerformanceInsights>({
+        peakHourOrders: 0,
+        peakHourTime: 'N/A',
+        customerRating: 0,
+        avgPrepTime: 0,
+        tableTurnover: 0
+    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const [revenueChartData] = useState([
-        { day: 'Dec 1', revenue: 1200 },
-        { day: 'Dec 2', revenue: 800 },
-        { day: 'Dec 3', revenue: 1600 },
-        { day: 'Dec 4', revenue: 950 },
-        { day: 'Dec 5', revenue: 2000 },
-        { day: 'Dec 6', revenue: 1300 },
-        { day: 'Dec 7', revenue: 1800 },
-        { day: 'Dec 8', revenue: 1100 },
-        { day: 'Dec 9', revenue: 1700 },
-        { day: 'Dec 10', revenue: 1250 }
-    ]);
+    useEffect(() => {
+        fetchReportData();
+    }, []);
+
+    const fetchReportData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const [statsData, chartData, topItems, insightsData] = await Promise.all([
+                reportService.getStats(dateRange.from, dateRange.to),
+                reportService.getRevenueChart(dateRange.from, dateRange.to),
+                reportService.getTopSellingItems(dateRange.from, dateRange.to, 5),
+                reportService.getInsights(dateRange.from, dateRange.to)
+            ]);
+
+            setStats(statsData);
+            setRevenueChartData(chartData);
+            setTopSellingItems(topItems);
+            setInsights(insightsData);
+        } catch (err: any) {
+            console.error('Error fetching report data:', err);
+            setError(err.response?.data?.message || 'Failed to load report data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleDateRangeChange = (field: 'from' | 'to', value: string) => {
         setDateRange(prev => ({
@@ -56,8 +75,7 @@ const AdminReports: React.FC = () => {
     };
 
     const applyDateRange = () => {
-        // In a real app, this would fetch new data based on the date range
-        console.log('Applying date range:', dateRange);
+        fetchReportData();
     };
 
     const exportReport = (format: 'pdf' | 'excel') => {
@@ -65,7 +83,9 @@ const AdminReports: React.FC = () => {
         alert(`Exporting report as ${format.toUpperCase()}`);
     };
 
-    const maxRevenue = Math.max(...revenueChartData.map(d => d.revenue));
+    const maxRevenue = revenueChartData.length > 0 
+        ? Math.max(...revenueChartData.map(d => d.revenue))
+        : 1;
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -81,6 +101,35 @@ const AdminReports: React.FC = () => {
     const getGrowthColor = (growth: number) => {
         return growth > 0 ? 'text-green-600' : growth < 0 ? 'text-red-600' : 'text-gray-600';
     };
+
+    if (loading) {
+        return (
+            <AdminLayout>
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="mt-4 text-gray-600">Loading reports...</p>
+                    </div>
+                </div>
+            </AdminLayout>
+        );
+    }
+
+    if (error) {
+        return (
+            <AdminLayout>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800">Error: {error}</p>
+                    <button 
+                        onClick={fetchReportData}
+                        className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </AdminLayout>
+        );
+    }
 
     return (
         <AdminLayout>
@@ -209,21 +258,25 @@ const AdminReports: React.FC = () => {
                         <div className="space-y-4">
                             {/* Simple Bar Chart */}
                             <div className="space-y-3">
-                                {revenueChartData.map((data, index) => (
-                                    <div key={index} className="flex items-center space-x-3">
-                                        <div className="w-12 text-xs text-gray-600">{data.day}</div>
-                                        <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
-                                            <div
-                                                className="bg-blue-600 h-6 rounded-full flex items-center justify-end pr-2"
-                                                style={{ width: `${(data.revenue / maxRevenue) * 100}%` }}
-                                            >
-                                                <span className="text-white text-xs font-medium">
-                                                    {formatCurrency(data.revenue)}
-                                                </span>
+                                {revenueChartData.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">No data available for this period</p>
+                                ) : (
+                                    revenueChartData.map((data, index) => (
+                                        <div key={index} className="flex items-center space-x-3">
+                                            <div className="w-12 text-xs text-gray-600">{data.date}</div>
+                                            <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
+                                                <div
+                                                    className="bg-blue-600 h-6 rounded-full flex items-center justify-end pr-2"
+                                                    style={{ width: `${maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0}%` }}
+                                                >
+                                                    <span className="text-white text-xs font-medium">
+                                                        {formatCurrency(data.revenue)}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
 
                             {/* Chart Legend */}
@@ -246,47 +299,53 @@ const AdminReports: React.FC = () => {
                         <h3 className="text-lg font-semibold text-gray-900 mb-6">Top Selling Items</h3>
                         
                         <div className="space-y-4">
-                            {topSellingItems.map((item, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div className="flex items-center space-x-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                                            index === 0 ? 'bg-yellow-500' :
-                                            index === 1 ? 'bg-gray-400' :
-                                            index === 2 ? 'bg-amber-600' : 'bg-gray-300'
-                                        }`}>
-                                            {index + 1}
+                            {topSellingItems.length === 0 ? (
+                                <p className="text-gray-500 text-center py-8">No sales data available for this period</p>
+                            ) : (
+                                topSellingItems.map((item, index) => (
+                                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center space-x-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                                index === 0 ? 'bg-yellow-500' :
+                                                index === 1 ? 'bg-gray-400' :
+                                                index === 2 ? 'bg-amber-600' : 'bg-gray-300'
+                                            }`}>
+                                                {index + 1}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-900">{item.name}</p>
+                                                <p className="text-sm text-gray-600">{item.orders} orders</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{item.name}</p>
-                                            <p className="text-sm text-gray-600">{item.orders} orders</p>
+                                        <div className="text-right">
+                                            <p className="font-semibold text-gray-900">{formatCurrency(item.revenue)}</p>
+                                            <p className="text-sm text-gray-600">
+                                                {formatCurrency(item.revenue / item.orders)} avg
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="font-semibold text-gray-900">{formatCurrency(item.revenue)}</p>
-                                        <p className="text-sm text-gray-600">
-                                            {formatCurrency(item.revenue / item.orders)} avg
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
 
-                        <div className="mt-6 pt-4 border-t border-gray-200">
-                            <div className="grid grid-cols-2 gap-4 text-center">
-                                <div>
-                                    <p className="text-2xl font-bold text-gray-900">
-                                        {topSellingItems.reduce((sum, item) => sum + item.orders, 0)}
-                                    </p>
-                                    <p className="text-sm text-gray-600">Total Orders</p>
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-gray-900">
-                                        {formatCurrency(topSellingItems.reduce((sum, item) => sum + item.revenue, 0))}
-                                    </p>
-                                    <p className="text-sm text-gray-600">Total Revenue</p>
+                        {topSellingItems.length > 0 && (
+                            <div className="mt-6 pt-4 border-t border-gray-200">
+                                <div className="grid grid-cols-2 gap-4 text-center">
+                                    <div>
+                                        <p className="text-2xl font-bold text-gray-900">
+                                            {topSellingItems.reduce((sum, item) => sum + item.orders, 0)}
+                                        </p>
+                                        <p className="text-sm text-gray-600">Total Orders</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-gray-900">
+                                            {formatCurrency(topSellingItems.reduce((sum, item) => sum + item.revenue, 0))}
+                                        </p>
+                                        <p className="text-sm text-gray-600">Total Revenue</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 
@@ -296,27 +355,27 @@ const AdminReports: React.FC = () => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <div className="text-3xl font-bold text-blue-600">15</div>
+                            <div className="text-3xl font-bold text-blue-600">{insights.peakHourOrders}</div>
                             <div className="text-sm text-gray-600 mt-1">Peak Hour Orders</div>
-                            <div className="text-xs text-gray-500">12:00 PM - 1:00 PM</div>
+                            <div className="text-xs text-gray-500">{insights.peakHourTime}</div>
                         </div>
                         
                         <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <div className="text-3xl font-bold text-green-600">4.8</div>
+                            <div className="text-3xl font-bold text-green-600">{insights.customerRating.toFixed(1)}</div>
                             <div className="text-sm text-gray-600 mt-1">Customer Rating</div>
-                            <div className="text-xs text-gray-500">Based on 156 reviews</div>
+                            <div className="text-xs text-gray-500">Based on reviews</div>
                         </div>
                         
                         <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                            <div className="text-3xl font-bold text-yellow-600">18m</div>
+                            <div className="text-3xl font-bold text-yellow-600">{insights.avgPrepTime}m</div>
                             <div className="text-sm text-gray-600 mt-1">Avg Prep Time</div>
-                            <div className="text-xs text-gray-500">2 minutes faster</div>
+                            <div className="text-xs text-gray-500">Minutes</div>
                         </div>
                         
                         <div className="text-center p-4 bg-purple-50 rounded-lg">
-                            <div className="text-3xl font-bold text-purple-600">92%</div>
+                            <div className="text-3xl font-bold text-purple-600">{insights.tableTurnover}%</div>
                             <div className="text-sm text-gray-600 mt-1">Table Turnover</div>
-                            <div className="text-xs text-gray-500">Above target</div>
+                            <div className="text-xs text-gray-500">Efficiency rate</div>
                         </div>
                     </div>
                 </div>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { paymentService } from '../../services/paymentService';
 import cartService from '../../services/cartService';
+import orderService from '../../services/orderService';
 import { toast } from 'react-toastify';
 
 interface PaymentMethod {
@@ -25,6 +26,7 @@ const Payment: React.FC = () => {
     const [splitAmount, setSplitAmount] = useState(2);
     const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
 
     const paymentMethods: PaymentMethod[] = [
         { id: 'card', name: 'Credit/Debit Card', type: 'card', icon: '💳', enabled: true },
@@ -67,6 +69,68 @@ const Payment: React.FC = () => {
         setTipPercentage(0);
     };
 
+    // Listen for payment confirmation from waiter
+    useEffect(() => {
+        if (!order?._id || !waitingForConfirmation) return;
+
+        const socket = orderService.initSocket();
+
+        console.log('🔍 Setting up payment listener for order:', order._id);
+        console.log('🔍 Socket connected:', socket.connected);
+        console.log('🔍 Order tableId:', order.tableId);        // JOIN TABLE ROOM - CRITICAL for receiving payment:confirmed event
+        // Use localStorage as PRIMARY source (order.tableId often undefined)
+        let tableId = localStorage.getItem('tableId');
+        console.log('🔍 localStorage tableId:', tableId);
+        
+        // Fallback to order.tableId if localStorage empty
+        if (!tableId) {
+            if (typeof order.tableId === 'string') {
+                tableId = order.tableId;
+                console.log('🔍 Using string tableId from order:', tableId);
+            } else if (order.tableId?._id) {
+                tableId = order.tableId._id;
+                console.log('🔍 Using object tableId._id from order:', tableId);
+            }
+        }
+
+        if (tableId) {
+            socket.emit('join:table', { tableId });
+            console.log(`🔌 Joined table room: table:${tableId}`);
+        } else {
+            console.error('❌ No tableId found! Cannot join room');
+            console.log('Order:', order);
+        }
+
+        // Listen for payment confirmed event
+        const handlePaymentConfirmed = (data: any) => {
+            console.log('💵 Received payment:confirmed event:', data);
+            console.log('📋 Current order ID:', order._id);
+            console.log('📋 Event order ID:', data.order?._id);
+            console.log('📋 Match:', data.order?._id === order._id);
+
+            if (data.order?._id === order._id || data.order?._id === order?._id) {
+                console.log('✅ Payment confirmed for our order!');
+                setWaitingForConfirmation(false);
+                setShowPaymentSuccess(true);
+
+                // Redirect after showing success
+                setTimeout(() => {
+                    navigate('/menu');
+                }, 3000);
+            } else {
+                console.log('⚠️ Payment confirmed but different order');
+                console.log('⚠️ Expected:', order._id, 'Got:', data.order?._id);
+            }
+        };
+
+        socket.on('payment:confirmed', handlePaymentConfirmed);
+
+        return () => {
+            console.log('🔌 Cleaning up payment listener');
+            socket.off('payment:confirmed', handlePaymentConfirmed);
+        };
+    }, [order?._id, order?.tableId, waitingForConfirmation, navigate]);
+
     const handlePayment = async () => {
         if (!order?._id) {
             toast.error('Order information is missing');
@@ -79,9 +143,20 @@ const Payment: React.FC = () => {
             let paymentResult;
 
             if (selectedPaymentMethod === 'cash') {
-                // Cash payment - show message to customer
-                toast.info('Please proceed to the counter to complete your cash payment. A waiter will assist you.');
-                setIsProcessing(false);
+                // Cash payment - request waiter assistance via API
+                const response = await fetch(`http://localhost:5000/api/orders/${order._id}/request-cash-payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    toast.success('✅ Waiter has been notified!');
+                    setIsProcessing(false);
+                    setWaitingForConfirmation(true); // Show waiting screen
+                } else {
+                    throw new Error(data.message || 'Failed to request cash payment');
+                }
                 return;
             } else {
                 // Online payment (card/digital wallet)
@@ -128,6 +203,36 @@ const Payment: React.FC = () => {
     const formatTime = () => {
         return new Date().toLocaleString();
     };
+
+    // Waiting for payment confirmation screen
+    if (waitingForConfirmation) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                    <div className="mb-6">
+                        <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-yellow-500 mx-auto"></div>
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                        Waiting for Payment Confirmation
+                    </h2>
+                    <p className="text-gray-600 mb-4">
+                        Please wait while the waiter confirms your cash payment
+                    </p>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-yellow-800">
+                            💵 Order #{order?.orderNumber}<br />
+                            Amount: ${finalTotal.toFixed(2)}<br />
+                            Payment Method: Cash
+                        </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                        <div className="animate-pulse">⏳</div>
+                        <span>Waiting for waiter...</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (showPaymentSuccess) {
         return (

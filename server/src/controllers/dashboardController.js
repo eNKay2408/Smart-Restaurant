@@ -1,0 +1,151 @@
+import Order from "../models/Order.js";
+import Table from "../models/Table.js";
+
+// @desc    Get dashboard statistics
+// @route   GET /api/dashboard/stats
+// @access  Private (Admin, Waiter)
+export const getDashboardStats = async (req, res) => {
+	try {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		const yesterday = new Date(today);
+		yesterday.setDate(yesterday.getDate() - 1);
+
+		// Today's orders
+		const todayOrders = await Order.find({
+			createdAt: { $gte: today },
+			status: { $in: ["completed", "paid"] },
+		});
+
+		const todayRevenue = todayOrders.reduce(
+			(sum, order) => sum + (order.totalAmount || 0),
+			0
+		);
+
+		// Yesterday's orders for growth calculation
+		const yesterdayOrders = await Order.find({
+			createdAt: { $gte: yesterday, $lt: today },
+			status: { $in: ["completed", "paid"] },
+		});
+
+		const yesterdayRevenue = yesterdayOrders.reduce(
+			(sum, order) => sum + (order.totalAmount || 0),
+			0
+		);
+
+		const revenueGrowth =
+			yesterdayRevenue > 0
+				? (((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100).toFixed(2)
+				: 0;
+
+		// Active orders (preparing, ready)
+		const activeOrders = await Order.countDocuments({
+			status: { $in: ["preparing", "ready"] },
+		});
+
+		// Pending orders
+		const pendingOrders = await Order.countDocuments({
+			status: "pending",
+		});
+
+		// Completed orders today
+		const completedOrders = todayOrders.length;
+
+		// Total tables
+		const totalTables = await Table.countDocuments();
+
+		res.json({
+			success: true,
+			data: {
+				todayRevenue: parseFloat(todayRevenue.toFixed(2)),
+				revenueGrowth: parseFloat(revenueGrowth),
+				activeOrders,
+				pendingOrders,
+				completedOrders,
+				totalTables,
+			},
+		});
+	} catch (error) {
+		console.error("Error getting dashboard stats:", error);
+		res.status(500).json({
+			success: false,
+			message: "Failed to get dashboard statistics",
+			error: error.message,
+		});
+	}
+};
+
+// @desc    Get recent orders for dashboard
+// @route   GET /api/dashboard/recent-orders
+// @access  Private (Admin, Waiter)
+export const getRecentOrders = async (req, res) => {
+	try {
+		const limit = parseInt(req.query.limit) || 10;
+
+		const orders = await Order.find()
+			.populate("tableId", "tableNumber")
+			.sort({ createdAt: -1 })
+			.limit(limit)
+			.select("status totalAmount createdAt items");
+
+		const recentOrders = orders.map((order) => ({
+			id: `#${order._id.toString().slice(-4)}`,
+			table: order.tableId?.tableNumber || "N/A",
+			items: order.items?.length || 0,
+			status: order.status,
+			time: new Date(order.createdAt).toLocaleTimeString("en-US", {
+				hour: "2-digit",
+				minute: "2-digit",
+			}),
+			amount: parseFloat(order.totalAmount || 0),
+		}));
+
+		res.json({
+			success: true,
+			data: recentOrders,
+		});
+	} catch (error) {
+		console.error("Error getting recent orders:", error);
+		res.status(500).json({
+			success: false,
+			message: "Failed to get recent orders",
+			error: error.message,
+		});
+	}
+};
+
+// @desc    Get table status overview
+// @route   GET /api/dashboard/table-status
+// @access  Private (Admin, Waiter)
+export const getTableStatus = async (req, res) => {
+	try {
+		const tables = await Table.find()
+			.select("tableNumber status capacity")
+			.sort({ tableNumber: 1 });
+
+		const tableStatus = tables.map((table) => ({
+			id: table._id,
+			tableNumber: table.tableNumber,
+			status: table.status || "available",
+			label:
+				table.status === "occupied"
+					? "Active"
+					: table.status === "reserved"
+					? "Reserved"
+					: "Free",
+		}));
+
+		res.json({
+			success: true,
+			data: tableStatus,
+		});
+	} catch (error) {
+		console.error("Error getting table status:", error);
+		res.status(500).json({
+			success: false,
+			message: "Failed to get table status",
+			error: error.message,
+		});
+	}
+};

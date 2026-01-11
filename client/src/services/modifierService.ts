@@ -44,9 +44,15 @@ class ModifierService {
             });
             return response.data;
         } catch (error: any) {
-            // Fallback to mock data if API fails
-            console.warn('Failed to fetch modifiers from API, using mock data:', error.message);
-            return this.getMockModifiers();
+            // Let error propagate to caller
+            if (error.response && error.response.data) {
+                throw error.response.data;
+            }
+            throw {
+                success: false,
+                message: 'Failed to fetch modifiers',
+                error: error.message,
+            };
         }
     }
 
@@ -148,81 +154,6 @@ class ModifierService {
                 error: error.message,
             };
         }
-    }
-
-    /**
-     * Mock data for demo purposes (until backend implements modifiers)
-     */
-    private getMockModifiers(): ModifiersResponse {
-        const mockModifiers: Modifier[] = [
-            {
-                id: '1',
-                name: 'Size',
-                type: 'single',
-                required: false,
-                displayOrder: 1,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                options: [
-                    { id: '1-1', name: 'Regular', priceAdjustment: 0, isDefault: true, isActive: true },
-                    { id: '1-2', name: 'Large', priceAdjustment: 5, isDefault: false, isActive: true }
-                ]
-            },
-            {
-                id: '2',
-                name: 'Extras',
-                type: 'multiple',
-                required: false,
-                displayOrder: 2,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                options: [
-                    { id: '2-1', name: 'Extra Cheese', priceAdjustment: 3, isDefault: false, isActive: true },
-                    { id: '2-2', name: 'Extra Sauce', priceAdjustment: 2, isDefault: false, isActive: true },
-                    { id: '2-3', name: 'Side Salad', priceAdjustment: 4, isDefault: false, isActive: true }
-                ]
-            },
-            {
-                id: '3',
-                name: 'Cooking Level',
-                type: 'single',
-                required: true,
-                displayOrder: 3,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                options: [
-                    { id: '3-1', name: 'Rare', priceAdjustment: 0, isDefault: false, isActive: true },
-                    { id: '3-2', name: 'Medium Rare', priceAdjustment: 0, isDefault: true, isActive: true },
-                    { id: '3-3', name: 'Medium', priceAdjustment: 0, isDefault: false, isActive: true },
-                    { id: '3-4', name: 'Well Done', priceAdjustment: 0, isDefault: false, isActive: true }
-                ]
-            },
-            {
-                id: '4',
-                name: 'Spice Level',
-                type: 'single',
-                required: false,
-                displayOrder: 4,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                options: [
-                    { id: '4-1', name: 'Mild', priceAdjustment: 0, isDefault: true, isActive: true },
-                    { id: '4-2', name: 'Medium', priceAdjustment: 0, isDefault: false, isActive: true },
-                    { id: '4-3', name: 'Hot', priceAdjustment: 0, isDefault: false, isActive: true },
-                    { id: '4-4', name: 'Extra Hot', priceAdjustment: 1, isDefault: false, isActive: true }
-                ]
-            }
-        ];
-
-        return {
-            success: true,
-            count: mockModifiers.length,
-            data: mockModifiers
-        };
     }
 }
 

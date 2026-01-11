@@ -27,6 +27,9 @@ import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import modifierRoutes from "./routes/modifierRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
+import promotionRoutes from "./routes/promotionRoutes.js";
 
 // Connect to database
 connectDB();
@@ -120,6 +123,9 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/modifiers", modifierRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/promotions", promotionRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

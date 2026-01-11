@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import orderService from "../../services/orderService";
 import { useSocket } from "../../hooks/useSocket";
 import type { Order } from "../../types/order.types";
+import { toast } from "react-toastify";
 
 function WaiterOrders() {
 	const navigate = useNavigate();
@@ -15,53 +16,29 @@ function WaiterOrders() {
 	const [showRejectModal, setShowRejectModal] = useState(false);
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [rejectionReason, setRejectionReason] = useState("");
+	const [soundEnabled, setSoundEnabled] = useState(true); // ✅ Sound toggle
+	const [showConfirmPaymentModal, setShowConfirmPaymentModal] = useState(false);
+	const [confirmPaymentData, setConfirmPaymentData] = useState<{ orderId: string; total: number } | null>(null);
 
 	// Get user from localStorage to get restaurantId
 	const user = JSON.parse(localStorage.getItem("user") || "{}");
 	const restaurantId = user?.restaurantId || "";
 
 	// Socket.IO real-time connection
-	const { isConnected, onNewOrder, onOrderStatusUpdate } = useSocket({
+	const { isConnected, socket } = useSocket({
 		role: "waiter",
 		restaurantId: restaurantId,
 		autoConnect: true,
 	});
 
-	// Separate effect for fetching orders on filter change
-	useEffect(() => {
-		fetchOrders();
-	}, [filter]);
-
-	// Separate effect for setting up real-time listeners (only once)
-	useEffect(() => {
-		// Set up real-time listeners
-		const handleNewOrder = (data: any) => {
-			console.log("🔔 New order received:", data);
-			playNotificationSound();
-			// Refresh orders to show the new one
-			fetchOrders();
-		};
-
-		const handleStatusUpdate = (data: any) => {
-			console.log("📢 Order status updated:", data);
-			// Refresh orders to show updates
-			fetchOrders();
-		};
-
-		onNewOrder(handleNewOrder);
-		onOrderStatusUpdate(handleStatusUpdate);
-
-		return () => {
-			// Cleanup if needed
-		};
-	}, []);
-
-	const fetchOrders = async () => {
+	// Use useCallback to prevent stale closure
+	const fetchOrders = useCallback(async () => {
 		try {
 			setLoading(true);
 			// Fetch all orders without status filter to get accurate counts
 			const response = await orderService.getOrders({});
 			if (response.success && response.data) {
+				console.log('📋 Fetched orders:', response.data.length);
 				setOrders(response.data);
 			}
 		} catch (err: any) {
@@ -69,7 +46,83 @@ function WaiterOrders() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
+
+	// Separate effect for fetching orders on filter change
+	useEffect(() => {
+		fetchOrders();
+	}, [filter, fetchOrders]);
+
+	// Separate effect for setting up real-time listeners (only once)
+	useEffect(() => {
+		if (!socket) return;
+
+		console.log('🔌 Setting up waiter Socket.IO listeners');
+
+		// Set up real-time listeners - use socket.on() directly!
+		const handleNewOrder = (data: any) => {
+			console.log("🔔 New order received:", data);
+
+			if (soundEnabled) {
+				playNotificationSound(); // ✅ Sound for new order
+			}
+			toast.success(`New order from Table ${data.order?.tableId?.tableNumber}!`, {
+				autoClose: 5000,
+			});
+			fetchOrders();
+		};
+
+		const handleStatusUpdate = (data: any) => {
+			console.log("📢 Order status updated:", data);
+
+			// Play sound only for READY status (kitchen finished)
+			if (data.order?.status === 'ready') {
+				if (soundEnabled) {
+					playNotificationSound(); // ✅ Sound for ready order
+				}
+				toast.info(`Table ${data.order?.tableId?.tableNumber} order is ready!`, {
+					autoClose: 5000,
+				});
+			}
+
+			fetchOrders();
+		};
+
+		// Listen for cash payment requests
+		const handleCashPaymentRequest = (data: any) => {
+			console.log("💵 Cash payment requested:", data);
+
+			if (soundEnabled) {
+				playNotificationSound(); // ✅ Sound for cash payment
+			}
+			toast.warning(`Table ${data.order?.tableId?.tableNumber} requests cash payment!`, {
+				autoClose: 5000,
+			});
+			fetchOrders();
+		};
+
+		// Listen for payment completed
+		const handlePaymentCompleted = (data: any) => {
+			console.log("✅ Payment completed:", data);
+			fetchOrders();
+		};
+
+		// Register all listeners DIRECTLY on socket
+		socket.on("order:new", handleNewOrder);
+		socket.on("order:statusUpdate", handleStatusUpdate);
+		socket.on("payment:cashRequested", handleCashPaymentRequest);
+		socket.on("payment:completed", handlePaymentCompleted);
+
+		console.log('✅ Waiter listeners registered');
+
+		return () => {
+			console.log('🔌 Cleaning up waiter listeners');
+			socket.off("order:new", handleNewOrder);
+			socket.off("order:statusUpdate", handleStatusUpdate);
+			socket.off("payment:cashRequested", handleCashPaymentRequest);
+			socket.off("payment:completed", handlePaymentCompleted);
+		};
+	}, [socket, fetchOrders, soundEnabled]); // ✅ Added soundEnabled
 
 	const handleAccept = async (orderId: string) => {
 		try {
@@ -131,6 +184,48 @@ function WaiterOrders() {
 			}
 		} catch (err: any) {
 			console.error("Failed to mark order as completed:", err);
+		}
+	};
+
+	const handleConfirmCashPayment = async (orderId: string, total: number) => {
+		// Show custom modal instead of window.confirm
+		setConfirmPaymentData({ orderId, total });
+		setShowConfirmPaymentModal(true);
+	};
+
+	const confirmCashPayment = async () => {
+		if (!confirmPaymentData) return;
+
+		const { orderId, total } = confirmPaymentData;
+
+		try {
+			const response = await fetch(`http://localhost:5000/api/orders/${orderId}/confirm-cash-payment`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${localStorage.getItem('token')}`,
+				},
+				body: JSON.stringify({
+					amountReceived: total,
+					tipAmount: 0,
+				}),
+			});
+
+			const data = await response.json();
+
+			if (data.success) {
+				toast.success('Payment confirmed successfully!');
+				// Auto complete after payment confirmed
+				await handleMarkAsCompleted(orderId);
+			} else {
+				throw new Error(data.message || 'Failed to confirm payment');
+			}
+		} catch (err: any) {
+			console.error("Failed to confirm cash payment:", err);
+			toast.error(err.message || 'Failed to confirm payment');
+		} finally {
+			setShowConfirmPaymentModal(false);
+			setConfirmPaymentData(null);
 		}
 	};
 
@@ -202,15 +297,29 @@ function WaiterOrders() {
 					<h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent text-center md:text-left">
 						👔 Waiter Dashboard
 					</h1>
-					<div className="flex items-center gap-2">
-						<div
-							className={`w-3 h-3 rounded-full ${
-								isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
-							}`}
-						></div>
-						<span className="text-sm text-gray-600">
-							{isConnected ? "Live" : "Offline"}
-						</span>
+					<div className="flex items-center gap-4">
+						{/* Sound Toggle */}
+						<button
+							onClick={() => setSoundEnabled(!soundEnabled)}
+							className={`px-3 py-1 rounded-lg font-medium transition-all text-sm ${soundEnabled
+								? "bg-green-500 text-white hover:bg-green-600"
+								: "bg-gray-300 text-gray-700 hover:bg-gray-400"
+								}`}
+							title={soundEnabled ? "Sound ON" : "Sound OFF"}
+						>
+							{soundEnabled ? "🔔" : "🔕"}
+						</button>
+
+						{/* Live Status */}
+						<div className="flex items-center gap-2">
+							<div
+								className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+									}`}
+							></div>
+							<span className="text-sm text-gray-600">
+								{isConnected ? "Live" : "Offline"}
+							</span>
+						</div>
 					</div>
 				</div>
 
@@ -224,52 +333,52 @@ function WaiterOrders() {
 				<div className="mb-6 flex flex-wrap gap-2">
 					<button
 						onClick={() => setFilter("pending")}
-						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-							filter === "pending"
-								? "bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-lg"
-								: "bg-white text-gray-700 hover:bg-gray-100"
-						}`}
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${filter === "pending"
+							? "bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-lg"
+							: "bg-white text-gray-700 hover:bg-gray-100"
+							}`}
 					>
 						⏳ Pending ({orders.filter((o) => o.status === "pending").length})
 					</button>
 					<button
 						onClick={() => setFilter("ready")}
-						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-							filter === "ready"
-								? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg"
-								: "bg-white text-gray-700 hover:bg-gray-100"
-						}`}
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${filter === "ready"
+							? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg"
+							: "bg-white text-gray-700 hover:bg-gray-100"
+							}`}
 					>
 						✅ Ready ({orders.filter((o) => o.status === "ready").length})
 					</button>
 					<button
 						onClick={() => setFilter("served")}
-						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-							filter === "served"
-								? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg"
-								: "bg-white text-gray-700 hover:bg-gray-100"
-						}`}
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base relative ${filter === "served"
+							? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg"
+							: "bg-white text-gray-700 hover:bg-gray-100"
+							}`}
 					>
 						🍽️ Served ({orders.filter((o) => o.status === "served").length})
+						{orders.filter((o) => o.status === "served" && o.paymentStatus === "pending_cash").length > 0 && (
+							<span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+								{orders.filter((o) => o.status === "served" && o.paymentStatus === "pending_cash").length}
+							</span>
+						)}
 					</button>
 					<button
 						onClick={() => setFilter("completed")}
-						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-							filter === "completed"
-								? "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg"
-								: "bg-white text-gray-700 hover:bg-gray-100"
-						}`}
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${filter === "completed"
+							? "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg"
+							: "bg-white text-gray-700 hover:bg-gray-100"
+							}`}
 					>
 						💯 Completed (
 						{orders.filter((o) => o.status === "completed").length})
 					</button>
 					<button
 						onClick={() => setFilter("all")}
-						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-							filter === "all"
-								? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-lg"
-								: "bg-white text-gray-700 hover:bg-gray-100"
-						}`}
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${filter === "all"
+							? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-lg"
+							: "bg-white text-gray-700 hover:bg-gray-100"
+							}`}
 					>
 						📋 All ({orders.length})
 					</button>
@@ -330,8 +439,17 @@ function WaiterOrders() {
 										</p>
 										<ul className="space-y-1 max-h-32 overflow-y-auto">
 											{order.items.map((item, idx) => (
-												<li key={idx} className="text-sm text-gray-600">
-													• {item.quantity}x {item.name}
+												<li key={idx} className={`text-sm flex items-center justify-between ${item.status === 'served' || item.status === 'ready'
+													? 'text-gray-400 line-through'
+													: 'text-gray-900 font-semibold'
+													}`}>
+													<span>• {item.quantity}x {item.name}</span>
+													{item.status === 'pending' && (
+														<span className="bg-yellow-500 text-white text-xs px-1 rounded">NEW</span>
+													)}
+													{(item.status === 'served' || item.status === 'ready') && (
+														<span className="text-green-600">✅</span>
+													)}
 												</li>
 											))}
 										</ul>
@@ -404,12 +522,34 @@ function WaiterOrders() {
 											>
 												📄 View Bill
 											</button>
-											<button
-												onClick={() => handleMarkAsCompleted(order._id)}
-												className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
-											>
-												✅ Complete
-											</button>
+											{/* Only show Complete button if customer has requested payment */}
+											{order.paymentStatus !== 'pending' && (
+												<button
+													onClick={() => {
+														if (order.paymentStatus === 'pending_cash') {
+															handleConfirmCashPayment(order._id, order.total);
+														} else {
+															handleMarkAsCompleted(order._id);
+														}
+													}}
+													className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all relative"
+												>
+													{order.paymentStatus === 'pending_cash' && (
+														<span className="absolute -top-1 -right-1 flex h-3 w-3">
+															<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+															<span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+														</span>
+													)}
+													{order.paymentStatus === 'pending_cash' ? '💵 Confirm Payment' : '✅ Complete'}
+												</button>
+											)}
+
+											{/* Show message if payment not requested yet */}
+											{order.paymentStatus === 'pending' && (
+												<div className="flex-1 bg-yellow-50 border border-yellow-300 text-yellow-700 py-2 rounded-lg text-center text-sm">
+													⏳ Waiting for payment request
+												</div>
+											)}
 										</div>
 									)}
 
@@ -449,11 +589,10 @@ function WaiterOrders() {
 							value={rejectionReason}
 							onChange={(e) => setRejectionReason(e.target.value)}
 							placeholder="Enter rejection reason..."
-							className={`w-full border rounded-lg p-3 mb-2 focus:outline-none focus:ring-2 ${
-								!rejectionReason.trim()
-									? "border-gray-300 focus:ring-red-500"
-									: "border-gray-300 focus:ring-red-500"
-							}`}
+							className={`w-full border rounded-lg p-3 mb-2 focus:outline-none focus:ring-2 ${!rejectionReason.trim()
+								? "border-gray-300 focus:ring-red-500"
+								: "border-gray-300 focus:ring-red-500"
+								}`}
 							rows={4}
 						/>
 						{!rejectionReason.trim() && (
@@ -475,13 +614,49 @@ function WaiterOrders() {
 							<button
 								onClick={handleRejectSubmit}
 								disabled={!rejectionReason.trim()}
-								className={`flex-1 py-2 rounded-lg font-medium transition-all ${
-									!rejectionReason.trim()
-										? "bg-gray-300 text-gray-500 cursor-not-allowed"
-										: "bg-gradient-to-r from-red-500 to-red-600 text-white hover:shadow-lg"
-								}`}
+								className={`flex-1 py-2 rounded-lg font-medium transition-all ${!rejectionReason.trim()
+									? "bg-gray-300 text-gray-500 cursor-not-allowed"
+									: "bg-gradient-to-r from-red-500 to-red-600 text-white hover:shadow-lg"
+									}`}
 							>
 								Confirm Reject
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Confirm Payment Modal */}
+			{showConfirmPaymentModal && confirmPaymentData && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+					<div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+						<h3 className="text-2xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+							💵 Confirm Cash Payment
+						</h3>
+						<div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-4">
+							<p className="text-sm text-gray-600 mb-2">Payment Amount:</p>
+							<p className="text-3xl font-bold text-green-600">
+								${confirmPaymentData.total.toFixed(2)}
+							</p>
+						</div>
+						<p className="text-sm text-gray-600 mb-6">
+							Please confirm that you have received the cash payment from the customer.
+						</p>
+						<div className="flex gap-3">
+							<button
+								onClick={() => {
+									setShowConfirmPaymentModal(false);
+									setConfirmPaymentData(null);
+								}}
+								className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300 transition-all"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmCashPayment}
+								className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all"
+							>
+								✓ Confirm Payment
 							</button>
 						</div>
 					</div>

@@ -155,6 +155,13 @@ export const emitOrderStatusUpdate = (io, restaurantId, order) => {
 		order,
 	});
 
+	// Notify customer on OrderStatus page (order-specific room)
+	io.to(`order:${order._id}`).emit("order:statusUpdate", {
+		message: `Order status updated to ${order.status}`,
+		order,
+	});
+	console.log(`📋 Emitted to order room: order:${order._id}`);
+
 	// Notify waiters
 	io.to(waiterRoom).emit("order:statusUpdate", {
 		message: `Order ${order.orderNumber} status updated`,

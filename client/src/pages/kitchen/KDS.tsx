@@ -181,9 +181,8 @@ function KDS() {
 						</h1>
 						<div className="flex items-center gap-2">
 							<div
-								className={`w-3 h-3 rounded-full ${
-									isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
-								}`}
+								className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+									}`}
 							></div>
 							<span className="text-sm text-gray-400">
 								{isConnected ? "Live" : "Offline"}
@@ -215,32 +214,29 @@ function KDS() {
 				<div className="mb-6 flex flex-wrap gap-2">
 					<button
 						onClick={() => setFilter("accepted")}
-						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${
-							filter === "accepted"
+						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "accepted"
 								? "bg-blue-600 shadow-lg scale-105"
 								: "bg-gray-700 hover:bg-gray-600"
-						}`}
+							}`}
 					>
 						🆕 New ({orders.filter((o) => o.status === "accepted").length})
 					</button>
 					<button
 						onClick={() => setFilter("preparing")}
-						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${
-							filter === "preparing"
+						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "preparing"
 								? "bg-orange-600 shadow-lg scale-105"
 								: "bg-gray-700 hover:bg-gray-600"
-						}`}
+							}`}
 					>
 						🔥 Preparing (
 						{orders.filter((o) => o.status === "preparing").length})
 					</button>
 					<button
 						onClick={() => setFilter("all")}
-						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${
-							filter === "all"
+						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "all"
 								? "bg-purple-600 shadow-lg scale-105"
 								: "bg-gray-700 hover:bg-gray-600"
-						}`}
+							}`}
 					>
 						📋 All ({orders.length})
 					</button>
@@ -265,11 +261,10 @@ function KDS() {
 								return (
 									<div
 										key={order._id}
-										className={`bg-gray-800 rounded-xl p-4 border-4 ${
-											overdue
+										className={`bg-gray-800 rounded-xl p-4 border-4 ${overdue
 												? "border-red-500 animate-pulse"
 												: "border-gray-700"
-										} hover:shadow-2xl transition-all`}
+											} hover:shadow-2xl transition-all`}
 									>
 										{/* Header */}
 										<div className="flex justify-between items-start mb-3">
@@ -292,14 +287,12 @@ function KDS() {
 
 										{/* Timer */}
 										<div
-											className={`mb-3 p-2 rounded ${
-												overdue ? "bg-red-900" : "bg-gray-700"
-											}`}
+											className={`mb-3 p-2 rounded ${overdue ? "bg-red-900" : "bg-gray-700"
+												}`}
 										>
 											<p
-												className={`text-center font-bold text-lg ${
-													overdue ? "text-red-300" : "text-white"
-												}`}
+												className={`text-center font-bold text-lg ${overdue ? "text-red-300" : "text-white"
+													}`}
 											>
 												⏱️ {minutesSinceCreated} min
 												{overdue && " - OVERDUE!"}
@@ -318,11 +311,25 @@ function KDS() {
 												{order.items.map((item, idx) => (
 													<li
 														key={idx}
-														className="border-b border-gray-700 pb-2"
+														className={`border-b pb-2 ${item.status === 'served' || item.status === 'ready'
+																? 'border-gray-700 opacity-50'
+																: 'border-yellow-500'
+															}`}
 													>
-														<p className="font-semibold text-lg">
-															{item.quantity}x {item.name}
-														</p>
+														<div className="flex items-start justify-between">
+															<p className={`font-semibold text-lg ${item.status === 'served' || item.status === 'ready'
+																	? 'text-gray-500 line-through'
+																	: 'text-white'
+																}`}>
+																{item.quantity}x {item.name}
+															</p>
+															{(item.status === 'served' || item.status === 'ready') && (
+																<span className="text-green-500 text-xl">✅</span>
+															)}
+															{item.status === 'pending' && (
+																<span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded font-bold">NEW</span>
+															)}
+														</div>
 														{item.modifiers && item.modifiers.length > 0 && (
 															<div className="ml-4 mt-1">
 																{item.modifiers.map((modifier, mIdx) => (

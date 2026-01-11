@@ -127,7 +127,7 @@ const orderSchema = new mongoose.Schema(
 		// Payment
 		paymentStatus: {
 			type: String,
-			enum: ["pending", "paid", "failed", "refunded"],
+			enum: ["pending", "pending_cash", "paid", "failed", "refunded"],
 			default: "pending",
 		},
 		paymentMethod: {
@@ -142,6 +142,14 @@ const orderSchema = new mongoose.Schema(
 		paidAt: {
 			type: Date,
 			default: null,
+		},
+		amountReceived: {
+			type: Number,
+			default: 0,
+		},
+		tipAmount: {
+			type: Number,
+			default: 0,
 		},
 		// Timestamps for order flow
 		acceptedAt: {

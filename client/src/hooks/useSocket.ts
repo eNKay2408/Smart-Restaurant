@@ -73,6 +73,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
 
 	return {
 		isConnected,
+		socket: socketService.getSocket(), // Add socket instance
 		onNewOrder,
 		onOrderAccepted,
 		onOrderStatusUpdate,

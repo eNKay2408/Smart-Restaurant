@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import cartService, { Cart as CartType } from '../../services/cartService';
 import orderService from '../../services/orderService';
 import { tableService } from '../../services/tableService';
+import { promotionService, PromotionValidationResult } from '../../services/promotionService';
 import { useQRTable } from '../../hooks/useQRTable';
 import { toast } from 'react-toastify';
 
@@ -16,7 +17,7 @@ const Cart: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [promoCode, setPromoCode] = useState('');
-    const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number; type: 'percentage' | 'fixed' } | null>(null);
+    const [appliedPromo, setAppliedPromo] = useState<PromotionValidationResult | null>(null);
     const [placingOrder, setPlacingOrder] = useState(false);
     const [tableInfo, setTableInfo] = useState<{ tableNumber: number; area?: string; tableId?: string } | null>(null);
 
@@ -149,19 +150,33 @@ const Cart: React.FC = () => {
         }
     };
 
-    const handleApplyPromo = () => {
-        // Mock promo validation (TODO: Replace with API call)
-        const promos: Record<string, { code: string; discount: number; type: 'percentage' | 'fixed' }> = {
-            'SAVE10': { code: 'SAVE10', discount: 10, type: 'percentage' },
-            'FIRST5': { code: 'FIRST5', discount: 5, type: 'fixed' }
-        };
+    const handleApplyPromo = async () => {
+        if (!promoCode.trim()) {
+            toast.error('Please enter a promo code');
+            return;
+        }
 
-        const promo = promos[promoCode as keyof typeof promos];
-        if (promo) {
-            setAppliedPromo(promo);
-            setPromoCode('');
-        } else {
-            toast.error('Invalid promo code');
+        if (!cart?.restaurantId) {
+            toast.error('Restaurant information is missing');
+            return;
+        }
+
+        try {
+            // Call real API to validate promo code
+            const result = await promotionService.validatePromotionCode(
+                promoCode,
+                subtotal,
+                cart.restaurantId
+            );
+
+            if (result.success && result.data) {
+                setAppliedPromo(result.data);
+                setPromoCode('');
+                toast.success(`Promo code "${result.data.code}" applied successfully!`);
+            }
+        } catch (error: any) {
+            console.error('Promo validation error:', error);
+            toast.error(error.message || 'Invalid promo code');
         }
     };
 
@@ -209,12 +224,8 @@ const Cart: React.FC = () => {
 
             const order = response.data;
 
-            // Clear cart after successful order (use table-based clear if tableId exists)
-            if (finalTableId) {
-                await cartService.clearTableCart(finalTableId);
-            } else {
-                await cartService.clearCart();
-            }
+            // ✅ Cart is automatically cleared by backend in orderController.js
+            // No need to manually clear here
 
             // Navigate to order status with order ID in URL
             navigate(`/order-status/${order._id}`, {
@@ -242,11 +253,7 @@ const Cart: React.FC = () => {
     const subtotal = cart?.total || 0;
     const tax = subtotal * 0.08; // 8% tax
     const tip = subtotal * 0.18; // 18% tip
-    const discount = appliedPromo
-        ? appliedPromo.type === 'percentage'
-            ? subtotal * (appliedPromo.discount / 100)
-            : appliedPromo.discount
-        : 0;
+    const discount = appliedPromo ? appliedPromo.discountAmount : 0;
     const total = subtotal + tax + tip - discount;
 
     // Loading state
@@ -445,9 +452,9 @@ const Cart: React.FC = () => {
                                 <span className="text-green-600 mr-2">✓</span>
                                 <span className="font-medium text-green-800">{appliedPromo.code}</span>
                                 <span className="text-green-600 ml-2 text-sm">
-                                    -{appliedPromo.type === 'percentage'
-                                        ? `${appliedPromo.discount}%`
-                                        : `$${appliedPromo.discount}`}
+                                    -{appliedPromo.discountType === 'percentage'
+                                        ? `${appliedPromo.discountValue}%`
+                                        : `$${appliedPromo.discountValue}`}
                                 </span>
                             </div>
                             <button

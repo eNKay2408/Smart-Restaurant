@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import WaiterOrders from "./pages/waiter/Orders";
 import WaiterBill from "./pages/waiter/Bill";
+import PendingPayments from "./pages/waiter/PendingPayments";
 import KDS from "./pages/kitchen/KDS";
 
 // Admin Pages
@@ -82,6 +83,14 @@ function App() {
 					element={
 						<ProtectedRoute requiredRole="waiter">
 							<WaiterBill />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path="/waiter/pending-payments"
+					element={
+						<ProtectedRoute requiredRole="waiter">
+							<PendingPayments />
 						</ProtectedRoute>
 					}
 				/>

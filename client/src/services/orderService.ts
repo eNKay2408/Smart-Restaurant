@@ -38,15 +38,29 @@ class OrderService {
 	}
 
 	/**
+	 * Join order room to receive updates
+	 */
+	joinOrderRoom(orderId: string): void {
+		const socket = this.initSocket();
+		socket.emit('join:order', { orderId });
+		console.log(`📋 Joined order room: ${orderId}`);
+	}
+
+	/**
 	 * Listen to order status updates via Socket.IO
 	 */
 	onOrderStatusUpdate(orderId: string, callback: (order: any) => void): void {
 		const socket = this.initSocket();
 
-		socket.on('orderStatusUpdated', (data: any) => {
-			if (data._id === orderId) {
-				console.log('📡 Order status updated:', data.status);
-				callback(data);
+		// Join the order room first
+		this.joinOrderRoom(orderId);
+
+		// Listen for status updates (fixed event name)
+		socket.on('order:statusUpdate', (data: any) => {
+			console.log('📡 Received order:statusUpdate event:', data);
+			if (data.order && data.order._id === orderId) {
+				console.log('📡 Order status updated:', data.order.status);
+				callback(data.order);
 			}
 		});
 	}

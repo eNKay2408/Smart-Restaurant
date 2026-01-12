@@ -12,25 +12,27 @@ export const getDashboardStats = async (req, res) => {
 		const yesterday = new Date(today);
 		yesterday.setDate(yesterday.getDate() - 1);
 
-		// Today's orders
+		// Today's orders (completed with paid status)
 		const todayOrders = await Order.find({
 			createdAt: { $gte: today },
-			status: { $in: ["completed", "paid"] },
+			status: "completed",
+			paymentStatus: "paid", // ✅ Use paymentStatus instead
 		});
 
 		const todayRevenue = todayOrders.reduce(
-			(sum, order) => sum + (order.totalAmount || 0),
+			(sum, order) => sum + (order.total || 0), // ✅ Use 'total' not 'totalAmount'
 			0
 		);
 
 		// Yesterday's orders for growth calculation
 		const yesterdayOrders = await Order.find({
 			createdAt: { $gte: yesterday, $lt: today },
-			status: { $in: ["completed", "paid"] },
+			status: "completed",
+			paymentStatus: "paid",
 		});
 
 		const yesterdayRevenue = yesterdayOrders.reduce(
-			(sum, order) => sum + (order.totalAmount || 0),
+			(sum, order) => sum + (order.total || 0), // ✅ Use 'total' not 'totalAmount'
 			0
 		);
 
@@ -39,9 +41,11 @@ export const getDashboardStats = async (req, res) => {
 				? (((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100).toFixed(2)
 				: 0;
 
-		// Active orders (preparing, ready)
-		const activeOrders = await Order.countDocuments({
-			status: { $in: ["preparing", "ready"] },
+		// Unpaid orders (orders that haven't been paid yet)
+		// This includes all orders regardless of status that are not paid
+		const unpaidOrders = await Order.countDocuments({
+			paymentStatus: { $ne: "paid" },
+			status: { $nin: ["cancelled", "rejected"] }, // Exclude cancelled/rejected orders
 		});
 
 		// Pending orders
@@ -60,7 +64,7 @@ export const getDashboardStats = async (req, res) => {
 			data: {
 				todayRevenue: parseFloat(todayRevenue.toFixed(2)),
 				revenueGrowth: parseFloat(revenueGrowth),
-				activeOrders,
+				unpaidOrders,
 				pendingOrders,
 				completedOrders,
 				totalTables,
@@ -132,8 +136,8 @@ export const getTableStatus = async (req, res) => {
 				table.status === "occupied"
 					? "Active"
 					: table.status === "reserved"
-					? "Reserved"
-					: "Free",
+						? "Reserved"
+						: "Free",
 		}));
 
 		res.json({

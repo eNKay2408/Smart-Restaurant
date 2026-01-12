@@ -34,13 +34,13 @@ const AdminKDS: React.FC = () => {
             setLoading(true);
             setError(null);
             const response = await orderService.getOrders();
-            
-            if (response.success) {
+
+            if (response.success && response.data) {
                 // Transform backend orders to KDS format
-                const kdsOrders: KDSOrder[] = response.data.map(order => ({
+                const kdsOrders: KDSOrder[] = (response.data || []).map(order => ({
                     id: order._id,
                     orderNumber: `#${order.orderNumber || order._id.slice(-4)}`,
-                    table: order.tableId?.number || 0,
+                    table: order.tableId?.tableNumber || 0,
                     items: order.items.map(item => ({
                         name: item.menuItemId?.name || 'Unknown Item',
                         quantity: item.quantity,
@@ -48,17 +48,23 @@ const AdminKDS: React.FC = () => {
                         completed: false // This would need to be tracked separately in the backend
                     })),
                     status: order.status as 'pending' | 'preparing' | 'ready' | 'completed',
-                    time: new Date(order.createdAt).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
+                    time: new Date(order.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
                     }),
                     elapsed: Math.floor((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60)),
-                    notes: order.notes
+                    notes: order.orderNotes
                 }));
-                
-                setOrders(kdsOrders.filter(order => 
+
+                console.log('📡 KDS: Received orders from API:', response.data.length);
+                console.log('📊 KDS: Order statuses:', kdsOrders.map(o => `${o.orderNumber}: ${o.status}`));
+
+                const filteredOrders = kdsOrders.filter(order =>
                     ['pending', 'preparing', 'ready'].includes(order.status)
-                ));
+                );
+
+                console.log(`✅ KDS: Filtered ${filteredOrders.length} active orders from ${kdsOrders.length} total`);
+                setOrders(filteredOrders);
             }
         } catch (err: any) {
             setError(err.message || 'Failed to fetch orders');
@@ -128,7 +134,7 @@ const AdminKDS: React.FC = () => {
     const handleStatusChange = async (orderId: string, newStatus: 'preparing' | 'ready' | 'completed') => {
         try {
             await updateOrderStatus(orderId, newStatus);
-            
+
             if (soundEnabled) {
                 // Play notification sound
                 playNotificationSound();
@@ -192,18 +198,17 @@ const AdminKDS: React.FC = () => {
                         </h1>
                         <p className="text-gray-600 mt-1">Real-time order management for kitchen staff</p>
                     </div>
-                    
+
                     <div className="flex items-center space-x-4">
                         <button
                             onClick={() => setSoundEnabled(!soundEnabled)}
-                            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                                soundEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${soundEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                }`}
                         >
                             <span>{soundEnabled ? '🔊' : '🔇'}</span>
                             <span>{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
                         </button>
-                        
+
                         <button
                             onClick={handleRefresh}
                             disabled={loading}
@@ -277,11 +282,10 @@ const AdminKDS: React.FC = () => {
                                                 <div key={index} className="flex items-start space-x-2">
                                                     <button
                                                         onClick={() => toggleItemCompletion(order.id, index)}
-                                                        className={`mt-1 w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                                            item.completed
-                                                                ? 'bg-green-500 border-green-500'
-                                                                : 'border-gray-300 hover:border-green-400'
-                                                        }`}
+                                                        className={`mt-1 w-4 h-4 rounded border-2 flex items-center justify-center ${item.completed
+                                                            ? 'bg-green-500 border-green-500'
+                                                            : 'border-gray-300 hover:border-green-400'
+                                                            }`}
                                                     >
                                                         {item.completed && (
                                                             <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">

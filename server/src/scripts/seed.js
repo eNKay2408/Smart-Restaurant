@@ -634,6 +634,83 @@ const seedDatabase = async () => {
         ]);
         console.log('✅ Created 20 Menu Items with Images');
 
+        // 10.5. Update Menu Items with Multiple Images (3 images per item)
+        const foodImages = {
+            steak: [
+                'https://images.pexels.com/photos/769289/pexels-photo-769289.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/361184/asparagus-steak-veal-steak-veal-361184.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            burger: [
+                'https://images.pexels.com/photos/1639557/pexels-photo-1639557.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1556688/pexels-photo-1556688.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/2983099/pexels-photo-2983099.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            pasta: [
+                'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1438672/pexels-photo-1438672.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1460872/pexels-photo-1460872.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            salad: [
+                'https://images.pexels.com/photos/1059905/pexels-photo-1059905.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1211887/pexels-photo-1211887.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            soup: [
+                'https://images.pexels.com/photos/539451/pexels-photo-539451.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/2703468/pexels-photo-2703468.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1731535/pexels-photo-1731535.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            chicken: [
+                'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/2338408/pexels-photo-2338408.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1624487/pexels-photo-1624487.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            seafood: [
+                'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1516415/pexels-photo-1516415.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/566345/pexels-photo-566345.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            dessert: [
+                'https://images.pexels.com/photos/291528/pexels-photo-291528.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1126359/pexels-photo-1126359.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1099680/pexels-photo-1099680.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            coffee: [
+                'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1251175/pexels-photo-1251175.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+            juice: [
+                'https://images.pexels.com/photos/96974/pexels-photo-96974.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1435904/pexels-photo-1435904.jpeg?auto=compress&cs=tinysrgb&w=800',
+                'https://images.pexels.com/photos/1337824/pexels-photo-1337824.jpeg?auto=compress&cs=tinysrgb&w=800',
+            ],
+        };
+
+        const getImagesForItem = (itemName) => {
+            const name = itemName.toLowerCase();
+            if (name.includes('steak') || name.includes('beef') || name.includes('lamb')) return foodImages.steak;
+            if (name.includes('burger')) return foodImages.burger;
+            if (name.includes('pasta') || name.includes('spaghetti') || name.includes('carbonara')) return foodImages.pasta;
+            if (name.includes('salad') || name.includes('quinoa') || name.includes('caprese') || name.includes('greek')) return foodImages.salad;
+            if (name.includes('soup') || name.includes('mushroom')) return foodImages.soup;
+            if (name.includes('chicken') || name.includes('teriyaki')) return foodImages.chicken;
+            if (name.includes('salmon') || name.includes('fish') || name.includes('seafood') || name.includes('shrimp') || name.includes('paella')) return foodImages.seafood;
+            if (name.includes('cake') || name.includes('ice cream') || name.includes('tiramisu') || name.includes('brownie') || name.includes('brûlée')) return foodImages.dessert;
+            if (name.includes('coffee') || name.includes('espresso') || name.includes('latte') || name.includes('cappuccino') || name.includes('tea')) return foodImages.coffee;
+            if (name.includes('juice') || name.includes('smoothie') || name.includes('lemonade') || name.includes('orange')) return foodImages.juice;
+            return foodImages.salad; // Default
+        };
+
+        // Update each menu item with 3 images
+        for (const item of menuItems) {
+            const images = getImagesForItem(item.name);
+            item.images = images;
+            await item.save();
+        }
+        console.log('✅ Updated all Menu Items with 3 images each');
+
         // 10. Create Tables with QR Codes (10 tables)
         const tableNumbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
         const locations = ['Window', 'Corner', 'Center', 'Patio', 'Window', 'Center', 'Corner', 'Private', 'VIP', 'Terrace'];

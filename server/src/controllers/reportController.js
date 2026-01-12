@@ -28,25 +28,27 @@ export const getReportStats = async (req, res) => {
 		prevStartDate.setDate(prevStartDate.getDate() - daysDiff);
 		const prevEndDate = new Date(startDate);
 
-		// Current period orders
+		// Current period orders (completed and paid)
 		const currentOrders = await Order.find({
 			createdAt: { $gte: startDate, $lte: endDate },
-			status: { $in: ["completed", "paid"] },
+			status: "completed",
+			paymentStatus: "paid",
 		});
 
-		// Previous period orders
+		// Previous period orders (completed and paid)
 		const previousOrders = await Order.find({
 			createdAt: { $gte: prevStartDate, $lt: prevEndDate },
-			status: { $in: ["completed", "paid"] },
+			status: "completed",
+			paymentStatus: "paid",
 		});
 
 		// Calculate metrics
 		const totalRevenue = currentOrders.reduce(
-			(sum, order) => sum + (order.totalAmount || 0),
+			(sum, order) => sum + (order.total || 0),
 			0
 		);
 		const previousRevenue = previousOrders.reduce(
-			(sum, order) => sum + (order.totalAmount || 0),
+			(sum, order) => sum + (order.total || 0),
 			0
 		);
 		const revenueGrowth =
@@ -115,7 +117,8 @@ export const getRevenueChart = async (req, res) => {
 			{
 				$match: {
 					createdAt: { $gte: startDate, $lte: endDate },
-					status: { $in: ["completed", "paid"] },
+					status: "completed",
+					paymentStatus: "paid",
 				},
 			},
 			{
@@ -123,7 +126,7 @@ export const getRevenueChart = async (req, res) => {
 					_id: {
 						$dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
 					},
-					revenue: { $sum: "$totalAmount" },
+					revenue: { $sum: "$total" },
 				},
 			},
 			{
@@ -175,10 +178,11 @@ export const getTopSellingItems = async (req, res) => {
 		const endDate = new Date(to);
 		endDate.setHours(23, 59, 59, 999);
 
-		// Get all orders in date range
+		// Get all orders in date range (completed and paid)
 		const orders = await Order.find({
 			createdAt: { $gte: startDate, $lte: endDate },
-			status: { $in: ["completed", "paid"] },
+			status: "completed",
+			paymentStatus: "paid",
 		}).select("items");
 
 		// Aggregate item statistics
@@ -307,7 +311,8 @@ export const getInsights = async (req, res) => {
 		// Calculate table turnover rate
 		const completedOrdersCount = await Order.countDocuments({
 			createdAt: { $gte: startDate, $lte: endDate },
-			status: { $in: ["completed", "paid"] },
+			status: "completed",
+			paymentStatus: "paid",
 		});
 
 		const totalTables = await Table.countDocuments({ isActive: true });

@@ -7,7 +7,7 @@ const AdminDashboard: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats>({
         todayRevenue: 0,
         revenueGrowth: 0,
-        activeOrders: 0,
+        unpaidOrders: 0,
         pendingOrders: 0,
         totalTables: 0,
         completedOrders: 0
@@ -143,15 +143,15 @@ const AdminDashboard: React.FC = () => {
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">Active Orders</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.activeOrders}</p>
+                                <p className="text-sm font-medium text-gray-600">Unpaid Orders</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.unpaidOrders}</p>
                                 <div className="flex items-center mt-2">
-                                    <span className="text-blue-600 text-sm font-medium">Currently processing</span>
+                                    <span className="text-orange-600 text-sm font-medium">Awaiting payment</span>
                                 </div>
                             </div>
-                            <div className="p-3 bg-blue-100 rounded-full">
-                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m2 0h2a2 2 0 002-2V7a2 2 0 00-2-2h-2m-2 4h2m-2 4h2" />
+                            <div className="p-3 bg-orange-100 rounded-full">
+                                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                 </svg>
                             </div>
                         </div>

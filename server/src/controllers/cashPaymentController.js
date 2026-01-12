@@ -101,8 +101,13 @@ export const confirmCashPayment = async (req, res) => {
         order.paidAt = new Date();
         order.amountReceived = amountReceived || order.total;
         order.tipAmount = tipAmount || 0;
-        order.status = "completed";
-        order.completedAt = new Date();
+
+        // Only mark as completed if order has been served
+        // This ensures proper workflow: pending → accepted → preparing → ready → served → completed
+        if (order.status === "served") {
+            order.status = "completed";
+            order.completedAt = new Date();
+        }
 
         await order.save();
 

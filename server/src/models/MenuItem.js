@@ -21,6 +21,11 @@ const menuItemSchema = new mongoose.Schema(
                 type: String,
             },
         ],
+        primaryImageIndex: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
         categoryId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Category',

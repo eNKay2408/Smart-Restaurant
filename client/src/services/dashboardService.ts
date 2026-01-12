@@ -3,7 +3,7 @@ import axiosInstance from "../config/axiosConfig";
 export interface DashboardStats {
 	todayRevenue: number;
 	revenueGrowth: number;
-	activeOrders: number;
+	unpaidOrders: number;
 	pendingOrders: number;
 	completedOrders: number;
 	totalTables: number;

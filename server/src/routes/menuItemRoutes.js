@@ -6,6 +6,7 @@ import {
     updateMenuItem,
     deleteMenuItem,
     updateMenuItemStatus,
+    updatePrimaryImage,
 } from '../controllers/menuItemController.js';
 import { protect, authorize } from '../middlewares/auth.js';
 
@@ -269,6 +270,44 @@ router.put('/:id', protect, authorize('admin', 'super_admin'), updateMenuItem);
  *         description: Status updated
  */
 router.patch('/:id/status', protect, authorize('admin', 'super_admin'), updateMenuItemStatus);
+
+/**
+ * @swagger
+ * /api/menu-items/{id}/primary-image:
+ *   patch:
+ *     tags: [Menu Items]
+ *     summary: Update primary image
+ *     description: Set which image should be the primary/avatar image (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - primaryImageIndex
+ *             properties:
+ *               primaryImageIndex:
+ *                 type: number
+ *                 example: 1
+ *                 description: Index of the image to set as primary (0-based)
+ *     responses:
+ *       200:
+ *         description: Primary image updated
+ *       400:
+ *         description: Invalid index
+ *       404:
+ *         description: Menu item not found
+ */
+router.patch('/:id/primary-image', protect, authorize('admin', 'super_admin'), updatePrimaryImage);
 
 /**
  * @swagger

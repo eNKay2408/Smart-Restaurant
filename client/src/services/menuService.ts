@@ -178,11 +178,11 @@ class MenuService {
 	async getPopularItems(limit: number = 10, restaurantId?: string): Promise<MenuResponse> {
 		try {
 			const response = await axiosInstance.get<MenuResponse>('/menu-items', {
-				params: { 
-					sortBy: 'popularity', 
-					order: 'desc', 
-					limit, 
-					restaurantId 
+				params: {
+					sortBy: 'popularity',
+					order: 'desc',
+					limit,
+					restaurantId
 				},
 			});
 			return response.data;
@@ -198,7 +198,84 @@ class MenuService {
 		}
 	}
 
+	/**
+	 * Create a new menu item (Admin only)
+	 */
+	async createMenuItem(data: any): Promise<MenuItemResponse> {
+		try {
+			const response = await axiosInstance.post<MenuItemResponse>('/menu-items', data);
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: 'Failed to create menu item',
+				error: error.message,
+			};
+		}
+	}
 
+	/**
+	 * Update a menu item (Admin only)
+	 */
+	async updateMenuItem(itemId: string, data: any): Promise<MenuItemResponse> {
+		try {
+			const response = await axiosInstance.put<MenuItemResponse>(`/menu-items/${itemId}`, data);
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: 'Failed to update menu item',
+				error: error.message,
+			};
+		}
+	}
+
+	/**
+	 * Delete a menu item (Admin only)
+	 */
+	async deleteMenuItem(itemId: string): Promise<any> {
+		try {
+			const response = await axiosInstance.delete(`/menu-items/${itemId}`);
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: 'Failed to delete menu item',
+				error: error.message,
+			};
+		}
+	}
+
+	/**
+	 * Update primary image index (Admin only)
+	 */
+	async updatePrimaryImage(itemId: string, primaryImageIndex: number): Promise<MenuItemResponse> {
+		try {
+			const response = await axiosInstance.patch<MenuItemResponse>(
+				`/menu-items/${itemId}/primary-image`,
+				{ primaryImageIndex }
+			);
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: 'Failed to update primary image',
+				error: error.message,
+			};
+		}
+	}
 
 	/**
 	 * Add item to cart/order for a specific table

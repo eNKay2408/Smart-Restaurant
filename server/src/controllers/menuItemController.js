@@ -218,3 +218,52 @@ export const updateMenuItemStatus = async (req, res) => {
         });
     }
 };
+
+// @desc    Update primary image index
+// @route   PATCH /api/menu-items/:id/primary-image
+// @access  Private (Admin only)
+export const updatePrimaryImage = async (req, res) => {
+    try {
+        const { primaryImageIndex } = req.body;
+
+        // Validate index
+        if (typeof primaryImageIndex !== 'number' || primaryImageIndex < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid primary image index',
+            });
+        }
+
+        const menuItem = await MenuItem.findById(req.params.id);
+
+        if (!menuItem) {
+            return res.status(404).json({
+                success: false,
+                message: 'Menu item not found',
+            });
+        }
+
+        // Check if index is within bounds
+        if (primaryImageIndex >= menuItem.images.length) {
+            return res.status(400).json({
+                success: false,
+                message: `Primary image index must be less than ${menuItem.images.length}`,
+            });
+        }
+
+        menuItem.primaryImageIndex = primaryImageIndex;
+        await menuItem.save();
+
+        res.json({
+            success: true,
+            message: 'Primary image updated successfully',
+            data: menuItem,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error updating primary image',
+            error: error.message,
+        });
+    }
+};

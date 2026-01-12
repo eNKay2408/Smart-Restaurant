@@ -6,6 +6,7 @@ import type { MenuItem as BackendMenuItem } from '../../types/menu.types';
 
 // Use backend MenuItem type
 type MenuItem = BackendMenuItem & {
+    id: string; // Transformed from _id
     category: string; // Display category name instead of full object
 };
 
@@ -26,7 +27,7 @@ const AdminMenuManagement: React.FC = () => {
             setLoading(true);
             setError(null);
             const response = await menuService.getMenuItems();
-            
+
             if (response.success) {
                 // Transform backend data to match local format
                 const transformedItems: MenuItem[] = response.data.map(item => ({
@@ -60,7 +61,7 @@ const AdminMenuManagement: React.FC = () => {
 
         // Filter by search query
         if (searchQuery) {
-            filtered = filtered.filter(item => 
+            filtered = filtered.filter(item =>
                 item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 item.description?.toLowerCase().includes(searchQuery.toLowerCase())
             );
@@ -89,7 +90,7 @@ const AdminMenuManagement: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         if (!window.confirm('Are you sure you want to delete this item?')) return;
-        
+
         try {
             setLoading(true);
             await menuService.deleteMenuItem(id);
@@ -111,6 +112,28 @@ const AdminMenuManagement: React.FC = () => {
             await fetchMenuItems();
         } catch (err: any) {
             setError(err.message || 'Failed to update item status');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Image modal state
+    const [imageModalOpen, setImageModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+
+    const handleOpenImageModal = (item: MenuItem) => {
+        setSelectedItem(item);
+        setImageModalOpen(true);
+    };
+
+    const handleSetPrimaryImage = async (itemId: string, imageIndex: number) => {
+        try {
+            setLoading(true);
+            await menuService.updatePrimaryImage(itemId, imageIndex);
+            setImageModalOpen(false);
+            await fetchMenuItems();
+        } catch (err: any) {
+            setError(err.message || 'Failed to update primary image');
         } finally {
             setLoading(false);
         }
@@ -173,11 +196,10 @@ const AdminMenuManagement: React.FC = () => {
                                 <button
                                     key={category}
                                     onClick={() => setSelectedCategory(category)}
-                                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                        selectedCategory === category
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedCategory === category
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
                                 >
                                     {category}
                                 </button>
@@ -220,11 +242,33 @@ const AdminMenuManagement: React.FC = () => {
                                 {currentItems.map((item) => (
                                     <tr key={item.id} className="hover:bg-gray-50">
                                         <td className="py-4 px-6">
-                                            <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                {item.image ? (
-                                                    <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                                                ) : (
-                                                    <span className="text-2xl">🖼️</span>
+                                            <div className="relative group">
+                                                <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                                                    {item.images && item.images.length > 0 ? (
+                                                        <img
+                                                            src={item.images[item.primaryImageIndex || 0]}
+                                                            alt={item.name}
+                                                            className="w-full h-full object-cover rounded-lg"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-2xl">🖼️</span>
+                                                    )}
+                                                </div>
+                                                {item.images && item.images.length > 1 && (
+                                                    <>
+                                                        <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                                                            {item.images.length}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => handleOpenImageModal(item)}
+                                                            className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
+                                                            title="Change primary image"
+                                                        >
+                                                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </td>
@@ -294,11 +338,10 @@ const AdminMenuManagement: React.FC = () => {
                                         <button
                                             key={index}
                                             onClick={() => setCurrentPage(index + 1)}
-                                            className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                                                currentPage === index + 1
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                                            }`}
+                                            className={`px-3 py-2 text-sm font-medium rounded-lg ${currentPage === index + 1
+                                                ? 'bg-blue-600 text-white'
+                                                : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                                                }`}
                                         >
                                             {index + 1}
                                         </button>
@@ -336,6 +379,89 @@ const AdminMenuManagement: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Image Selection Modal */}
+            {imageModalOpen && selectedItem && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Select Primary Image</h3>
+                                <p className="text-sm text-gray-600 mt-1">{selectedItem.name}</p>
+                            </div>
+                            <button
+                                onClick={() => setImageModalOpen(false)}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {selectedItem.images?.map((image, index) => (
+                                    <div
+                                        key={index}
+                                        className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${index === (selectedItem.primaryImageIndex || 0)
+                                            ? 'border-blue-600 ring-2 ring-blue-200'
+                                            : 'border-gray-200 hover:border-blue-400'
+                                            }`}
+                                        onClick={() => handleSetPrimaryImage(selectedItem.id, index)}
+                                    >
+                                        <div className="aspect-square bg-gray-100">
+                                            <img
+                                                src={image}
+                                                alt={`${selectedItem.name} - Image ${index + 1}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+
+                                        {/* Primary Badge */}
+                                        {index === (selectedItem.primaryImageIndex || 0) && (
+                                            <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
+                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                                Primary
+                                            </div>
+                                        )}
+
+                                        {/* Hover Overlay */}
+                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {index === (selectedItem.primaryImageIndex || 0) ? (
+                                                    <span className="text-white font-medium text-sm">Current Primary</span>
+                                                ) : (
+                                                    <span className="text-white font-medium text-sm">Set as Primary</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Image Number */}
+                                        <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                                            Image {index + 1}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                            <button
+                                onClick={() => setImageModalOpen(false)}
+                                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

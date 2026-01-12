@@ -5,6 +5,7 @@ export interface MenuItem {
 	description: string;
 	price: number;
 	images?: string[];
+	primaryImageIndex?: number; // Index of the primary image to display
 	categoryId: MenuCategory | string; // Can be populated or just ID
 	restaurantId: string;
 	modifiers?: MenuModifier[];

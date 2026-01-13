@@ -26,7 +26,7 @@ const MenuItemDetail: React.FC = () => {
     const location = useLocation();
     const { itemId } = useParams<{ itemId: string }>();
     const { tableInfo, returnPath } = location.state || {};
-    const { tableInfo: qrTableInfo, isLoading: qrLoading } = useQRTable();
+    const { tableInfo: qrTableInfo } = useQRTable();
 
     const [quantity, setQuantity] = useState(1);
     const [specialInstructions, setSpecialInstructions] = useState('');

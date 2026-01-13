@@ -9,7 +9,6 @@ interface MenuItemForm {
     name: string;
     category: string;
     price: string;
-    prepTime: string;
     description: string;
     status: 'available' | 'unavailable' | 'sold_out';
     photos: string[];
@@ -39,7 +38,6 @@ const AdminMenuItemForm: React.FC = () => {
         name: '',
         category: 'Main Dishes',
         price: '',
-        prepTime: '',
         description: '',
         status: 'available',
         photos: [],
@@ -78,7 +76,6 @@ const AdminMenuItemForm: React.FC = () => {
                     name: item.name,
                     category: typeof item.categoryId === 'object' ? item.categoryId.name : 'Main Dishes',
                     price: item.price.toString(),
-                    prepTime: item.prepTime?.toString() || '',
                     description: item.description,
                     status: item.status,
                     photos: item.images || [],
@@ -136,7 +133,6 @@ const AdminMenuItemForm: React.FC = () => {
                 name: 'Grilled Salmon',
                 category: 'Main Dishes',
                 price: '18.00',
-                prepTime: '15',
                 description: 'Fresh Atlantic salmon grilled to perfection, served with seasonal vegetables and lemon.',
                 status: 'available',
                 photos: [],
@@ -206,20 +202,29 @@ const AdminMenuItemForm: React.FC = () => {
                 price: parseFloat(formData.price),
                 categoryId: selectedCategory?._id || categories[0]?._id,
                 status: formData.status,
-                prepTime: parseInt(formData.prepTime) || 15,
                 images: formData.photos,
-                restaurantId: 'default-restaurant' // You may want to get this from context
+                // Use a valid ObjectId format for restaurantId
+                restaurantId: '507f1f77bcf86cd799439011' // Default restaurant ObjectId
             };
+
+            console.log('📝 Sending menu item data:', menuItemData);
 
             if (isEditing && id) {
                 await menuService.updateMenuItem(id, menuItemData);
+                console.log('✅ Updated menu item successfully');
             } else {
-                await menuService.createMenuItem(menuItemData);
+                const response = await menuService.createMenuItem(menuItemData);
+                console.log('✅ Created menu item successfully:', response);
             }
 
             navigate('/admin/menu');
         } catch (err: any) {
-            setError(err.message || 'Failed to save menu item');
+            console.error('❌ Failed to save menu item:', err);
+            console.error('Error response:', err.response?.data);
+            
+            // Show more specific error messages
+            const errorMessage = err.response?.data?.message || err.message || 'Failed to save menu item';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -355,22 +360,6 @@ const AdminMenuItemForm: React.FC = () => {
                                 </div>
                                 {errors.price && <p className="text-red-600 text-sm mt-1">{errors.price}</p>}
                             </div>
-
-                            <div>
-                                <label htmlFor="prepTime" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Prep Time (minutes)
-                                </label>
-                                <input
-                                    type="number"
-                                    id="prepTime"
-                                    name="prepTime"
-                                    value={formData.prepTime}
-                                    onChange={handleInputChange}
-                                    min="0"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="15"
-                                />
-                            </div>
                         </div>
 
                         <div className="mt-6">
@@ -395,61 +384,93 @@ const AdminMenuItemForm: React.FC = () => {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Photos</h3>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {formData.photos.map((photo, index) => (
-                                <div key={index} className="relative">
-                                    <div className="w-full h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
-                                        {photo ? (
-                                            <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-4xl">🖼️</span>
-                                        )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => removePhoto(index)}
-                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            ))}
-                            <div>
+                        <div className="space-y-4">
+                            {/* URL Input for adding images */}
+                            <div className="flex gap-2">
                                 <input
-                                    type="file"
-                                    id="photo-upload"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            // For now, just add a placeholder URL
-                                            // In production, upload to server and get URL
-                                            const reader = new FileReader();
-                                            reader.onload = (event) => {
-                                                const imageUrl = event.target?.result as string;
+                                    type="url"
+                                    placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const input = e.target as HTMLInputElement;
+                                            const url = input.value.trim();
+                                            if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
                                                 setFormData(prev => ({
                                                     ...prev,
-                                                    photos: [...prev.photos, imageUrl]
+                                                    photos: [...prev.photos, url]
                                                 }));
-                                            };
-                                            reader.readAsDataURL(file);
+                                                input.value = '';
+                                            } else {
+                                                alert('Please enter a valid URL starting with http:// or https://');
+                                            }
                                         }
-                                        // Reset input
-                                        e.target.value = '';
                                     }}
                                 />
-                                <label
-                                    htmlFor="photo-upload"
-                                    className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer block"
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        const input = (e.target as HTMLButtonElement).previousElementSibling as HTMLInputElement;
+                                        const url = input.value.trim();
+                                        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                photos: [...prev.photos, url]
+                                            }));
+                                            input.value = '';
+                                        } else {
+                                            alert('Please enter a valid URL starting with http:// or https://');
+                                        }
+                                    }}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                                 >
-                                    <div className="text-center">
-                                        <svg className="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        <span className="text-sm text-gray-600">Add Photo</span>
+                                    Add Image
+                                </button>
+                            </div>
+
+                            {/* Image Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {formData.photos.map((photo, index) => (
+                                    <div key={index} className="relative">
+                                        <div className="w-full h-32 bg-gray-100 border border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                                            {photo ? (
+                                                <img 
+                                                    src={photo} 
+                                                    alt={`Photo ${index + 1}`} 
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        const img = e.target as HTMLImageElement;
+                                                        img.style.display = 'none';
+                                                        const parent = img.parentElement;
+                                                        if (parent) {
+                                                            parent.innerHTML = '<span class="text-red-500 text-xs">❌ Image failed to load</span>';
+                                                        }
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span className="text-4xl">🖼️</span>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removePhoto(index)}
+                                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
+                                        >
+                                            ×
+                                        </button>
                                     </div>
-                                </label>
+                                ))}
+                                
+                                {/* Add more placeholder */}
+                                {formData.photos.length === 0 && (
+                                    <div className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400">
+                                        <div className="text-center">
+                                            <span className="text-4xl">📷</span>
+                                            <p className="text-sm mt-1">No images yet</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

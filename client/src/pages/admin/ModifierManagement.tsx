@@ -264,7 +264,7 @@ const ModifierManagement: React.FC = () => {
 
                                     <div className="space-y-3 max-h-40 overflow-y-auto">
                                         {formData.options.map((option, index) => (
-                                            <div key={index} className="flex gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                                            <div key={`option-${index}-${option.name}`} className="flex gap-3 items-center p-3 bg-gray-50 rounded-lg">
                                                 <input
                                                     type="text"
                                                     placeholder="Option name"

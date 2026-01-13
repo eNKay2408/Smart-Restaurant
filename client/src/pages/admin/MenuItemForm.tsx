@@ -94,11 +94,11 @@ const AdminMenuItemForm: React.FC = () => {
         const initializeForm = async () => {
             setInitialLoading(true);
             await fetchCategories();
-            
+
             if (isEditing && id) {
                 await fetchMenuItem(id);
             }
-            
+
             setInitialLoading(false);
         };
 
@@ -117,7 +117,7 @@ const AdminMenuItemForm: React.FC = () => {
             multiSelect: false
         },
         {
-            id: '2', 
+            id: '2',
             name: 'Extras',
             items: [
                 { id: '2-1', name: 'Side salad', price: 4 },
@@ -151,7 +151,7 @@ const AdminMenuItemForm: React.FC = () => {
             ...prev,
             [name]: value
         }));
-        
+
         // Clear error when user starts typing
         if (errors[name]) {
             setErrors(prev => ({
@@ -188,18 +188,18 @@ const AdminMenuItemForm: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!validateForm()) {
             return;
         }
 
         setLoading(true);
         setError(null);
-        
+
         try {
             // Find selected category
             const selectedCategory = categories.find(cat => cat.name === formData.category);
-            
+
             const menuItemData = {
                 name: formData.name,
                 description: formData.description,
@@ -216,7 +216,7 @@ const AdminMenuItemForm: React.FC = () => {
             } else {
                 await menuService.createMenuItem(menuItemData);
             }
-            
+
             navigate('/admin/menu');
         } catch (err: any) {
             setError(err.message || 'Failed to save menu item');
@@ -292,7 +292,7 @@ const AdminMenuItemForm: React.FC = () => {
                     {/* Basic Information */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -304,9 +304,8 @@ const AdminMenuItemForm: React.FC = () => {
                                     name="name"
                                     value={formData.name}
                                     onChange={handleInputChange}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                        errors.name ? 'border-red-300' : 'border-gray-300'
-                                    }`}
+                                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.name ? 'border-red-300' : 'border-gray-300'
+                                        }`}
                                     placeholder="e.g., Grilled Salmon"
                                 />
                                 {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
@@ -321,9 +320,8 @@ const AdminMenuItemForm: React.FC = () => {
                                     name="category"
                                     value={formData.category}
                                     onChange={handleInputChange}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                        errors.category ? 'border-red-300' : 'border-gray-300'
-                                    }`}
+                                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.category ? 'border-red-300' : 'border-gray-300'
+                                        }`}
                                 >
                                     {categories.length === 0 ? (
                                         <option value="">Loading categories...</option>
@@ -350,9 +348,8 @@ const AdminMenuItemForm: React.FC = () => {
                                         onChange={handleInputChange}
                                         step="0.01"
                                         min="0"
-                                        className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                            errors.price ? 'border-red-300' : 'border-gray-300'
-                                        }`}
+                                        className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.price ? 'border-red-300' : 'border-gray-300'
+                                            }`}
                                         placeholder="18.00"
                                     />
                                 </div>
@@ -386,9 +383,8 @@ const AdminMenuItemForm: React.FC = () => {
                                 value={formData.description}
                                 onChange={handleInputChange}
                                 rows={3}
-                                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    errors.description ? 'border-red-300' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.description ? 'border-red-300' : 'border-gray-300'
+                                    }`}
                                 placeholder="Fresh Atlantic salmon grilled to perfection, served with seasonal vegetables and lemon."
                             />
                             {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description}</p>}
@@ -398,12 +394,16 @@ const AdminMenuItemForm: React.FC = () => {
                     {/* Photos */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Photos</h3>
-                        
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {formData.photos.map((photo, index) => (
                                 <div key={index} className="relative">
-                                    <div className="w-full h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                                        <span className="text-4xl">🖼️</span>
+                                    <div className="w-full h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                                        {photo ? (
+                                            <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-4xl">🖼️</span>
+                                        )}
                                     </div>
                                     <button
                                         type="button"
@@ -414,18 +414,43 @@ const AdminMenuItemForm: React.FC = () => {
                                     </button>
                                 </div>
                             ))}
-                            <button
-                                type="button"
-                                onClick={addPhotoSlot}
-                                className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                            >
-                                <div className="text-center">
-                                    <svg className="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    <span className="text-sm text-gray-600">Add Photo</span>
-                                </div>
-                            </button>
+                            <div>
+                                <input
+                                    type="file"
+                                    id="photo-upload"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            // For now, just add a placeholder URL
+                                            // In production, upload to server and get URL
+                                            const reader = new FileReader();
+                                            reader.onload = (event) => {
+                                                const imageUrl = event.target?.result as string;
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    photos: [...prev.photos, imageUrl]
+                                                }));
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                        // Reset input
+                                        e.target.value = '';
+                                    }}
+                                />
+                                <label
+                                    htmlFor="photo-upload"
+                                    className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer block"
+                                >
+                                    <div className="text-center">
+                                        <svg className="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <span className="text-sm text-gray-600">Add Photo</span>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -480,7 +505,7 @@ const AdminMenuItemForm: React.FC = () => {
                     {/* Status */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Status</h3>
-                        
+
                         <div className="space-y-3">
                             <label className="flex items-center">
                                 <input

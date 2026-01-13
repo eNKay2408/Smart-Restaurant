@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { menuService } from '../../services/menuService';
 import type { MenuItem as BackendMenuItem } from '../../types/menu.types';
+import { getPrimaryImageUrl, getImageUrl } from '../../utils/imageHelper';
 
 // Use backend MenuItem type
 type MenuItem = BackendMenuItem & {
@@ -246,7 +247,7 @@ const AdminMenuManagement: React.FC = () => {
                                                 <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
                                                     {item.images && item.images.length > 0 ? (
                                                         <img
-                                                            src={item.images[item.primaryImageIndex || 0]}
+                                                            src={getPrimaryImageUrl(item.images, item.primaryImageIndex)}
                                                             alt={item.name}
                                                             className="w-full h-full object-cover rounded-lg"
                                                         />
@@ -414,7 +415,7 @@ const AdminMenuManagement: React.FC = () => {
                                     >
                                         <div className="aspect-square bg-gray-100">
                                             <img
-                                                src={image}
+                                                src={getImageUrl(image)}
                                                 alt={`${selectedItem.name} - Image ${index + 1}`}
                                                 className="w-full h-full object-cover"
                                             />

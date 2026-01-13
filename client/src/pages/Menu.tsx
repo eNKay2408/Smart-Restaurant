@@ -7,6 +7,7 @@ import { CategoryFilter } from '../components/CategoryFilter';
 import cartService from '../services/cartService';
 import QRScanRequired from '../components/QRScanRequired';
 import { toast } from 'react-toastify';
+import { getPrimaryImageUrl } from '../utils/imageHelper';
 
 
 function Menu() {
@@ -273,8 +274,16 @@ function Menu() {
                                             >
                                                 <div className="flex space-x-4">
                                                     {/* Item Image */}
-                                                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                        <span className="text-3xl">{getCategoryEmoji(categoryName)}</span>
+                                                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                        {item.images && item.images.length > 0 ? (
+                                                            <img
+                                                                src={getPrimaryImageUrl(item.images, item.primaryImageIndex)}
+                                                                alt={item.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-3xl">{getCategoryEmoji(categoryName)}</span>
+                                                        )}
                                                     </div>
 
                                                     {/* Item Details */}

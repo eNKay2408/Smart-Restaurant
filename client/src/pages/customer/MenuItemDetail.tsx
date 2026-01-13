@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import menuService from '../../services/menuService';
+import { getPrimaryImageUrl } from '../../utils/imageHelper';
 
 interface Modifier {
     id: string;
@@ -24,50 +26,48 @@ const MenuItemDetail: React.FC = () => {
 
     const [quantity, setQuantity] = useState(1);
     const [specialInstructions, setSpecialInstructions] = useState('');
-    const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([
-        {
-            id: '1',
-            name: 'Size',
-            required: false,
-            multiSelect: false,
-            options: [
-                { id: '1-1', name: 'Regular', price: 0, selected: true },
-                { id: '1-2', name: 'Large', price: 5, selected: false }
-            ]
-        },
-        {
-            id: '2',
-            name: 'Extras',
-            required: false,
-            multiSelect: true,
-            options: [
-                { id: '2-1', name: 'Side salad', price: 4, selected: false },
-                { id: '2-2', name: 'Extra sauce', price: 2, selected: false },
-                { id: '2-3', name: 'Extra cheese', price: 3, selected: false }
-            ]
-        }
-    ]);
+    const [item, setItem] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
 
-    // Mock item data - in real app this would come from API
-    const item = {
-        id: itemId || '1',
-        name: 'Grilled Salmon',
-        price: 18,
-        description: 'Fresh Atlantic salmon grilled to perfection, served with seasonal vegetables and lemon. Our signature dish features a perfectly seasoned fillet cooked to your preference.',
-        image: '🍣',
-        rating: 4.5,
-        reviews: 24,
-        prepTime: 15,
-        calories: 320,
-        ingredients: ['Atlantic Salmon', 'Mixed Vegetables', 'Lemon', 'Herbs', 'Olive Oil'],
-        allergens: ['Fish'],
-        nutritionFacts: {
-            protein: '35g',
-            carbs: '8g',
-            fat: '15g',
-            fiber: '3g'
-        }
-    };
+    // Fetch menu item data on mount
+    useEffect(() => {
+        const fetchMenuItem = async () => {
+            if (!itemId) return;
+
+            try {
+                setLoading(true);
+                const response = await menuService.getMenuItem(itemId);
+
+                if (response.success && response.data) {
+                    setItem(response.data);
+
+                    // Transform backend modifiers to frontend format
+                    if (response.data.modifiers && response.data.modifiers.length > 0) {
+                        const transformedModifiers = response.data.modifiers.map((modifier: any, idx: number) => ({
+                            id: `mod-${idx}`,
+                            name: modifier.name,
+                            required: false,
+                            multiSelect: true, // Backend modifiers support multi-select
+                            options: modifier.options.map((option: any, optIdx: number) => ({
+                                id: `${idx}-${optIdx}`,
+                                name: option.name,
+                                price: option.priceAdjust || 0,
+                                selected: false
+                            }))
+                        }));
+                        setModifierGroups(transformedModifiers);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching menu item:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMenuItem();
+    }, [itemId]);
 
     const handleModifierChange = (groupId: string, optionId: string) => {
         setModifierGroups(prev => prev.map(group => {
@@ -123,7 +123,7 @@ const MenuItemDetail: React.FC = () => {
         };
 
         console.log('Adding to cart:', cartItem);
-        
+
         // Navigate back to menu or cart
         if (returnPath) {
             navigate(returnPath);
@@ -135,6 +135,17 @@ const MenuItemDetail: React.FC = () => {
     const handleBack = () => {
         navigate(-1);
     };
+
+    if (loading || !item) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading menu item...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -162,7 +173,15 @@ const MenuItemDetail: React.FC = () => {
                 {/* Item Image */}
                 <div className="bg-white">
                     <div className="aspect-video bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                        <span className="text-8xl">{item.image}</span>
+                        {item.images && item.images.length > 0 ? (
+                            <img
+                                src={getPrimaryImageUrl(item.images, item.primaryImageIndex)}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-8xl">🍽️</span>
+                        )}
                     </div>
                 </div>
 
@@ -171,23 +190,22 @@ const MenuItemDetail: React.FC = () => {
                     <div className="flex justify-between items-start mb-3">
                         <h2 className="text-2xl font-bold text-gray-900">{item.name}</h2>
                         <div className="text-right">
-                            <p className="text-2xl font-bold text-gray-900">${item.price}</p>
-                            <div className="flex items-center mt-1">
-                                <div className="flex text-yellow-400 text-sm mr-2">
-                                    {[...Array(Math.floor(item.rating))].map((_, i) => (
-                                        <span key={i}>★</span>
-                                    ))}
-                                    {item.rating % 1 !== 0 && <span>☆</span>}
-                                </div>
-                                <span className="text-sm text-gray-500">({item.reviews} reviews)</span>
-                            </div>
+                            <p className="text-2xl font-bold text-gray-900">${item.price.toFixed(2)}</p>
                         </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-4 mb-4">
-                        <span className="text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">🟢 Available</span>
-                        <span className="text-sm text-gray-600">⏱️ {item.prepTime} min</span>
-                        <span className="text-sm text-gray-600">🔥 {item.calories} cal</span>
+                        <span className={`text-sm px-2 py-1 rounded-full ${item.available
+                            ? 'text-green-600 bg-green-100'
+                            : 'text-red-600 bg-red-100'
+                            }`}>
+                            {item.available ? '🟢 Available' : '🔴 Unavailable'}
+                        </span>
+                        {item.category && (
+                            <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                                {item.category.name}
+                            </span>
+                        )}
                     </div>
 
                     <p className="text-gray-700 leading-relaxed">{item.description}</p>
@@ -237,7 +255,8 @@ const MenuItemDetail: React.FC = () => {
                     />
                 </div>
 
-                {/* Nutrition & Ingredients */}
+                {/* Nutrition & Ingredients - Not available in backend yet */}
+                {/* 
                 <div className="bg-white mt-2 px-4 py-6">
                     <div className="grid grid-cols-2 gap-6">
                         <div>
@@ -261,7 +280,7 @@ const MenuItemDetail: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Ingredients</h3>
                             <div className="flex flex-wrap gap-2">
@@ -274,7 +293,7 @@ const MenuItemDetail: React.FC = () => {
                                     </span>
                                 ))}
                             </div>
-                            
+
                             {item.allergens.length > 0 && (
                                 <div className="mt-4">
                                     <h4 className="text-sm font-medium text-gray-900 mb-2">Allergens</h4>
@@ -293,6 +312,7 @@ const MenuItemDetail: React.FC = () => {
                         </div>
                     </div>
                 </div>
+                */}
             </div>
 
             {/* Bottom Action Bar */}
@@ -313,21 +333,21 @@ const MenuItemDetail: React.FC = () => {
                             <span className="text-xl font-bold text-gray-600">+</span>
                         </button>
                     </div>
-                    
+
                     <div className="text-right">
                         <p className="text-sm text-gray-600">Total</p>
                         <p className="text-xl font-bold text-gray-900">${calculateTotalPrice().toFixed(2)}</p>
                     </div>
                 </div>
-                
+
                 <button
                     onClick={handleAddToCart}
                     className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                 >
                     Add to Cart
                 </button>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

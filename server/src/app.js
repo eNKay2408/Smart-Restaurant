@@ -37,8 +37,11 @@ connectDB();
 // Initialize Express app
 const app = express();
 
-// Security middleware
-app.use(helmet());
+// Security middleware - Configure helmet to allow CORS for static files
+app.use(helmet({
+	crossOriginResourcePolicy: { policy: "cross-origin" },
+	crossOriginEmbedderPolicy: false
+}));
 
 // CORS configuration
 const allowedOrigins = [
@@ -69,6 +72,13 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Compression middleware
 app.use(compression());
+
+// Serve static files (images, etc.)
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, '../public/images')));
 
 // Logging middleware
 if (process.env.NODE_ENV === "development") {

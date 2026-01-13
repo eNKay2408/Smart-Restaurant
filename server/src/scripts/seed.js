@@ -116,35 +116,35 @@ const seedDatabase = async () => {
             {
                 name: 'Appetizers',
                 description: 'Start your meal right',
-                image: 'https://images.unsplash.com/photo-1541529086526-db283c563270?w=400',
+                image: '/uploads/categories/appetizers.jpg',
                 displayOrder: 1,
                 restaurantId: restaurant._id,
             },
             {
                 name: 'Main Dishes',
                 description: 'Our signature dishes',
-                image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+                image: '/uploads/categories/main-dishes.jpg',
                 displayOrder: 2,
                 restaurantId: restaurant._id,
             },
             {
                 name: 'Salads',
                 description: 'Fresh and healthy options',
-                image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
+                image: '/uploads/categories/salads.jpg',
                 displayOrder: 3,
                 restaurantId: restaurant._id,
             },
             {
                 name: 'Drinks',
                 description: 'Refreshing beverages',
-                image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400',
+                image: '/uploads/categories/drinks.jpg',
                 displayOrder: 4,
                 restaurantId: restaurant._id,
             },
             {
                 name: 'Desserts',
                 description: 'Sweet endings',
-                image: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400',
+                image: '/uploads/categories/desserts.jpg',
                 displayOrder: 5,
                 restaurantId: restaurant._id,
             },
@@ -350,7 +350,7 @@ const seedDatabase = async () => {
                 name: 'Caesar Salad',
                 description: 'Fresh romaine lettuce with parmesan and croutons',
                 price: 12,
-                images: ['https://images.unsplash.com/photo-1546793665-c74683f339c1?w=500'],
+                images: ['/uploads/menu-items/caesar-salad.jpg'],
                 categoryId: categories[0]._id,
                 restaurantId: restaurant._id,
                 prepTime: 10,
@@ -373,7 +373,7 @@ const seedDatabase = async () => {
                 name: 'Mushroom Soup',
                 description: 'Creamy mushroom soup with herbs',
                 price: 8,
-                images: ['https://images.unsplash.com/photo-1547592166-23ac45744acd?w=500'],
+                images: ['/uploads/menu-items/mushroom-soup.jpg'],
                 categoryId: categories[0]._id,
                 restaurantId: restaurant._id,
                 prepTime: 8,
@@ -383,7 +383,7 @@ const seedDatabase = async () => {
                 name: 'Spring Rolls',
                 description: 'Crispy Vietnamese spring rolls with sweet chili sauce',
                 price: 9,
-                images: ['https://images.unsplash.com/photo-1594007654729-407eedc4be65?w=500'],
+                images: ['/uploads/menu-items/spring-rolls.jpg'],
                 categoryId: categories[0]._id,
                 restaurantId: restaurant._id,
                 prepTime: 12,
@@ -394,7 +394,7 @@ const seedDatabase = async () => {
                 name: 'Bruschetta',
                 description: 'Toasted bread with fresh tomatoes, basil, and garlic',
                 price: 10,
-                images: ['https://images.unsplash.com/photo-1572695157366-5e585ab2b69f?w=500'],
+                images: ['/uploads/menu-items/bruschetta.jpg'],
                 categoryId: categories[0]._id,
                 restaurantId: restaurant._id,
                 prepTime: 8,
@@ -407,7 +407,12 @@ const seedDatabase = async () => {
                 name: 'Grilled Salmon',
                 description: 'Fresh Atlantic salmon with seasonal vegetables',
                 price: 28,
-                images: ['https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=500'],
+                images: [
+                    '/uploads/menu-items/grilled-salmon-1.jpg',
+                    '/uploads/menu-items/grilled-salmon-2.jpg',
+                    '/uploads/menu-items/grilled-salmon-3.jpg'
+                ],
+                primaryImageIndex: 0,
                 categoryId: categories[1]._id,
                 restaurantId: restaurant._id,
                 prepTime: 15,
@@ -439,7 +444,12 @@ const seedDatabase = async () => {
                 name: 'Beef Steak',
                 description: 'Premium beef steak cooked to perfection',
                 price: 35,
-                images: ['https://images.unsplash.com/photo-1600891964092-4316c288032e?w=500'],
+                images: [
+                    '/uploads/menu-items/beef-steak-1.jpg',
+                    '/uploads/menu-items/beef-steak-2.jpg',
+                    '/uploads/menu-items/beef-steak-3.jpg'
+                ],
+                primaryImageIndex: 0,
                 categoryId: categories[1]._id,
                 restaurantId: restaurant._id,
                 prepTime: 20,
@@ -463,7 +473,12 @@ const seedDatabase = async () => {
                 name: 'Pasta Carbonara',
                 description: 'Classic Italian pasta with bacon and cream',
                 price: 18,
-                images: ['https://images.unsplash.com/photo-1612874742237-6526221588e3?w=500'],
+                images: [
+                    '/uploads/menu-items/pasta-carbonara-1.jpg',
+                    '/uploads/menu-items/pasta-carbonara-2.jpg',
+                    '/uploads/menu-items/pasta-carbonara-3.jpg'
+                ],
+                primaryImageIndex: 0,
                 categoryId: categories[1]._id,
                 restaurantId: restaurant._id,
                 prepTime: 12,
@@ -474,7 +489,12 @@ const seedDatabase = async () => {
                 name: 'Chicken Teriyaki',
                 description: 'Grilled chicken with teriyaki sauce and rice',
                 price: 22,
-                images: ['https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=500'],
+                images: [
+                    '/uploads/menu-items/chicken-teriyaki-1.jpg',
+                    '/uploads/menu-items/chicken-teriyaki-2.jpg',
+                    '/uploads/menu-items/chicken-teriyaki-3.jpg'
+                ],
+                primaryImageIndex: 0,
                 categoryId: categories[1]._id,
                 restaurantId: restaurant._id,
                 prepTime: 18,
@@ -484,7 +504,7 @@ const seedDatabase = async () => {
                 name: 'Seafood Paella',
                 description: 'Spanish rice dish with mixed seafood',
                 price: 32,
-                images: ['https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=500'],
+                images: ['/uploads/menu-items/seafood-paella.jpg'],
                 categoryId: categories[1]._id,
                 restaurantId: restaurant._id,
                 prepTime: 25,
@@ -496,7 +516,7 @@ const seedDatabase = async () => {
                 name: 'Lamb Chops',
                 description: 'Grilled lamb chops with rosemary and garlic',
                 price: 38,
-                images: ['https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=500'],
+                images: ['/uploads/menu-items/lamb-chops.jpg'],
                 categoryId: categories[1]._id,
                 restaurantId: restaurant._id,
                 prepTime: 22,
@@ -508,7 +528,12 @@ const seedDatabase = async () => {
                 name: 'Greek Salad',
                 description: 'Fresh vegetables with feta cheese and olives',
                 price: 14,
-                images: ['https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500'],
+                images: [
+                    '/uploads/menu-items/greek-salad-1.jpg',
+                    '/uploads/menu-items/greek-salad-2.jpg',
+                    '/uploads/menu-items/greek-salad-3.jpg'
+                ],
+                primaryImageIndex: 0,
                 categoryId: categories[2]._id,
                 restaurantId: restaurant._id,
                 prepTime: 8,
@@ -519,7 +544,7 @@ const seedDatabase = async () => {
                 name: 'Quinoa Bowl',
                 description: 'Healthy quinoa with roasted vegetables and tahini',
                 price: 16,
-                images: ['https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=500'],
+                images: ['/uploads/menu-items/quinoa-bowl.jpg'],
                 categoryId: categories[2]._id,
                 restaurantId: restaurant._id,
                 prepTime: 10,
@@ -530,7 +555,7 @@ const seedDatabase = async () => {
                 name: 'Caprese Salad',
                 description: 'Fresh mozzarella, tomatoes, and basil with balsamic',
                 price: 13,
-                images: ['https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?w=500'],
+                images: ['/uploads/menu-items/caprese-salad.jpg'],
                 categoryId: categories[2]._id,
                 restaurantId: restaurant._id,
                 prepTime: 7,
@@ -543,7 +568,12 @@ const seedDatabase = async () => {
                 name: 'Fresh Orange Juice',
                 description: 'Freshly squeezed orange juice',
                 price: 6,
-                images: ['https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=500'],
+                images: [
+                    '/uploads/menu-items/fresh-orange-juice-1.jpg',
+                    '/uploads/menu-items/fresh-orange-juice-2.jpg',
+                    '/uploads/menu-items/fresh-orange-juice-3.jpg'
+                ],
+                primaryImageIndex: 0,
                 categoryId: categories[3]._id,
                 restaurantId: restaurant._id,
                 prepTime: 3,
@@ -553,7 +583,12 @@ const seedDatabase = async () => {
                 name: 'Iced Coffee',
                 description: 'Vietnamese style iced coffee',
                 price: 5,
-                images: ['https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=500'],
+                images: [
+                    '/uploads/menu-items/iced-coffee-1.jpg',
+                    '/uploads/menu-items/iced-coffee-2.jpg',
+                    '/uploads/menu-items/iced-coffee-3.jpg'
+                ],
+                primaryImageIndex: 0,
                 categoryId: categories[3]._id,
                 restaurantId: restaurant._id,
                 prepTime: 5,
@@ -576,7 +611,7 @@ const seedDatabase = async () => {
                 name: 'Mango Smoothie',
                 description: 'Fresh mango blended with yogurt and honey',
                 price: 7,
-                images: ['https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=500'],
+                images: ['/uploads/menu-items/mango-smoothie.jpg'],
                 categoryId: categories[3]._id,
                 restaurantId: restaurant._id,
                 prepTime: 5,
@@ -587,7 +622,7 @@ const seedDatabase = async () => {
                 name: 'Green Tea Latte',
                 description: 'Matcha green tea with steamed milk',
                 price: 6,
-                images: ['https://images.unsplash.com/photo-1515823064-d6e0c04616a7?w=500'],
+                images: ['/uploads/menu-items/green-tea-latte.jpg'],
                 categoryId: categories[3]._id,
                 restaurantId: restaurant._id,
                 prepTime: 5,
@@ -600,7 +635,12 @@ const seedDatabase = async () => {
                 name: 'Chocolate Lava Cake',
                 description: 'Warm chocolate cake with molten center',
                 price: 10,
-                images: ['https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=500'],
+                images: [
+                    '/uploads/menu-items/chocolate-lava-cake-1.jpg',
+                    '/uploads/menu-items/chocolate-lava-cake-2.jpg',
+                    '/uploads/menu-items/chocolate-lava-cake-3.jpg'
+                ],
+                primaryImageIndex: 0,
                 categoryId: categories[4]._id,
                 restaurantId: restaurant._id,
                 prepTime: 10,
@@ -612,7 +652,7 @@ const seedDatabase = async () => {
                 name: 'Tiramisu',
                 description: 'Classic Italian coffee-flavored dessert',
                 price: 9,
-                images: ['https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=500'],
+                images: ['/uploads/menu-items/tiramisu.jpg'],
                 categoryId: categories[4]._id,
                 restaurantId: restaurant._id,
                 prepTime: 5,
@@ -623,7 +663,7 @@ const seedDatabase = async () => {
                 name: 'Crème Brûlée',
                 description: 'Classic French vanilla custard with caramelized sugar',
                 price: 11,
-                images: ['https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc?w=500'],
+                images: ['/uploads/menu-items/creme-brulee.jpg'],
                 categoryId: categories[4]._id,
                 restaurantId: restaurant._id,
                 prepTime: 8,
@@ -632,75 +672,14 @@ const seedDatabase = async () => {
                 isRecommended: true,
             },
         ]);
-        console.log('✅ Created 20 Menu Items with Images');
+        console.log('✅ Created 20 Menu Items with Local Images');
 
+        // NOTE: The following section is commented out because we now use local images
+        // All images are already set to local paths (e.g., '/uploads/menu-items/beef-steak-1.jpg')
+        /*
         // 10.5. Update Menu Items with Multiple Images (3 images per item)
         const foodImages = {
-            steak: [
-                'https://images.pexels.com/photos/769289/pexels-photo-769289.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/361184/asparagus-steak-veal-steak-veal-361184.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            burger: [
-                'https://images.pexels.com/photos/1639557/pexels-photo-1639557.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1556688/pexels-photo-1556688.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/2983099/pexels-photo-2983099.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            pasta: [
-                'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1438672/pexels-photo-1438672.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1460872/pexels-photo-1460872.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            salad: [
-                'https://images.pexels.com/photos/1059905/pexels-photo-1059905.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1211887/pexels-photo-1211887.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            soup: [
-                'https://images.pexels.com/photos/539451/pexels-photo-539451.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/2703468/pexels-photo-2703468.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1731535/pexels-photo-1731535.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            chicken: [
-                'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/2338408/pexels-photo-2338408.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1624487/pexels-photo-1624487.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            seafood: [
-                'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1516415/pexels-photo-1516415.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/566345/pexels-photo-566345.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            dessert: [
-                'https://images.pexels.com/photos/291528/pexels-photo-291528.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1126359/pexels-photo-1126359.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1099680/pexels-photo-1099680.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            coffee: [
-                'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1251175/pexels-photo-1251175.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-            juice: [
-                'https://images.pexels.com/photos/96974/pexels-photo-96974.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1435904/pexels-photo-1435904.jpeg?auto=compress&cs=tinysrgb&w=800',
-                'https://images.pexels.com/photos/1337824/pexels-photo-1337824.jpeg?auto=compress&cs=tinysrgb&w=800',
-            ],
-        };
-
-        const getImagesForItem = (itemName) => {
-            const name = itemName.toLowerCase();
-            if (name.includes('steak') || name.includes('beef') || name.includes('lamb')) return foodImages.steak;
-            if (name.includes('burger')) return foodImages.burger;
-            if (name.includes('pasta') || name.includes('spaghetti') || name.includes('carbonara')) return foodImages.pasta;
-            if (name.includes('salad') || name.includes('quinoa') || name.includes('caprese') || name.includes('greek')) return foodImages.salad;
-            if (name.includes('soup') || name.includes('mushroom')) return foodImages.soup;
-            if (name.includes('chicken') || name.includes('teriyaki')) return foodImages.chicken;
-            if (name.includes('salmon') || name.includes('fish') || name.includes('seafood') || name.includes('shrimp') || name.includes('paella')) return foodImages.seafood;
-            if (name.includes('cake') || name.includes('ice cream') || name.includes('tiramisu') || name.includes('brownie') || name.includes('brûlée')) return foodImages.dessert;
-            if (name.includes('coffee') || name.includes('espresso') || name.includes('latte') || name.includes('cappuccino') || name.includes('tea')) return foodImages.coffee;
-            if (name.includes('juice') || name.includes('smoothie') || name.includes('lemonade') || name.includes('orange')) return foodImages.juice;
-            return foodImages.salad; // Default
+            ... (commented out - no longer needed)
         };
 
         // Update each menu item with 3 images
@@ -710,6 +689,7 @@ const seedDatabase = async () => {
             await item.save();
         }
         console.log('✅ Updated all Menu Items with 3 images each');
+        */
 
         // 10. Create Tables with QR Codes (10 tables)
         const tableNumbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];

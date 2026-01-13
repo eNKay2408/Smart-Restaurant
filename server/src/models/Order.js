@@ -59,8 +59,16 @@ const orderSchema = new mongoose.Schema(
 				// Item status in kitchen
 				status: {
 					type: String,
-					enum: ["pending", "preparing", "ready", "served"],
+					enum: ["pending", "preparing", "ready", "served", "rejected"],
 					default: "pending",
+				},
+				rejectionReason: {
+					type: String,
+					default: null,
+				},
+				rejectedAt: {
+					type: Date,
+					default: null,
 				},
 				prepStartTime: {
 					type: Date,

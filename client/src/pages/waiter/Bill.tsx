@@ -48,14 +48,16 @@ function Bill() {
 			time: new Date(order.createdAt).toLocaleTimeString(),
 			table: order.tableId.tableNumber,
 			customer: order.customerId ? order.customerId.fullName : order.guestName,
-			items: order.items.map((item) => ({
-				name: item.name,
-				quantity: item.quantity,
-				price: item.price,
-				modifiers: item.modifiers,
-				specialInstructions: item.specialInstructions,
-				subtotal: item.subtotal,
-			})),
+			items: order.items
+				.filter((item) => item.status !== 'rejected')
+				.map((item) => ({
+					name: item.name,
+					quantity: item.quantity,
+					price: item.price,
+					modifiers: item.modifiers,
+					specialInstructions: item.specialInstructions,
+					subtotal: item.subtotal,
+				})),
 			subtotal: order.subtotal,
 			tax: order.tax,
 			discount: order.discount,
@@ -78,14 +80,15 @@ function Bill() {
 		if (!order) return;
 
 		let csv = "Item,Quantity,Price,Modifiers,Subtotal\n";
-		order.items.forEach((item) => {
-			const modifiers = item.modifiers
-				?.map((m) => `${m.name}: ${m.options.map((o) => o.name).join(", ")}`)
-				.join("; ");
-			csv += `"${item.name}",${item.quantity},$${item.price},"${
-				modifiers || ""
-			}",$${item.subtotal}\n`;
-		});
+		order.items
+			.filter((item) => item.status !== 'rejected')
+			.forEach((item) => {
+				const modifiers = item.modifiers
+					?.map((m) => `${m.name}: ${m.options.map((o) => o.name).join(", ")}`)
+					.join("; ");
+				csv += `"${item.name}",${item.quantity},$${item.price},"${modifiers || ""
+					}",$${item.subtotal}\n`;
+			});
 
 		csv += `\n`;
 		csv += `Subtotal,,,,,$${order.subtotal}\n`;
@@ -218,11 +221,10 @@ function Bill() {
 							<div>
 								<p className="font-semibold">Payment Status:</p>
 								<p
-									className={`font-bold ${
-										order.paymentStatus === "paid"
+									className={`font-bold ${order.paymentStatus === "paid"
 											? "text-green-600"
 											: "text-yellow-600"
-									}`}
+										}`}
 								>
 									{order.paymentStatus.toUpperCase()}
 								</p>
@@ -242,37 +244,39 @@ function Bill() {
 								</tr>
 							</thead>
 							<tbody>
-								{order.items.map((item, idx) => (
-									<tr key={idx} className="border-b border-gray-200">
-										<td className="py-3 px-4">
-											<p className="font-semibold">{item.name}</p>
-											{item.modifiers && item.modifiers.length > 0 && (
-												<div className="ml-4 mt-1 text-sm text-gray-600">
-													{item.modifiers.map((modifier, mIdx) => (
-														<p key={mIdx}>
-															+ {modifier.name}:{" "}
-															{modifier.options
-																.map((opt) => opt.name)
-																.join(", ")}
-														</p>
-													))}
-												</div>
-											)}
-											{item.specialInstructions && (
-												<p className="ml-4 text-sm text-gray-500 italic">
-													Note: {item.specialInstructions}
-												</p>
-											)}
-										</td>
-										<td className="text-center py-3 px-4">{item.quantity}</td>
-										<td className="text-right py-3 px-4">
-											${item.price.toFixed(2)}
-										</td>
-										<td className="text-right py-3 px-4 font-semibold">
-											${item.subtotal.toFixed(2)}
-										</td>
-									</tr>
-								))}
+								{order.items
+									.filter((item) => item.status !== 'rejected')
+									.map((item, idx) => (
+										<tr key={idx} className="border-b border-gray-200">
+											<td className="py-3 px-4">
+												<p className="font-semibold">{item.name}</p>
+												{item.modifiers && item.modifiers.length > 0 && (
+													<div className="ml-4 mt-1 text-sm text-gray-600">
+														{item.modifiers.map((modifier, mIdx) => (
+															<p key={mIdx}>
+																+ {modifier.name}:{" "}
+																{modifier.options
+																	.map((opt) => opt.name)
+																	.join(", ")}
+															</p>
+														))}
+													</div>
+												)}
+												{item.specialInstructions && (
+													<p className="ml-4 text-sm text-gray-500 italic">
+														Note: {item.specialInstructions}
+													</p>
+												)}
+											</td>
+											<td className="text-center py-3 px-4">{item.quantity}</td>
+											<td className="text-right py-3 px-4">
+												${item.price.toFixed(2)}
+											</td>
+											<td className="text-right py-3 px-4 font-semibold">
+												${item.subtotal.toFixed(2)}
+											</td>
+										</tr>
+									))}
 							</tbody>
 						</table>
 					</div>

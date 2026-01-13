@@ -105,6 +105,12 @@ export const emitOrderAccepted = (io, restaurantId, order) => {
 		order,
 	});
 
+	// Notify customer on OrderStatus page (order-specific room)
+	io.to(`order:${order._id}`).emit("order:statusUpdate", {
+		message: "Your order has been accepted",
+		order,
+	});
+
 	console.log(`✅ Order accepted emitted: ${order.orderNumber}`);
 };
 
@@ -116,6 +122,12 @@ export const emitOrderAccepted = (io, restaurantId, order) => {
 export const emitOrderRejected = (io, order) => {
 	// Notify customer at table
 	io.to(`table:${order.tableId}`).emit("order:statusUpdate", {
+		message: "Your order has been rejected",
+		order,
+	});
+
+	// Notify customer on OrderStatus page (order-specific room)
+	io.to(`order:${order._id}`).emit("order:statusUpdate", {
 		message: "Your order has been rejected",
 		order,
 	});

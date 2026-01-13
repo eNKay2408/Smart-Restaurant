@@ -171,11 +171,11 @@ export const createOrder = async (req, res) => {
 			existingOrder.subtotal += itemsSubtotal;
 			existingOrder.total =
 				existingOrder.subtotal + existingOrder.tax - existingOrder.discount;
-		
-		// ALWAYS reset order status to pending when new items are added (restart cycle)
-		const oldStatus = existingOrder.status;
-		existingOrder.status = "pending";
-		console.log(`🔄 Order ${existingOrder.orderNumber} status: ${oldStatus} → pending (new items added, restarting cycle)`);
+
+			// ALWAYS reset order status to pending when new items are added (restart cycle)
+			const oldStatus = existingOrder.status;
+			existingOrder.status = "pending";
+			console.log(`🔄 Order ${existingOrder.orderNumber} status: ${oldStatus} → pending (new items added, restarting cycle)`);
 
 			// Debug: Log item statuses before save
 			console.log('📋 Items before save:', existingOrder.items.map(i => ({ name: i.name, status: i.status })));
@@ -263,9 +263,9 @@ export const createOrder = async (req, res) => {
 			.populate("customerId", "fullName email")
 			.populate("items.menuItemId", "name price images");
 
-	// Update table status to occupied
-	await Table.findByIdAndUpdate(tableId, { status: "occupied", currentOrder: order._id });
-	console.log(`🪑 Table status updated to occupied for order ${order.orderNumber}`);
+		// Update table status to occupied
+		await Table.findByIdAndUpdate(tableId, { status: "occupied", currentOrder: order._id });
+		console.log(`🪑 Table status updated to occupied for order ${order.orderNumber}`);
 
 		// Clear cart after creating order
 		await Cart.findOneAndDelete({ tableId });
@@ -361,37 +361,129 @@ export const rejectOrder = async (req, res) => {
 			});
 		}
 
-		if (order.status !== "pending") {
+		// Separate items by their status
+		const pendingItems = order.items.filter(item => item.status === "pending");
+		const workingItems = order.items.filter(item =>
+			["preparing", "ready", "served"].includes(item.status)
+		);
+
+		if (pendingItems.length === 0) {
 			return res.status(400).json({
 				success: false,
-				message: "Only pending orders can be rejected",
+				message: "No pending items to reject",
 			});
 		}
 
-		order.status = "rejected";
-		order.waiterId = req.user.id;
-		order.rejectionReason = rejectionReason || "No reason provided";
-		order.rejectedAt = new Date();
-		await order.save();
-		await order.save();
+		// Check if this is a full rejection or partial rejection
+		const isFullRejection = workingItems.length === 0;
 
-		const populatedOrder = await Order.findById(order._id)
-			.populate("tableId", "tableNumber area")
-			.populate("customerId", "fullName email")
-			.populate("waiterId", "fullName")
-			.populate("items.menuItemId", "name price images");
+		if (isFullRejection) {
+			// Full rejection: reject entire order
+			order.status = "rejected";
+			order.waiterId = req.user.id;
+			order.rejectionReason = rejectionReason || "No reason provided";
+			order.rejectedAt = new Date();
+			await order.save();
 
-		// Emit real-time event
-		const io = req.app.get("io");
-		if (io) {
-			emitOrderRejected(io, populatedOrder);
+			const populatedOrder = await Order.findById(order._id)
+				.populate("tableId", "tableNumber area")
+				.populate("customerId", "fullName email")
+				.populate("waiterId", "fullName")
+				.populate("items.menuItemId", "name price images");
+
+			// Emit full rejection event
+			const io = req.app.get("io");
+			if (io) {
+				emitOrderRejected(io, populatedOrder);
+			}
+
+			return res.json({
+				success: true,
+				message: "Order fully rejected",
+				data: populatedOrder,
+				isPartialRejection: false,
+			});
+		} else {
+			// Partial rejection: mark rejected items and keep working items
+			// Add rejection info to pending items
+			const rejectedItemIds = pendingItems.map(item => item._id.toString());
+
+			console.log('📋 Rejecting items:', rejectedItemIds);
+			console.log('🔍 Items before modification:', order.items.map(i => ({ name: i.name, status: i.status })));
+
+			order.items = order.items.map(item => {
+				if (rejectedItemIds.includes(item._id.toString())) {
+					console.log(`❌ Marking ${item.name} as rejected`);
+					return {
+						...item.toObject(),
+						status: "rejected",
+						rejectionReason: rejectionReason || "No reason provided",
+						rejectedAt: new Date(),
+					};
+				}
+				return item;
+			});
+
+			// ⚠️ IMPORTANT: Mark items as modified for Mongoose to save changes
+			order.markModified('items');
+			console.log('🔍 Items after modification:', order.items.map(i => ({ name: i.name, status: i.status })));
+
+			// Recalculate totals (only count non-rejected items)
+			const activeItems = order.items.filter(item => item.status !== "rejected");
+			order.subtotal = activeItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+			order.total = order.subtotal + (order.tax || 0) - (order.discount || 0);
+
+			// Move order to served status (so it appears in Served tab)
+			order.status = "served";
+			order.servedAt = new Date();
+			order.waiterId = req.user.id;
+
+			console.log(`📋 Order ${order.orderNumber} moved to SERVED after partial rejection`);
+
+			await order.save();
+
+			const populatedOrder = await Order.findById(order._id)
+				.populate("tableId", "tableNumber area")
+				.populate("customerId", "fullName email")
+				.populate("waiterId", "fullName")
+				.populate("items.menuItemId", "name price images");
+
+			// Emit partial rejection event
+			const io = req.app.get("io");
+			if (io) {
+				// Emit to table room
+				io.to(`table:${populatedOrder.tableId._id || populatedOrder.tableId}`).emit("order:partialRejection", {
+					message: "Some items in your order were rejected",
+					order: populatedOrder,
+					rejectedItems: pendingItems,
+				});
+
+				// Emit to order-specific room
+				io.to(`order:${populatedOrder._id}`).emit("order:partialRejection", {
+					message: "Some items in your order were rejected",
+					order: populatedOrder,
+					rejectedItems: pendingItems,
+				});
+
+				// Emit to waiters
+				if (populatedOrder.restaurantId) {
+					io.to(`${populatedOrder.restaurantId}:waiter`).emit("order:statusUpdate", {
+						message: "Order partially rejected",
+						order: populatedOrder,
+					});
+				}
+
+				console.log(`⚠️ Order partially rejected: ${populatedOrder.orderNumber}`);
+			}
+
+			return res.json({
+				success: true,
+				message: "Order partially rejected",
+				data: populatedOrder,
+				isPartialRejection: true,
+				rejectedItemsCount: pendingItems.length,
+			});
 		}
-
-		res.json({
-			success: true,
-			message: "Order rejected",
-			data: populatedOrder,
-		});
 	} catch (error) {
 		console.error("Reject order error:", error);
 		res.status(500).json({

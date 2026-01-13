@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import orderService from '../../services/orderService';
 
 const OrderStatus: React.FC = () => {
@@ -60,14 +61,72 @@ const OrderStatus: React.FC = () => {
 
         loadOrder();
 
+        const socket = orderService.initSocket();
+
+        // Join order room
+        orderService.joinOrderRoom(orderId);
+
         // Listen to real-time order status updates
-        orderService.onOrderStatusUpdate(orderId, (updatedOrder) => {
-            console.log('📡 Order updated:', updatedOrder);
-            setOrder(updatedOrder);
+        socket.on('order:statusUpdate', (data: any) => {
+            console.log('📡 Order updated:', data);
+
+            if (data.order && data.order._id === orderId) {
+                // Check if order was fully rejected
+                if (data.order.status === 'rejected') {
+                    toast.error('Your order has been rejected by the waiter', {
+                        position: 'top-center',
+                        autoClose: 5000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                    });
+
+                    // Navigate back to menu after a short delay
+                    setTimeout(() => {
+                        navigate('/menu', {
+                            state: {
+                                message: 'Your order was rejected. Please order again.'
+                            }
+                        });
+                    }, 3000);
+                    return;
+                }
+
+                setOrder(data.order);
+            }
+        });
+
+        // Listen for partial rejection events
+        socket.on('order:partialRejection', (data: any) => {
+            console.log('⚠️ Partial rejection received:', data);
+            console.log('📦 Order items:', data.order?.items);
+            console.log('🔍 Item statuses:', data.order?.items?.map((item: any) => ({
+                name: item.name,
+                status: item.status
+            })));
+
+            if (data.order && data.order._id === orderId) {
+                const rejectedCount = data.rejectedItems?.length || 0;
+
+                toast.warning(`${rejectedCount} item(s) from your order were rejected`, {
+                    position: 'top-center',
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+
+                setOrder(data.order);
+                console.log('✅ Order state updated with:', data.order);
+            }
         });
 
         // Cleanup on unmount
         return () => {
+            socket.off('order:statusUpdate');
+            socket.off('order:partialRejection');
             orderService.disconnect();
         };
     }, [orderId]);
@@ -92,6 +151,15 @@ const OrderStatus: React.FC = () => {
             }
 
             setOrder(response.data);
+
+            // Join table room if tableId exists
+            if (response.data.tableId) {
+                const tableId = typeof response.data.tableId === 'object'
+                    ? response.data.tableId._id
+                    : response.data.tableId;
+                orderService.joinTableRoom(tableId);
+                console.log('🪑 Joined table room for real-time updates');
+            }
         } catch (err: any) {
             console.error('Load order error:', err);
             setError(err.message || 'Failed to load order');
@@ -280,29 +348,50 @@ const OrderStatus: React.FC = () => {
                 <div className="bg-white mt-2 px-4 py-6 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Order</h3>
                     <div className="space-y-3">
-                        {order.items.map((item: any, index: number) => (
-                            <div key={index} className="flex justify-between items-start">
-                                <div className="flex-1">
-                                    <div className="flex items-center">
-                                        <span className="font-medium text-gray-900">{item.name}</span>
-                                        <span className="ml-2 text-gray-500">× {item.quantity}</span>
+                        {order.items.map((item: any, index: number) => {
+                            const isRejected = item.status === 'rejected';
+                            console.log(`🍽️ Rendering item: ${item.name}, status: ${item.status}, isRejected: ${isRejected}`);
+
+                            return (
+                                <div key={index} className={`flex justify-between items-start ${isRejected ? 'opacity-60' : ''}`}>
+                                    <div className="flex-1">
+                                        <div className="flex items-center">
+                                            <span className={`font-medium ${isRejected ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                                {item.name}
+                                            </span>
+                                            <span className={`ml-2 ${isRejected ? 'line-through text-gray-400' : 'text-gray-500'}`}>
+                                                × {item.quantity}
+                                            </span>
+                                            {isRejected && (
+                                                <span className="ml-2 text-red-500 font-bold" title="Item rejected">
+                                                    ❌
+                                                </span>
+                                            )}
+                                        </div>
+                                        {item.modifiers && item.modifiers.length > 0 && (
+                                            <p className={`text-sm mt-1 ${isRejected ? 'line-through text-gray-400' : 'text-gray-600'}`}>
+                                                {item.modifiers.map((mod: any) =>
+                                                    mod.options.map((opt: any) => opt.name).join(', ')
+                                                ).join(', ')}
+                                            </p>
+                                        )}
+                                        {item.specialInstructions && (
+                                            <p className={`text-xs italic mt-1 ${isRejected ? 'line-through text-gray-400' : 'text-gray-500'}`}>
+                                                Note: {item.specialInstructions}
+                                            </p>
+                                        )}
+                                        {isRejected && item.rejectionReason && (
+                                            <p className="text-xs text-red-600 mt-1 italic">
+                                                Reason: {item.rejectionReason}
+                                            </p>
+                                        )}
                                     </div>
-                                    {item.modifiers && item.modifiers.length > 0 && (
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            {item.modifiers.map((mod: any) =>
-                                                mod.options.map((opt: any) => opt.name).join(', ')
-                                            ).join(', ')}
-                                        </p>
-                                    )}
-                                    {item.specialInstructions && (
-                                        <p className="text-xs text-gray-500 italic mt-1">
-                                            Note: {item.specialInstructions}
-                                        </p>
-                                    )}
+                                    <span className={`font-medium ${isRejected ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                        ${item.subtotal.toFixed(2)}
+                                    </span>
                                 </div>
-                                <span className="font-medium text-gray-900">${item.subtotal.toFixed(2)}</span>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         <div className="border-t border-gray-200 pt-3 mt-3">
                             <div className="flex justify-between items-center font-bold text-lg">

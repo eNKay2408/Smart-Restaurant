@@ -438,20 +438,32 @@ function WaiterOrders() {
 											Items ({order.items.length}):
 										</p>
 										<ul className="space-y-1 max-h-32 overflow-y-auto">
-											{order.items.map((item, idx) => (
-												<li key={idx} className={`text-sm flex items-center justify-between ${item.status === 'served' || item.status === 'ready'
-													? 'text-gray-400 line-through'
-													: 'text-gray-900 font-semibold'
-													}`}>
-													<span>• {item.quantity}x {item.name}</span>
-													{item.status === 'pending' && (
-														<span className="bg-yellow-500 text-white text-xs px-1 rounded">NEW</span>
-													)}
-													{(item.status === 'served' || item.status === 'ready') && (
-														<span className="text-green-600">✅</span>
-													)}
-												</li>
-											))}
+											{order.items.map((item, idx) => {
+												const isRejected = item.status === 'rejected';
+												const isServedOrReady = item.status === 'served' || item.status === 'ready';
+
+												return (
+													<li key={idx} className={`text-sm flex items-center justify-between gap-2 ${isRejected
+															? 'text-gray-400 line-through opacity-60'
+															: isServedOrReady
+																? 'text-gray-400 line-through'
+																: 'text-gray-900 font-semibold'
+														}`}>
+														<span>• {item.quantity}x {item.name}</span>
+														<div className="flex items-center gap-1">
+															{item.status === 'pending' && (
+																<span className="bg-yellow-500 text-white text-xs px-1 rounded">NEW</span>
+															)}
+															{isServedOrReady && (
+																<span className="text-green-600">✅</span>
+															)}
+															{isRejected && (
+																<span className="text-red-500 font-bold" title="Rejected">❌</span>
+															)}
+														</div>
+													</li>
+												);
+											})}
 										</ul>
 									</div>
 

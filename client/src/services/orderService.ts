@@ -47,6 +47,15 @@ class OrderService {
 	}
 
 	/**
+	 * Join table room to receive updates
+	 */
+	joinTableRoom(tableId: string): void {
+		const socket = this.initSocket();
+		socket.emit('join:table', { tableId });
+		console.log(`🪑 Joined table room: ${tableId}`);
+	}
+
+	/**
 	 * Listen to order status updates via Socket.IO
 	 */
 	onOrderStatusUpdate(orderId: string, callback: (order: any) => void): void {

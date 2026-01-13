@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQRTable } from '../hooks/useQRTable';
 import { useMenu } from '../hooks/useMenu';
 import { SearchBar } from '../components/SearchBar';
@@ -11,6 +11,7 @@ import { toast } from 'react-toastify';
 
 function Menu() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { tableInfo, isValidTable, error: qrError, isLoading: qrLoading } = useQRTable();
 
     // Use backend data through useMenu hook
@@ -27,6 +28,18 @@ function Menu() {
 
     const [cartItemsCount, setCartItemsCount] = useState(0);
     const [addingToCart, setAddingToCart] = useState<string | null>(null);
+
+    // Check if navigated from rejected order
+    useEffect(() => {
+        if (location.state?.message) {
+            toast.warning(location.state.message, {
+                position: 'top-center',
+                autoClose: 5000,
+            });
+            // Clear the state to prevent showing toast on refresh
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state]);
 
     // Load cart summary on mount and when table changes
     useEffect(() => {

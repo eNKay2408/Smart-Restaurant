@@ -235,6 +235,7 @@ const AdminMenuManagement: React.FC = () => {
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Modifiers</th>
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -281,6 +282,29 @@ const AdminMenuManagement: React.FC = () => {
                                         </td>
                                         <td className="py-4 px-6 text-sm text-gray-900 font-medium">${item.price}</td>
                                         <td className="py-4 px-6 text-sm text-gray-600">{item.category}</td>
+                                        <td className="py-4 px-6">
+                                            {item.modifiers && item.modifiers.length > 0 ? (
+                                                <div className="space-y-1">
+                                                    {item.modifiers.slice(0, 2).map((modifier: any, index: number) => (
+                                                        <div key={index} className="flex items-center space-x-1">
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                                {modifier.name}
+                                                            </span>
+                                                            <span className="text-xs text-gray-500">
+                                                                ({modifier.type === 'multiple' ? 'Multi' : 'Single'}{modifier.required ? ', Required' : ''})
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                    {item.modifiers.length > 2 && (
+                                                        <span className="text-xs text-gray-400">
+                                                            +{item.modifiers.length - 2} more
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">No modifiers</span>
+                                            )}
+                                        </td>
                                         <td className="py-4 px-6">{getStatusBadge(item.status)}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center space-x-2">

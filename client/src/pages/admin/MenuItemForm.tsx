@@ -33,6 +33,7 @@ const AdminMenuItemForm: React.FC = () => {
 
     const [categories, setCategories] = useState<MenuCategory[]>([]);
     const [availableModifiers, setAvailableModifiers] = useState<Modifier[]>([]);
+    const [selectedModifiersDetails, setSelectedModifiersDetails] = useState<Modifier[]>([]);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -92,20 +93,41 @@ const AdminMenuItemForm: React.FC = () => {
             if (response.success) {
                 const item = response.data;
                 
-                // Extract modifier IDs from the item's modifiers
-                const modifierIds = item.modifiers?.map((modifier: any) => modifier._id || modifier.id).filter(Boolean) || [];
+                // Extract modifier IDs from different possible sources
+                let modifierIds: string[] = [];
+                
+                console.log('📄 Fetched menu item:', item);
+                console.log('🔧 Raw modifiers data:', item.modifiers);
+                console.log('🔧 Raw modifierIds data:', item.modifierIds);
+                
+                // First, check if there are populated modifiers from modifierIds (current format)
+                if (item.modifierIds && Array.isArray(item.modifierIds)) {
+                    modifierIds = item.modifierIds
+                        .filter(modifier => modifier && (modifier._id || modifier.id))
+                        .map((modifier: any) => modifier._id || modifier.id);
+                }
+                
+                // If no modifierIds, check the combined modifiers array
+                if (modifierIds.length === 0 && item.modifiers && Array.isArray(item.modifiers)) {
+                    modifierIds = item.modifiers
+                        .filter(modifier => modifier && (modifier._id || modifier.id))
+                        .map((modifier: any) => modifier._id || modifier.id);
+                }
+                
+                console.log('🔧 Extracted modifier IDs:', modifierIds);
                 
                 setFormData({
                     name: item.name || '',
                     description: item.description || '',
                     price: item.price?.toString() || '',
-                    category: item.category?.name || '',
-                    photos: item.images?.length ? item.images : [''],
+                    category: item.category?.name || item.categoryId?.name || '',
+                    photos: item.images?.length ? item.images : [],
                     modifierIds: modifierIds,
                     status: item.status || 'available'
                 });
             }
         } catch (err: any) {
+            console.error('❌ Failed to fetch menu item:', err);
             setError(err.message || 'Failed to fetch menu item');
         }
     };
@@ -113,14 +135,29 @@ const AdminMenuItemForm: React.FC = () => {
     useEffect(() => {
         const initializeForm = async () => {
             await fetchInitialData();
+        };
 
-            if (isEditing && id) {
+        initializeForm();
+    }, []);
+
+    // Separate useEffect for fetching menu item after modifiers are available
+    useEffect(() => {
+        const fetchMenuItemWhenReady = async () => {
+            if (isEditing && id && availableModifiers.length > 0) {
                 await fetchMenuItem(id);
             }
         };
 
-        initializeForm();
-    }, [id, isEditing]);
+        fetchMenuItemWhenReady();
+    }, [isEditing, id, availableModifiers]);
+
+    // Update selected modifiers details when modifierIds or availableModifiers change
+    useEffect(() => {
+        const selectedDetails = availableModifiers.filter(modifier => 
+            formData.modifierIds.includes(modifier.id)
+        );
+        setSelectedModifiersDetails(selectedDetails);
+    }, [formData.modifierIds, availableModifiers]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -621,28 +658,99 @@ const AdminMenuItemForm: React.FC = () => {
                             {/* Selected modifiers summary */}
                             {formData.modifierIds.length > 0 && (
                                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <h4 className="text-sm font-medium text-green-800 mb-2">
+                                    <h4 className="text-sm font-medium text-green-800 mb-3">
                                         Selected Modifiers ({formData.modifierIds.length})
                                     </h4>
-                                    <div className="flex flex-wrap gap-2">
+                                    
+                                    <div className="space-y-3">
                                         {formData.modifierIds.map((modifierId) => {
                                             const modifier = availableModifiers.find(m => m.id === modifierId);
-                                            return modifier ? (
-                                                <span 
+                                            
+                                            if (!modifier) {
+                                                return null; // Skip unknown modifiers
+                                            }
+                                            
+                                            return (
+                                                <div 
                                                     key={modifierId}
-                                                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                                    className="bg-white border border-green-200 rounded-lg p-3"
                                                 >
-                                                    {modifier.name}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleModifierSelection(modifierId)}
-                                                        className="ml-1 text-green-600 hover:text-green-800"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </span>
-                                            ) : null;
+                                                    <div className="flex items-start justify-between mb-2">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center">
+                                                                <span className="font-medium text-gray-900">{modifier.name}</span>
+                                                                <div className="ml-2 flex items-center space-x-1">
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                                        modifier.type === 'multiple' 
+                                                                            ? 'bg-blue-100 text-blue-800' 
+                                                                            : 'bg-purple-100 text-purple-800'
+                                                                    }`}>
+                                                                        {modifier.type === 'multiple' ? 'Multi-select' : 'Single select'}
+                                                                    </span>
+                                                                    {modifier.required && (
+                                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                                            Required
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleModifierSelection(modifierId)}
+                                                            className="text-red-600 hover:text-red-800 p-1"
+                                                            title="Remove modifier"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    {/* Options list */}
+                                                    {modifier.options && modifier.options.length > 0 && (
+                                                        <div>
+                                                            <p className="text-xs font-medium text-gray-700 mb-2">
+                                                                Options ({modifier.options.length}):
+                                                            </p>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {modifier.options.map((option: any, index: number) => (
+                                                                    <span 
+                                                                        key={index}
+                                                                        className={`inline-flex items-center px-2 py-1 rounded text-xs ${
+                                                                            option.isDefault 
+                                                                                ? 'bg-yellow-100 text-yellow-800 font-medium'
+                                                                                : 'bg-gray-100 text-gray-700'
+                                                                        }`}
+                                                                    >
+                                                                        {option.name}
+                                                                        {option.priceAdjustment > 0 && (
+                                                                            <span className="ml-1 text-green-600">+${option.priceAdjustment}</span>
+                                                                        )}
+                                                                        {option.isDefault && (
+                                                                            <span className="ml-1">⭐</span>
+                                                                        )}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
                                         })}
+                                    </div>
+                                    
+                                    {/* Summary info */}
+                                    <div className="mt-3 pt-3 border-t border-green-200">
+                                        <p className="text-xs text-green-700">
+                                            💡 These modifiers will be available for customers to customize this menu item.
+                                            {formData.modifierIds.some(id => {
+                                                const modifier = availableModifiers.find(m => m.id === id);
+                                                return modifier?.required;
+                                            }) && (
+                                                <span className="font-medium"> Some modifiers are required and customers must make a selection.</span>
+                                            )}
+                                        </p>
                                     </div>
                                 </div>
                             )}

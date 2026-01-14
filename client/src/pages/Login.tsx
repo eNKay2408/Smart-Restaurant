@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useRestaurant } from '../contexts/RestaurantContext';
 import { authService } from '../services/authService';
 import type { LoginRequest, ApiError } from '../types/auth.types';
@@ -78,7 +78,7 @@ function Login() {
             setFormData({
                 email: creds.email,
                 password: creds.password,
-                role: role === 'waiter' || role === 'kitchen' ? 'staff' : role
+                role: (role === 'waiter' || role === 'kitchen' ? 'staff' : role) as 'admin' | 'staff' | 'customer'
             });
         }
     };
@@ -228,9 +228,9 @@ function Login() {
                                 />
                                 <span className="ml-2 text-sm text-purple-100">Remember me</span>
                             </label>
-                            <a href="#" className="text-sm text-purple-200 hover:text-white transition-colors">
+                            <Link to="/forgot-password" className="text-sm text-purple-200 hover:text-white transition-colors">
                                 Forgot password?
-                            </a>
+                            </Link>
                         </div>
 
                         {/* Submit Button */}
@@ -255,6 +255,12 @@ function Login() {
 
                     {/* Footer */}
                     <div className="mt-6 text-center">
+                        <p className="text-sm text-purple-200 mb-2">
+                            Don't have an account?{' '}
+                            <Link to="/register" className="text-white font-semibold hover:underline">
+                                Sign Up
+                            </Link>
+                        </p>
                         <p className="text-sm text-purple-200">
                             Smart Restaurant Management System
                         </p>

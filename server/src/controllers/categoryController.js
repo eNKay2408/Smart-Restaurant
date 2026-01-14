@@ -9,7 +9,7 @@ export const getCategories = async (req, res) => {
 
         const filter = restaurantId ? { restaurantId, isActive: true } : { isActive: true };
 
-        const categories = await Category.find(filter).sort({ displayOrder: 1 });
+        const categories = await Category.find(filter).sort({ name: 1 });
 
         res.json({
             success: true,
@@ -57,13 +57,12 @@ export const getCategory = async (req, res) => {
 // @access  Private (Admin only)
 export const createCategory = async (req, res) => {
     try {
-        const { name, description, image, displayOrder, restaurantId } = req.body;
+        const { name, description, image, restaurantId } = req.body;
 
         const category = await Category.create({
             name,
             description,
             image,
-            displayOrder,
             restaurantId: restaurantId || req.user.restaurantId,
         });
 

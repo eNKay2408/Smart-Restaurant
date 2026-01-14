@@ -13,7 +13,6 @@ const CategoryManagement: React.FC = () => {
         name: '',
         description: '',
         image: '',
-        displayOrder: '' as string | number,
         isActive: true
     });
     const [deleteModal, setDeleteModal] = useState<{ show: boolean; category: MenuCategory | null }>({
@@ -47,14 +46,12 @@ const CategoryManagement: React.FC = () => {
             if (editingCategory) {
                 // Update existing category
                 await categoryService.updateCategory(editingCategory._id, {
-                    ...formData,
-                    displayOrder: Number(formData.displayOrder) || 1
+                    ...formData
                 });
             } else {
                 // Create new category - backend will use req.user.restaurantId
                 await categoryService.createCategory({
-                    ...formData,
-                    displayOrder: Number(formData.displayOrder) || 1
+                    ...formData
                 });
             }
 
@@ -74,7 +71,6 @@ const CategoryManagement: React.FC = () => {
             name: category.name,
             description: category.description,
             image: '',
-            displayOrder: category.displayOrder || 1,
             isActive: category.isActive
         });
         setShowCreateForm(true);
@@ -108,7 +104,6 @@ const CategoryManagement: React.FC = () => {
             name: '',
             description: '',
             image: '',
-            displayOrder: '',
             isActive: true
         });
         setEditingCategory(null);
@@ -182,20 +177,6 @@ const CategoryManagement: React.FC = () => {
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Display Order
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={formData.displayOrder}
-                                        onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="1"
-                                    />
-                                </div>
-
                                 <div className="flex items-center">
                                     <input
                                         type="checkbox"
@@ -260,9 +241,6 @@ const CategoryManagement: React.FC = () => {
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Order
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Category
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -281,14 +259,9 @@ const CategoryManagement: React.FC = () => {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {categories
-                                        .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+                                        .sort((a, b) => a.name.localeCompare(b.name))
                                         .map((category) => (
                                             <tr key={category._id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full text-sm font-medium">
-                                                        {category.displayOrder || 1}
-                                                    </div>
-                                                </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div>
                                                         <div className="text-sm font-medium text-gray-900">
@@ -369,7 +342,6 @@ const CategoryManagement: React.FC = () => {
                                             <h4 className="font-semibold text-gray-900 truncate">{deleteModal.category.name}</h4>
                                             <p className="text-sm text-gray-500 truncate">{deleteModal.category.description || 'No description'}</p>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-xs text-gray-500">Order: {deleteModal.category.displayOrder || 1}</span>
                                                 <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${deleteModal.category.isActive
                                                         ? 'bg-green-100 text-green-800'
                                                         : 'bg-red-100 text-red-800'

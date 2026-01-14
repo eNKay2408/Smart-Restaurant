@@ -15,10 +15,6 @@ const categorySchema = new mongoose.Schema(
             type: String,
             default: null,
         },
-        displayOrder: {
-            type: Number,
-            default: 0,
-        },
         isActive: {
             type: Boolean,
             default: true,
@@ -35,7 +31,7 @@ const categorySchema = new mongoose.Schema(
 );
 
 // Index for faster queries
-categorySchema.index({ restaurantId: 1, displayOrder: 1 });
+categorySchema.index({ restaurantId: 1 });
 
 const Category = mongoose.model('Category', categorySchema);
 

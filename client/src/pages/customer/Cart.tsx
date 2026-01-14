@@ -227,6 +227,9 @@ const Cart: React.FC = () => {
             // ✅ Cart is automatically cleared by backend in orderController.js
             // No need to manually clear here
 
+            // Store latest order ID for Orders tab navigation
+            localStorage.setItem('latestOrderId', order._id);
+
             // Navigate to order status with order ID in URL
             navigate(`/order-status/${order._id}`, {
                 state: {

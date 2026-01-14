@@ -377,7 +377,13 @@ function Menu() {
                         )}
                         <span className="text-xs">Cart({cartItemsCount})</span>
                     </Link>
-                    <Link to="/order-status" className="flex flex-col items-center justify-center text-gray-400">
+                    <Link
+                        to={(() => {
+                            const latestOrderId = localStorage.getItem('latestOrderId');
+                            return latestOrderId ? `/order-status/${latestOrderId}` : '/order-status';
+                        })()}
+                        className="flex flex-col items-center justify-center text-gray-400"
+                    >
                         <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m2 0h2a2 2 0 002-2V7a2 2 0 00-2-2h-2m-2 4h2m-2 4h2" />
                         </svg>

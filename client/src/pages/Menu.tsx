@@ -318,10 +318,12 @@ function Menu() {
                                                         <div className="flex items-center space-x-2 mb-2">
                                                             <div className="flex text-yellow-400 text-sm">
                                                                 {[...Array(5)].map((_, i) => (
-                                                                    <span key={i}>★</span>
+                                                                    <span key={i} className={i < Math.round(item.averageRating || 0) ? 'text-yellow-400' : 'text-gray-300'}>★</span>
                                                                 ))}
                                                             </div>
-                                                            <span className="text-sm text-gray-500">(24 reviews)</span>
+                                                            {(item.totalReviews || 0) > 0 && (
+                                                                <span className="text-sm text-gray-500">({item.totalReviews} {item.totalReviews === 1 ? 'review' : 'reviews'})</span>
+                                                            )}
                                                         </div>
 
                                                         <p className="text-sm text-gray-600 line-clamp-2 mb-3">

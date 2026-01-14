@@ -5,6 +5,7 @@ import cartService from '../../services/cartService';
 import { useQRTable } from '../../hooks/useQRTable';
 import { getPrimaryImageUrl } from '../../utils/imageHelper';
 import { toast } from 'react-toastify';
+import reviewService from '../../services/reviewService';
 
 interface Modifier {
     id: string;
@@ -34,6 +35,9 @@ const MenuItemDetail: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
     const [addingToCart, setAddingToCart] = useState(false);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [reviewStats, setReviewStats] = useState<any>(null);
+    const [loadingReviews, setLoadingReviews] = useState(false);
 
     // Fetch menu item data on mount
     useEffect(() => {
@@ -72,6 +76,29 @@ const MenuItemDetail: React.FC = () => {
         };
 
         fetchMenuItem();
+    }, [itemId]);
+
+    // Fetch reviews
+    useEffect(() => {
+        const fetchReviews = async () => {
+            if (!itemId) return;
+
+            try {
+                setLoadingReviews(true);
+                const response = await reviewService.getMenuItemReviews(itemId, 1, 5);
+
+                if (response.success) {
+                    setReviews(response.data || []);
+                    setReviewStats(response.stats || null);
+                }
+            } catch (error) {
+                console.error('Error fetching reviews:', error);
+            } finally {
+                setLoadingReviews(false);
+            }
+        };
+
+        fetchReviews();
     }, [itemId]);
 
     const handleModifierChange = (groupId: string, optionId: string) => {
@@ -118,13 +145,13 @@ const MenuItemDetail: React.FC = () => {
             toast.error('This item is currently unavailable');
             return;
         }
-        
+
         setAddingToCart(true);
-        
+
         try {
             // Get current table info - priority: passed prop, QR scan, localStorage
             let currentTableInfo = tableInfo || qrTableInfo;
-            
+
             if (!currentTableInfo) {
                 // Try to get table info from localStorage
                 const savedTableInfo = localStorage.getItem('current_table_info');
@@ -140,19 +167,19 @@ const MenuItemDetail: React.FC = () => {
                     }
                 }
             }
-            
+
             if (!currentTableInfo?.tableId) {
                 toast.error('Table information not available. Please scan QR code again.');
                 return;
             }
-            
+
             // Get restaurantId
             const restaurantId = currentTableInfo.restaurantId || item.restaurantId;
             if (!restaurantId) {
                 toast.error('Restaurant information not available');
                 return;
             }
-            
+
             // Prepare modifiers in the expected format (CartModifier interface)
             const selectedModifiers = modifierGroups
                 .filter(group => group.options.some(option => option.selected))
@@ -165,7 +192,7 @@ const MenuItemDetail: React.FC = () => {
                             priceAdjustment: option.price
                         }))
                 }));
-            
+
             console.log('🛒 Adding to table cart:', currentTableInfo.tableId);
             console.log('📝 Item data:', {
                 menuItemId: item._id,
@@ -185,14 +212,14 @@ const MenuItemDetail: React.FC = () => {
 
             // Show success feedback
             toast.success('✅ Added to cart!');
-            
+
             // Navigate back based on context
             if (returnPath) {
                 navigate(returnPath);
             } else {
                 navigate('/menu');
             }
-            
+
         } catch (error: any) {
             console.error('Add to cart error:', error);
             const errorMessage = error.response?.data?.message || error.message || 'Failed to add to cart. Please try again.';
@@ -328,6 +355,116 @@ const MenuItemDetail: React.FC = () => {
                     />
                 </div>
 
+                {/* Reviews Section */}
+                <div className="bg-white mt-2 px-4 py-6 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Reviews & Ratings</h3>
+
+                    {/* Review summary */}
+                    {reviewStats && reviewStats.total > 0 ? (
+                        <>
+                            <div className="flex items-center mb-6">
+                                <div className="text-center mr-6">
+                                    <div className="text-4xl font-bold text-gray-900 mb-1">
+                                        {reviewStats.average.toFixed(1)}
+                                    </div>
+                                    <div className="flex items-center justify-center mb-1">
+                                        {[...Array(5)].map((_, i) => (
+                                            <svg
+                                                key={i}
+                                                className={`w-4 h-4 ${i < Math.round(reviewStats.average) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                        ))}
+                                    </div>
+                                    <div className="text-xs text-gray-600">
+                                        {reviewStats.total} {reviewStats.total === 1 ? 'review' : 'reviews'}
+                                    </div>
+                                </div>
+
+                                {/* Rating distribution */}
+                                <div className="flex-1">
+                                    {[5, 4, 3, 2, 1].map((star) => {
+                                        const count = reviewStats.distribution[star] || 0;
+                                        const percentage = reviewStats.total > 0 ? (count / reviewStats.total) * 100 : 0;
+                                        return (
+                                            <div key={star} className="flex items-center text-sm mb-1">
+                                                <span className="w-3 text-gray-600 mr-2">{star}</span>
+                                                <svg className="w-3 h-3 text-yellow-400 fill-current mr-2" viewBox="0 0 20 20">
+                                                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                                                </svg>
+                                                <div className="flex-1 mx-2">
+                                                    <div className="bg-gray-200 rounded-full h-2">
+                                                        <div
+                                                            className="bg-yellow-400 h-2 rounded-full"
+                                                            style={{ width: `${percentage}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                                <span className="w-8 text-gray-600 text-xs">{count}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Individual Reviews */}
+                            {loadingReviews ? (
+                                <div className="text-center py-4">
+                                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600"></div>
+                                </div>
+                            ) : reviews.length > 0 ? (
+                                <div className="space-y-4">
+                                    {reviews.map((review, idx) => (
+                                        <div key={idx} className="border-t border-gray-100 pt-4">
+                                            <div className="flex items-start justify-between mb-2">
+                                                <div className="flex items-center">
+                                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-2">
+                                                        {review.customerId?.fullName?.charAt(0) || 'U'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-gray-900 text-sm">
+                                                            {review.customerId?.fullName || 'Anonymous'}
+                                                        </p>
+                                                        <div className="flex items-center mt-1">
+                                                            {[...Array(5)].map((_, i) => (
+                                                                <svg
+                                                                    key={i}
+                                                                    className={`w-3 h-3 ${i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                                                                    viewBox="0 0 20 20"
+                                                                >
+                                                                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                                                                </svg>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-gray-500">
+                                                    {new Date(review.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            {review.comment && (
+                                                <p className="text-sm text-gray-700 mt-2">{review.comment}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </>
+                    ) : (
+                        <div className="text-center py-8">
+                            <svg className="w-16 h-16 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                            <p className="text-gray-600">No reviews yet</p>
+                            <p className="text-sm text-gray-500 mt-1">Be the first to review this item!</p>
+                        </div>
+                    )}
+                </div>
+
                 {/* Nutrition & Ingredients - Not available in backend yet */}
                 {/* 
                 <div className="bg-white mt-2 px-4 py-6">
@@ -416,11 +553,10 @@ const MenuItemDetail: React.FC = () => {
                 <button
                     onClick={handleAddToCart}
                     disabled={addingToCart || !isAvailable}
-                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                        addingToCart || !isAvailable
-                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${addingToCart || !isAvailable
+                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
                 >
                     {addingToCart ? (
                         <span className="flex items-center justify-center">

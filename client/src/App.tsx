@@ -30,6 +30,7 @@ import Cart from "./pages/customer/Cart";
 import OrderStatus from "./pages/customer/OrderStatus";
 import Payment from "./pages/customer/Payment";
 import OrderHistory from "./pages/customer/OrderHistory";
+import ReviewOrder from "./pages/customer/ReviewOrder";
 
 function App() {
 	const location = useLocation();
@@ -72,6 +73,7 @@ function App() {
 					<Route path="/order-status" element={<OrderStatus />} />
 					<Route path="/order-status/:orderId" element={<OrderStatus />} />
 					<Route path="/order-history" element={<OrderHistory />} />
+					<Route path="/review/:orderId" element={<ReviewOrder />} />
 					<Route path="/payment" element={<Payment />} />
 					{/* Staff Routes */}
 					<Route

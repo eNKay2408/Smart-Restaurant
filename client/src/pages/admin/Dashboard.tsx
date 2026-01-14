@@ -257,7 +257,7 @@ const AdminDashboard: React.FC = () => {
                                     </div>
                                     <div className="flex items-center text-sm">
                                         <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                                        <span className="text-gray-600">Active</span>
+                                        <span className="text-gray-600">Serving</span>
                                     </div>
                                     <div className="flex items-center text-sm">
                                         <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>

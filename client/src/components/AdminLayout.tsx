@@ -9,46 +9,72 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
+    const { user, logout, isAdmin, isWaiter, isKitchen } = useAuth();
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
+        navigate('/');
     };
 
-    const menuItems = [
-        {
-            path: '/admin/dashboard',
-            name: 'Dashboard',
-            icon: '📊'
-        },
-        {
-            path: '/admin/menu',
-            name: 'Menu',
-            icon: '🍽️',
-            submenu: [
-                { path: '/admin/menu', name: 'Items' },
-                { path: '/admin/categories', name: 'Categories' },
-                { path: '/admin/modifiers', name: 'Modifiers' },
-            ]
-        },
-        {
-            path: '/admin/tables',
-            name: 'Tables',
-            icon: '🪑'
-        },
-        {
-            path: '/admin/orders',
-            name: 'Orders',
-            icon: '📋'
-        },
-        {
-            path: '/admin/reports',
-            name: 'Reports',
-            icon: '📈'
+    // Define menu items based on user role
+    const getMenuItems = () => {
+        if (isWaiter) {
+            return [
+                {
+                    path: '/waiter/orders',
+                    name: 'Orders',
+                    icon: '📋'
+                }
+            ];
         }
-    ];
+        
+        if (isKitchen) {
+            return [
+                {
+                    path: '/kitchen/kds',
+                    name: 'Kitchen',
+                    icon: '👨‍🍳'
+                }
+            ];
+        }
+        
+        // Default admin menu items
+        return [
+            {
+                path: '/admin/dashboard',
+                name: 'Dashboard',
+                icon: '📊'
+            },
+            {
+                path: '/admin/menu',
+                name: 'Menu',
+                icon: '🍽️',
+                submenu: [
+                    { path: '/admin/menu', name: 'Items' },
+                    { path: '/admin/categories', name: 'Categories' },
+                    { path: '/admin/modifiers', name: 'Modifiers' },
+                ]
+            },
+            {
+                path: '/admin/tables',
+                name: 'Tables',
+                icon: '🪑'
+            },
+            {
+                path: '/admin/orders',
+                name: 'Orders',
+                icon: '📋'
+            },
+            {
+                path: '/admin/reports',
+                name: 'Reports',
+                icon: '📈'
+            }
+        ];
+    };
+
+    const menuItems = getMenuItems();
 
     const isActivePath = (path: string) => {
         return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -64,7 +90,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                         <div className="flex items-center space-x-4">
                             <div>
                                 <h1 className="text-xl font-bold text-gray-800">Smart Restaurant</h1>
-                                <p className="text-sm text-gray-600">Admin Panel</p>
+                                <p className="text-sm text-gray-600">
+                                    {isAdmin ? 'Admin Panel' : 
+                                     isWaiter ? 'Waiter Panel' : 
+                                     isKitchen ? 'Kitchen Panel' : 'Staff Panel'}
+                                </p>
                             </div>
                         </div>
 

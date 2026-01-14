@@ -53,8 +53,8 @@ axiosInstance.interceptors.response.use(
                 const customerPages = ['/menu', '/cart', '/order-status', '/item/', '/payment'];
                 const isCustomerPage = customerPages.some(page => window.location.pathname.includes(page));
 
-                if (window.location.pathname !== '/login' && !isCustomerPage) {
-                    window.location.href = '/login';
+                if (window.location.pathname !== '/' && !isCustomerPage) {
+                    window.location.href = '/';
                 }
             }
 

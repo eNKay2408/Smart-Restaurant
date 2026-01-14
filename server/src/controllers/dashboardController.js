@@ -154,7 +154,7 @@ export const getTableStatus = async (req, res) => {
 				status: status,
 				label:
 					status === "occupied"
-						? "Active"
+						? "Serving"
 						: status === "reserved"
 							? "Reserved"
 							: "Free",

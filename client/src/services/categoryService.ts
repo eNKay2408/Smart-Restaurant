@@ -61,7 +61,6 @@ class CategoryService {
         name: string;
         description: string;
         image?: string;
-        displayOrder?: number;
         restaurantId?: string; // Optional - backend will use req.user.restaurantId if not provided
     }): Promise<CategoryResponse> {
         try {
@@ -86,7 +85,6 @@ class CategoryService {
         name: string;
         description: string;
         image: string;
-        displayOrder: number;
         isActive: boolean;
     }>): Promise<CategoryResponse> {
         try {

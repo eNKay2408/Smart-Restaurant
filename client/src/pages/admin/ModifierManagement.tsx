@@ -12,7 +12,7 @@ const ModifierManagement: React.FC = () => {
         name: '',
         type: 'single' as 'single' | 'multiple',
         required: false,
-        displayOrder: 1,
+        displayOrder: '' as string | number,
         isActive: true,
         options: [] as Array<{
             name: string;
@@ -20,6 +20,10 @@ const ModifierManagement: React.FC = () => {
             isDefault: boolean;
             isActive: boolean;
         }>
+    });
+    const [deleteModal, setDeleteModal] = useState<{ show: boolean; modifier: Modifier | null }>({
+        show: false,
+        modifier: null
     });
 
     const fetchModifiers = async () => {
@@ -47,15 +51,18 @@ const ModifierManagement: React.FC = () => {
         try {
             if (editingModifier) {
                 // Update existing modifier
-                await modifierService.updateModifier(editingModifier.id, formData);
+                await modifierService.updateModifier(editingModifier.id, {
+                    ...formData,
+                    displayOrder: Number(formData.displayOrder) || 1
+                });
             } else {
-                // Create new modifier
+                // Create new modifier - backend will use req.user.restaurantId
                 await modifierService.createModifier({
                     ...formData,
-                    restaurantId: 'default-restaurant' // You may want to get this from context
+                    displayOrder: Number(formData.displayOrder) || 1
                 });
             }
-            
+
             // Reset form and refresh data
             resetForm();
             await fetchModifiers();
@@ -84,13 +91,22 @@ const ModifierManagement: React.FC = () => {
         setShowCreateForm(true);
     };
 
-    const handleDelete = async (modifierId: string) => {
-        if (!confirm('Are you sure you want to delete this modifier?')) return;
+    const handleDelete = (modifierId: string) => {
+        const modifier = modifiers.find(m => m.id === modifierId);
+        if (!modifier) return;
+
+        // Show custom confirmation modal
+        setDeleteModal({ show: true, modifier });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.modifier) return;
 
         try {
             setLoading(true);
-            await modifierService.deleteModifier(modifierId);
+            await modifierService.deleteModifier(deleteModal.modifier.id);
             await fetchModifiers();
+            setDeleteModal({ show: false, modifier: null });
         } catch (err: any) {
             setError(err.message || 'Failed to delete modifier');
         } finally {
@@ -103,7 +119,7 @@ const ModifierManagement: React.FC = () => {
             name: '',
             type: 'single',
             required: false,
-            displayOrder: 1,
+            displayOrder: '',
             isActive: true,
             options: []
         });
@@ -126,7 +142,7 @@ const ModifierManagement: React.FC = () => {
     const updateOption = (index: number, field: string, value: any) => {
         setFormData(prev => ({
             ...prev,
-            options: prev.options.map((opt, idx) => 
+            options: prev.options.map((opt, idx) =>
                 idx === index ? { ...opt, [field]: value } : opt
             )
         }));
@@ -219,8 +235,9 @@ const ModifierManagement: React.FC = () => {
                                             type="number"
                                             min="1"
                                             value={formData.displayOrder}
-                                            onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) })}
+                                            onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="1"
                                         />
                                     </div>
 
@@ -264,7 +281,7 @@ const ModifierManagement: React.FC = () => {
 
                                     <div className="space-y-3 max-h-40 overflow-y-auto">
                                         {formData.options.map((option, index) => (
-                                            <div key={`option-${index}-${option.name}`} className="flex gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                                            <div key={index} className="flex gap-3 items-center p-3 bg-gray-50 rounded-lg">
                                                 <input
                                                     type="text"
                                                     placeholder="Option name"
@@ -354,78 +371,172 @@ const ModifierManagement: React.FC = () => {
                             {modifiers
                                 .sort((a, b) => a.displayOrder - b.displayOrder)
                                 .map((modifier) => (
-                                <div key={modifier.id} className="p-6 hover:bg-gray-50">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1">
-                                            <div className="flex items-center space-x-3 mb-2">
-                                                <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full text-sm font-medium">
-                                                    {modifier.displayOrder}
-                                                </div>
-                                                <h4 className="text-lg font-medium text-gray-900">
-                                                    {modifier.name}
-                                                </h4>
-                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                                    modifier.type === 'single' 
-                                                        ? 'bg-blue-100 text-blue-800' 
-                                                        : 'bg-purple-100 text-purple-800'
-                                                }`}>
-                                                    {modifier.type === 'single' ? 'Single Choice' : 'Multiple Choice'}
-                                                </span>
-                                                {modifier.required && (
-                                                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                                                        Required
-                                                    </span>
-                                                )}
-                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                                    modifier.isActive 
-                                                        ? 'bg-green-100 text-green-800' 
-                                                        : 'bg-red-100 text-red-800'
-                                                }`}>
-                                                    {modifier.isActive ? 'Active' : 'Inactive'}
-                                                </span>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
-                                                {modifier.options.map((option) => (
-                                                    <div key={option.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
-                                                        <div className="flex items-center">
-                                                            <span className="text-sm font-medium text-gray-900">
-                                                                {option.name}
-                                                            </span>
-                                                            {option.isDefault && (
-                                                                <span className="ml-2 px-1 text-xs bg-yellow-100 text-yellow-800 rounded">
-                                                                    Default
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-sm text-gray-600">
-                                                            {option.priceAdjustment > 0 ? '+' : ''}${option.priceAdjustment.toFixed(2)}
-                                                        </span>
+                                    <div key={modifier.id} className="p-6 hover:bg-gray-50">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <div className="flex items-center space-x-3 mb-2">
+                                                    <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full text-sm font-medium">
+                                                        {modifier.displayOrder}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                                                    <h4 className="text-lg font-medium text-gray-900">
+                                                        {modifier.name}
+                                                    </h4>
+                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${modifier.type === 'single'
+                                                        ? 'bg-blue-100 text-blue-800'
+                                                        : 'bg-purple-100 text-purple-800'
+                                                        }`}>
+                                                        {modifier.type === 'single' ? 'Single Choice' : 'Multiple Choice'}
+                                                    </span>
+                                                    {modifier.required && (
+                                                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                                            Required
+                                                        </span>
+                                                    )}
+                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${modifier.isActive
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-red-100 text-red-800'
+                                                        }`}>
+                                                        {modifier.isActive ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                </div>
 
-                                        <div className="flex space-x-2 ml-4">
-                                            <button
-                                                onClick={() => handleEdit(modifier)}
-                                                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(modifier.id)}
-                                                className="text-red-600 hover:text-red-700 text-sm font-medium"
-                                            >
-                                                Delete
-                                            </button>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                                                    {modifier.options.map((option) => (
+                                                        <div key={option.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+                                                            <div className="flex items-center">
+                                                                <span className="text-sm font-medium text-gray-900">
+                                                                    {option.name}
+                                                                </span>
+                                                                {option.isDefault && (
+                                                                    <span className="ml-2 px-1 text-xs bg-yellow-100 text-yellow-800 rounded">
+                                                                        Default
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-sm text-gray-600">
+                                                                {option.priceAdjustment > 0 ? '+' : ''}${option.priceAdjustment.toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex space-x-2 ml-4">
+                                                <button
+                                                    onClick={() => handleEdit(modifier)}
+                                                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(modifier.id)}
+                                                    className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
                         </div>
                     )}
                 </div>
+
+                {/* Delete Confirmation Modal */}
+                {deleteModal.show && deleteModal.modifier && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+                            {/* Modal Header */}
+                            <div className="px-6 py-4 border-b border-gray-200">
+                                <div className="flex items-center">
+                                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                                        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-semibold text-gray-900">Delete Modifier</h3>
+                                        <p className="text-sm text-gray-500">This action cannot be undone</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="px-6 py-4">
+                                <p className="text-gray-700 mb-4">
+                                    Are you sure you want to delete this modifier?
+                                </p>
+
+                                {/* Modifier Preview */}
+                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                    <div className="flex items-start space-x-4">
+                                        <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <span className="text-2xl">⚙️</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-semibold text-gray-900 truncate">{deleteModal.modifier.name}</h4>
+                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${deleteModal.modifier.type === 'single'
+                                                        ? 'bg-blue-100 text-blue-800'
+                                                        : 'bg-purple-100 text-purple-800'
+                                                    }`}>
+                                                    {deleteModal.modifier.type === 'single' ? 'Single Choice' : 'Multiple Choice'}
+                                                </span>
+                                                {deleteModal.modifier.required && (
+                                                    <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                                        Required
+                                                    </span>
+                                                )}
+                                                <span className="text-xs text-gray-500">
+                                                    {deleteModal.modifier.options.length} option{deleteModal.modifier.options.length !== 1 ? 's' : ''}
+                                                </span>
+                                            </div>
+                                            {deleteModal.modifier.options.length > 0 && (
+                                                <div className="mt-2 text-xs text-gray-500">
+                                                    Options: {deleteModal.modifier.options.slice(0, 3).map(opt => opt.name).join(', ')}
+                                                    {deleteModal.modifier.options.length > 3 && ` +${deleteModal.modifier.options.length - 3} more`}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setDeleteModal({ show: false, modifier: null })}
+                                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+                                    disabled={loading}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmDelete}
+                                    disabled={loading}
+                                    className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            Delete Modifier
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </AdminLayout>
     );

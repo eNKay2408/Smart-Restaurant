@@ -38,7 +38,7 @@ const AdminMenuItemForm: React.FC = () => {
     const [initialLoading, setInitialLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    
+
     // Create modifier modal state
     const [showCreateModifier, setShowCreateModifier] = useState(false);
     const [newModifierData, setNewModifierData] = useState({
@@ -53,7 +53,7 @@ const AdminMenuItemForm: React.FC = () => {
     const fetchInitialData = async () => {
         try {
             setInitialLoading(true);
-            
+
             // Fetch categories
             const categoriesResponse = await categoryService.getCategories();
             if (categoriesResponse.success) {
@@ -63,11 +63,11 @@ const AdminMenuItemForm: React.FC = () => {
                     setFormData(prev => ({ ...prev, category: categoriesResponse.data[0].name }));
                 }
             }
-            
+
             // Fetch available modifiers
             try {
                 const modifiersResponse = await modifierService.getModifiers();
-                
+
                 if (modifiersResponse.success) {
                     // Filter active modifiers only
                     const activeModifiers = modifiersResponse.data.filter(modifier => modifier.isActive !== false);
@@ -92,30 +92,30 @@ const AdminMenuItemForm: React.FC = () => {
             const response = await menuService.getMenuItem(itemId);
             if (response.success) {
                 const item = response.data;
-                
+
                 // Extract modifier IDs from different possible sources
                 let modifierIds: string[] = [];
-                
+
                 console.log('📄 Fetched menu item:', item);
                 console.log('🔧 Raw modifiers data:', item.modifiers);
                 console.log('🔧 Raw modifierIds data:', item.modifierIds);
-                
+
                 // First, check if there are populated modifiers from modifierIds (current format)
                 if (item.modifierIds && Array.isArray(item.modifierIds)) {
                     modifierIds = item.modifierIds
                         .filter(modifier => modifier && (modifier._id || modifier.id))
                         .map((modifier: any) => modifier._id || modifier.id);
                 }
-                
+
                 // If no modifierIds, check the combined modifiers array
                 if (modifierIds.length === 0 && item.modifiers && Array.isArray(item.modifiers)) {
                     modifierIds = item.modifiers
                         .filter(modifier => modifier && (modifier._id || modifier.id))
                         .map((modifier: any) => modifier._id || modifier.id);
                 }
-                
+
                 console.log('🔧 Extracted modifier IDs:', modifierIds);
-                
+
                 setFormData({
                     name: item.name || '',
                     description: item.description || '',
@@ -153,11 +153,89 @@ const AdminMenuItemForm: React.FC = () => {
 
     // Update selected modifiers details when modifierIds or availableModifiers change
     useEffect(() => {
-        const selectedDetails = availableModifiers.filter(modifier => 
+        const selectedDetails = availableModifiers.filter(modifier =>
             formData.modifierIds.includes(modifier.id)
         );
         setSelectedModifiersDetails(selectedDetails);
     }, [formData.modifierIds, availableModifiers]);
+
+    // Modifier option management functions
+    const addModifierOption = () => {
+        setNewModifierData(prev => ({
+            ...prev,
+            options: [...prev.options, { name: '', priceAdjustment: 0 }]
+        }));
+    };
+
+    const updateModifierOption = (index: number, field: 'name' | 'priceAdjustment', value: string | number) => {
+        setNewModifierData(prev => ({
+            ...prev,
+            options: prev.options.map((opt, i) =>
+                i === index ? { ...opt, [field]: value } : opt
+            )
+        }));
+    };
+
+    const removeModifierOption = (index: number) => {
+        setNewModifierData(prev => ({
+            ...prev,
+            options: prev.options.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleCreateModifier = async () => {
+        // Validate
+        if (!newModifierData.name.trim()) {
+            alert('Please enter a modifier group name');
+            return;
+        }
+        if (newModifierData.options.length === 0 || !newModifierData.options[0].name.trim()) {
+            alert('Please add at least one valid option');
+            return;
+        }
+
+        try {
+            setCreatingModifier(true);
+
+            // Transform options to match backend schema
+            const transformedOptions = newModifierData.options
+                .filter(opt => opt.name.trim())
+                .map(opt => ({
+                    name: opt.name.trim(),
+                    priceAdjustment: opt.priceAdjustment || 0,
+                    isDefault: false,
+                    isActive: true
+                }));
+
+            const response = await modifierService.createModifier({
+                ...newModifierData,
+                displayOrder: 0,
+                options: transformedOptions
+            });
+
+            if (response.success) {
+                // Refresh available modifiers
+                await fetchInitialData();
+                // Add new modifier to selected
+                setFormData(prev => ({
+                    ...prev,
+                    modifierIds: [...prev.modifierIds, response.data.id]
+                }));
+                // Reset and close modal
+                setNewModifierData({
+                    name: '',
+                    type: 'single',
+                    required: false,
+                    options: [{ name: '', priceAdjustment: 0 }]
+                });
+                setShowCreateModifier(false);
+            }
+        } catch (error: any) {
+            alert(error.message || 'Failed to create modifier');
+        } finally {
+            setCreatingModifier(false);
+        }
+    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -214,19 +292,6 @@ const AdminMenuItemForm: React.FC = () => {
             // Find selected category
             const selectedCategory = categories.find(cat => cat.name === formData.category);
 
-            // Transform modifiers from frontend format to backend format
-            const transformedModifiers = formData.modifiers
-                .filter(group => group.name.trim() !== '') // Only include groups with names
-                .map(group => ({
-                    name: group.name,
-                    type: group.multiSelect ? 'multiple' : 'single',
-                    required: group.required,
-                    options: group.items.map(item => ({
-                        name: item.name,
-                        priceAdjustment: item.price
-                    }))
-                }));
-
             const menuItemData: any = {
                 name: formData.name,
                 description: formData.description,
@@ -235,8 +300,6 @@ const AdminMenuItemForm: React.FC = () => {
                 status: formData.status,
                 images: formData.photos,
                 modifierIds: formData.modifierIds,
-                // Use a valid ObjectId format for restaurantId
-                restaurantId: '507f1f77bcf86cd799439011' // Default restaurant ObjectId
             };
 
             console.log('📝 Sending menu item data:', menuItemData);
@@ -254,7 +317,7 @@ const AdminMenuItemForm: React.FC = () => {
         } catch (err: any) {
             console.error('❌ Failed to save menu item:', err);
             console.error('Error response:', err.response?.data);
-            
+
             // Show more specific error messages
             const errorMessage = err.response?.data?.message || err.message || 'Failed to save menu item';
             setError(errorMessage);
@@ -274,79 +337,6 @@ const AdminMenuItemForm: React.FC = () => {
             modifierIds: prev.modifierIds.includes(modifierId)
                 ? prev.modifierIds.filter(id => id !== modifierId)
                 : [...prev.modifierIds, modifierId]
-        }));
-    };
-
-    // Create new modifier inline
-    const handleCreateModifier = async () => {
-        if (!newModifierData.name.trim()) return;
-        
-        setCreatingModifier(true);
-        try {
-            const modifierPayload = {
-                name: newModifierData.name,
-                type: newModifierData.type,
-                required: newModifierData.required,
-                displayOrder: availableModifiers.length + 1,
-                options: newModifierData.options
-                    .filter(opt => opt.name.trim())
-                    .map(opt => ({
-                        name: opt.name.trim(),
-                        priceAdjustment: opt.priceAdjustment || 0,
-                        isDefault: false,
-                        isActive: true
-                    })),
-                restaurantId: '507f1f77bcf86cd799439011'
-            };
-            
-            const response = await modifierService.createModifier(modifierPayload);
-            
-            if (response.success) {
-                // Refresh modifiers list
-                await fetchInitialData();
-                
-                // Auto-select the newly created modifier
-                setFormData(prev => ({
-                    ...prev,
-                    modifierIds: [...prev.modifierIds, response.data.id]
-                }));
-                
-                // Reset and close modal
-                setNewModifierData({
-                    name: '',
-                    type: 'single',
-                    required: false,
-                    options: [{ name: '', priceAdjustment: 0 }]
-                });
-                setShowCreateModifier(false);
-            }
-        } catch (error: any) {
-            setError(error.message || 'Failed to create modifier');
-        } finally {
-            setCreatingModifier(false);
-        }
-    };
-    
-    const addModifierOption = () => {
-        setNewModifierData(prev => ({
-            ...prev,
-            options: [...prev.options, { name: '', priceAdjustment: 0 }]
-        }));
-    };
-    
-    const removeModifierOption = (index: number) => {
-        setNewModifierData(prev => ({
-            ...prev,
-            options: prev.options.filter((_, i) => i !== index)
-        }));
-    };
-    
-    const updateModifierOption = (index: number, field: string, value: any) => {
-        setNewModifierData(prev => ({
-            ...prev,
-            options: prev.options.map((opt, i) => 
-                i === index ? { ...opt, [field]: value } : opt
-            )
         }));
     };
 
@@ -545,48 +535,81 @@ const AdminMenuItemForm: React.FC = () => {
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Photos</h3>
 
                         <div className="space-y-4">
-                            {/* URL Input for adding images */}
+                            {/* File Upload Input */}
                             <div className="flex gap-2">
                                 <input
-                                    type="url"
-                                    placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    onKeyPress={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            const input = e.target as HTMLInputElement;
-                                            const url = input.value.trim();
-                                            if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                                    type="file"
+                                    id="image-upload"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+
+                                        // Validate file size (5MB max)
+                                        if (file.size > 5 * 1024 * 1024) {
+                                            alert('Image size must be less than 5MB');
+                                            return;
+                                        }
+
+                                        // Validate file type
+                                        if (!file.type.startsWith('image/')) {
+                                            alert('Please select an image file');
+                                            return;
+                                        }
+
+                                        try {
+                                            setLoading(true);
+
+                                            // Create FormData
+                                            const uploadFormData = new FormData();
+                                            uploadFormData.append('image', file);
+                                            uploadFormData.append('itemName', formData.name || 'menu-item');
+
+                                            // Upload to server
+                                            const token = localStorage.getItem('token');
+                                            const response = await fetch('http://localhost:5000/api/upload/menu-items', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Authorization': `Bearer ${token}`
+                                                },
+                                                body: uploadFormData
+                                            });
+
+                                            const data = await response.json();
+
+                                            if (data.success) {
+                                                // Add image URL to photos array
+                                                const imageUrl = `http://localhost:5000${data.data.url}`;
                                                 setFormData(prev => ({
                                                     ...prev,
-                                                    photos: [...prev.photos, url]
+                                                    photos: [...prev.photos, imageUrl]
                                                 }));
-                                                input.value = '';
                                             } else {
-                                                alert('Please enter a valid URL starting with http:// or https://');
+                                                alert(`Upload failed: ${data.message}`);
                                             }
+                                        } catch (error: any) {
+                                            console.error('Upload error:', error);
+                                            alert('Failed to upload image. Please try again.');
+                                        } finally {
+                                            setLoading(false);
+                                            // Reset file input
+                                            e.target.value = '';
                                         }
                                     }}
                                 />
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        const input = (e.target as HTMLButtonElement).previousElementSibling as HTMLInputElement;
-                                        const url = input.value.trim();
-                                        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                photos: [...prev.photos, url]
-                                            }));
-                                            input.value = '';
-                                        } else {
-                                            alert('Please enter a valid URL starting with http:// or https://');
-                                        }
-                                    }}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                <label
+                                    htmlFor="image-upload"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2"
                                 >
-                                    Add Image
-                                </button>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Choose Image
+                                </label>
+                                <span className="text-sm text-gray-500 self-center">
+                                    Max size: 5MB | Formats: JPG, PNG, GIF, WEBP
+                                </span>
                             </div>
 
                             {/* Image Grid */}
@@ -595,9 +618,9 @@ const AdminMenuItemForm: React.FC = () => {
                                     <div key={index} className="relative">
                                         <div className="w-full h-32 bg-gray-100 border border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
                                             {photo ? (
-                                                <img 
-                                                    src={photo} 
-                                                    alt={`Photo ${index + 1}`} 
+                                                <img
+                                                    src={photo}
+                                                    alt={`Photo ${index + 1}`}
                                                     className="w-full h-full object-cover"
                                                     onError={(e) => {
                                                         const img = e.target as HTMLImageElement;
@@ -621,7 +644,7 @@ const AdminMenuItemForm: React.FC = () => {
                                         </button>
                                     </div>
                                 ))}
-                                
+
                                 {/* Add more placeholder */}
                                 {formData.photos.length === 0 && (
                                     <div className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400">
@@ -659,17 +682,16 @@ const AdminMenuItemForm: React.FC = () => {
                                         + Create Modifier
                                     </button>
                                 </div>
-                                
+
                                 {availableModifiers.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {availableModifiers.map((modifier) => (
-                                            <div 
+                                            <div
                                                 key={modifier.id}
-                                                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                                    formData.modifierIds.includes(modifier.id)
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-gray-200 hover:border-gray-300'
-                                                }`}
+                                                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${formData.modifierIds.includes(modifier.id)
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-gray-200 hover:border-gray-300'
+                                                    }`}
                                                 onClick={() => toggleModifierSelection(modifier.id)}
                                             >
                                                 <div className="flex items-start justify-between">
@@ -678,14 +700,17 @@ const AdminMenuItemForm: React.FC = () => {
                                                             <input
                                                                 type="checkbox"
                                                                 checked={formData.modifierIds.includes(modifier.id)}
-                                                                onChange={() => toggleModifierSelection(modifier.id)}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    toggleModifierSelection(modifier.id);
+                                                                }}
                                                                 className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                                             />
                                                             <span className="ml-2 font-medium text-gray-900">{modifier.name}</span>
                                                         </div>
                                                         <div className="mt-1 text-sm text-gray-500">
-                                                            {modifier.type === 'multiple' ? 'Multi-select' : 'Single select'} • 
-                                                            {modifier.required ? ' Required' : ' Optional'} • 
+                                                            {modifier.type === 'multiple' ? 'Multi-select' : 'Single select'} •
+                                                            {modifier.required ? ' Required' : ' Optional'} •
                                                             {modifier.options?.length || 0} options
                                                         </div>
                                                         {modifier.options && modifier.options.length > 0 && (
@@ -708,7 +733,7 @@ const AdminMenuItemForm: React.FC = () => {
                                         </div>
                                         <p className="text-gray-500 text-sm mb-2">No modifier groups available</p>
                                         <p className="text-gray-400 text-xs mb-4">Create modifier groups to add options like Size, Extras, or Add-ons</p>
-                                        
+
                                         <button
                                             type="button"
                                             onClick={() => setShowCreateModifier(true)}
@@ -726,17 +751,17 @@ const AdminMenuItemForm: React.FC = () => {
                                     <h4 className="text-sm font-medium text-green-800 mb-3">
                                         Selected Modifiers ({formData.modifierIds.length})
                                     </h4>
-                                    
+
                                     <div className="space-y-3">
                                         {formData.modifierIds.map((modifierId) => {
                                             const modifier = availableModifiers.find(m => m.id === modifierId);
-                                            
+
                                             if (!modifier) {
                                                 return null; // Skip unknown modifiers
                                             }
-                                            
+
                                             return (
-                                                <div 
+                                                <div
                                                     key={modifierId}
                                                     className="bg-white border border-green-200 rounded-lg p-3"
                                                 >
@@ -745,11 +770,10 @@ const AdminMenuItemForm: React.FC = () => {
                                                             <div className="flex items-center">
                                                                 <span className="font-medium text-gray-900">{modifier.name}</span>
                                                                 <div className="ml-2 flex items-center space-x-1">
-                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                                        modifier.type === 'multiple' 
-                                                                            ? 'bg-blue-100 text-blue-800' 
-                                                                            : 'bg-purple-100 text-purple-800'
-                                                                    }`}>
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${modifier.type === 'multiple'
+                                                                        ? 'bg-blue-100 text-blue-800'
+                                                                        : 'bg-purple-100 text-purple-800'
+                                                                        }`}>
                                                                         {modifier.type === 'multiple' ? 'Multi-select' : 'Single select'}
                                                                     </span>
                                                                     {modifier.required && (
@@ -771,7 +795,7 @@ const AdminMenuItemForm: React.FC = () => {
                                                             </svg>
                                                         </button>
                                                     </div>
-                                                    
+
                                                     {/* Options list */}
                                                     {modifier.options && modifier.options.length > 0 && (
                                                         <div>
@@ -780,13 +804,12 @@ const AdminMenuItemForm: React.FC = () => {
                                                             </p>
                                                             <div className="flex flex-wrap gap-1">
                                                                 {modifier.options.map((option: any, index: number) => (
-                                                                    <span 
+                                                                    <span
                                                                         key={index}
-                                                                        className={`inline-flex items-center px-2 py-1 rounded text-xs ${
-                                                                            option.isDefault 
-                                                                                ? 'bg-yellow-100 text-yellow-800 font-medium'
-                                                                                : 'bg-gray-100 text-gray-700'
-                                                                        }`}
+                                                                        className={`inline-flex items-center px-2 py-1 rounded text-xs ${option.isDefault
+                                                                            ? 'bg-yellow-100 text-yellow-800 font-medium'
+                                                                            : 'bg-gray-100 text-gray-700'
+                                                                            }`}
                                                                     >
                                                                         {option.name}
                                                                         {option.priceAdjustment > 0 && (
@@ -804,7 +827,7 @@ const AdminMenuItemForm: React.FC = () => {
                                             );
                                         })}
                                     </div>
-                                    
+
                                     {/* Summary info */}
                                     <div className="mt-3 pt-3 border-t border-green-200">
                                         <p className="text-xs text-green-700">
@@ -813,8 +836,8 @@ const AdminMenuItemForm: React.FC = () => {
                                                 const modifier = availableModifiers.find(m => m.id === id);
                                                 return modifier?.required;
                                             }) && (
-                                                <span className="font-medium"> Some modifiers are required and customers must make a selection.</span>
-                                            )}
+                                                    <span className="font-medium"> Some modifiers are required and customers must make a selection.</span>
+                                                )}
                                         </p>
                                     </div>
                                 </div>
@@ -836,7 +859,7 @@ const AdminMenuItemForm: React.FC = () => {
                                     onChange={handleInputChange}
                                     className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                                 />
-                                <span className="ml-3 text-gray-700">● Available</span>
+                                <span className="ml-3 text-gray-700">Available</span>
                             </label>
                             <label className="flex items-center">
                                 <input
@@ -847,7 +870,7 @@ const AdminMenuItemForm: React.FC = () => {
                                     onChange={handleInputChange}
                                     className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                                 />
-                                <span className="ml-3 text-gray-700">○ Unavailable</span>
+                                <span className="ml-3 text-gray-700">Unavailable</span>
                             </label>
                             <label className="flex items-center">
                                 <input
@@ -858,7 +881,7 @@ const AdminMenuItemForm: React.FC = () => {
                                     onChange={handleInputChange}
                                     className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                                 />
-                                <span className="ml-3 text-gray-700">○ Sold Out</span>
+                                <span className="ml-3 text-gray-700">Sold Out</span>
                             </label>
                         </div>
                     </div>
@@ -891,7 +914,7 @@ const AdminMenuItemForm: React.FC = () => {
                         </button>
                     </div>
                 </form>
-                
+
                 {/* Create Modifier Modal */}
                 {showCreateModifier && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -909,7 +932,7 @@ const AdminMenuItemForm: React.FC = () => {
                                         </svg>
                                     </button>
                                 </div>
-                                
+
                                 <div className="space-y-4">
                                     {/* Modifier Name */}
                                     <div>
@@ -924,7 +947,7 @@ const AdminMenuItemForm: React.FC = () => {
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                     </div>
-                                    
+
                                     {/* Type and Required */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -951,7 +974,7 @@ const AdminMenuItemForm: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Options */}
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
@@ -964,7 +987,7 @@ const AdminMenuItemForm: React.FC = () => {
                                                 + Add Option
                                             </button>
                                         </div>
-                                        
+
                                         <div className="space-y-2">
                                             {newModifierData.options.map((option, index) => (
                                                 <div key={index} className="flex items-center space-x-2">
@@ -1004,7 +1027,7 @@ const AdminMenuItemForm: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {/* Modal Actions */}
                                 <div className="flex items-center justify-end space-x-3 mt-6 pt-4 border-t">
                                     <button

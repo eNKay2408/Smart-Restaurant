@@ -62,7 +62,7 @@ class CategoryService {
         description: string;
         image?: string;
         displayOrder?: number;
-        restaurantId: string;
+        restaurantId?: string; // Optional - backend will use req.user.restaurantId if not provided
     }): Promise<CategoryResponse> {
         try {
             const response = await axiosInstance.post<CategoryResponse>('/categories', categoryData);

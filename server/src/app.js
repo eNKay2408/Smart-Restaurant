@@ -30,6 +30,7 @@ import cartRoutes from "./routes/cartRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import promotionRoutes from "./routes/promotionRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 // Connect to database
 connectDB();
@@ -79,6 +80,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use('/uploads', express.static(path.join(__dirname, '../public/images')));
+app.use('/images', express.static(path.join(__dirname, '../public/images')));
 
 // Logging middleware
 if (process.env.NODE_ENV === "development") {
@@ -136,6 +138,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/promotions", promotionRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

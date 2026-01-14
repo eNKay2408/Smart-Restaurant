@@ -89,7 +89,7 @@ class ModifierService {
             isDefault: boolean;
             isActive: boolean;
         }>;
-        restaurantId: string;
+        restaurantId?: string; // Optional - backend will use req.user.restaurantId
     }): Promise<ModifierResponse> {
         try {
             const response = await axiosInstance.post<ModifierResponse>('/modifiers', modifierData);

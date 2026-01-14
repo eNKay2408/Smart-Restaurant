@@ -186,11 +186,23 @@ function Menu() {
                             )}
                         </div>
                     </div>
-                    {isValidTable && (
-                        <div className="text-sm text-gray-600 bg-green-100 px-3 py-1 rounded-full">
-                            Table {tableInfo?.tableNumber}
-                        </div>
-                    )}
+                    <div className="flex items-center space-x-2">
+                        {/* Order History Button */}
+                        <button
+                            onClick={() => navigate('/order-history')}
+                            className="p-2 hover:bg-gray-100 rounded-lg"
+                            title="Order History"
+                        >
+                            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </button>
+                        {isValidTable && (
+                            <div className="text-sm text-gray-600 bg-green-100 px-3 py-1 rounded-full">
+                                Table {tableInfo?.tableNumber}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Search Bar */}

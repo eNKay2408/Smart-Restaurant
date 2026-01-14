@@ -17,6 +17,7 @@ export const getOrders = async (req, res) => {
 		const {
 			restaurantId,
 			tableId,
+			customerId,
 			status,
 			paymentStatus,
 			sortBy = "createdAt",
@@ -29,6 +30,7 @@ export const getOrders = async (req, res) => {
 		const filter = {};
 		if (restaurantId) filter.restaurantId = restaurantId;
 		if (tableId) filter.tableId = tableId;
+		if (customerId) filter.customerId = customerId;
 		if (status) filter.status = status;
 		if (paymentStatus) filter.paymentStatus = paymentStatus;
 

@@ -201,12 +201,29 @@ const Cart: React.FC = () => {
                 throw new Error('Table information is required. Please scan the QR code on your table.');
             }
 
+            // Get logged-in customer info from localStorage
+            const userStr = localStorage.getItem('user');
+            let customerName = 'Guest';
+            let customerId = cart.customerId || null;
+
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    if (user.role === 'customer') {
+                        customerName = user.fullName || user.email || 'Guest';
+                        customerId = user.id || user._id || customerId;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse user from localStorage:', e);
+                }
+            }
+
             // Create order from cart
             const orderData: any = {
                 restaurantId: cart.restaurantId,
                 tableId: finalTableId, // Use finalTableId from cart or localStorage
-                customerId: cart.customerId,
-                guestName: 'Guest',
+                customerId: customerId,
+                guestName: customerName, // Use customer name from logged-in user
                 items: cart.items.map(item => ({
                     menuItemId: item.menuItemId,
                     quantity: item.quantity,

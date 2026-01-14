@@ -215,8 +215,8 @@ function KDS() {
 					<button
 						onClick={() => setFilter("accepted")}
 						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "accepted"
-								? "bg-blue-600 shadow-lg scale-105"
-								: "bg-gray-700 hover:bg-gray-600"
+							? "bg-blue-600 shadow-lg scale-105"
+							: "bg-gray-700 hover:bg-gray-600"
 							}`}
 					>
 						🆕 New ({orders.filter((o) => o.status === "accepted").length})
@@ -224,8 +224,8 @@ function KDS() {
 					<button
 						onClick={() => setFilter("preparing")}
 						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "preparing"
-								? "bg-orange-600 shadow-lg scale-105"
-								: "bg-gray-700 hover:bg-gray-600"
+							? "bg-orange-600 shadow-lg scale-105"
+							: "bg-gray-700 hover:bg-gray-600"
 							}`}
 					>
 						🔥 Preparing (
@@ -234,8 +234,8 @@ function KDS() {
 					<button
 						onClick={() => setFilter("all")}
 						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "all"
-								? "bg-purple-600 shadow-lg scale-105"
-								: "bg-gray-700 hover:bg-gray-600"
+							? "bg-purple-600 shadow-lg scale-105"
+							: "bg-gray-700 hover:bg-gray-600"
 							}`}
 					>
 						📋 All ({orders.length})
@@ -262,8 +262,8 @@ function KDS() {
 									<div
 										key={order._id}
 										className={`bg-gray-800 rounded-xl p-4 border-4 ${overdue
-												? "border-red-500 animate-pulse"
-												: "border-gray-700"
+											? "border-red-500 animate-pulse"
+											: "border-gray-700"
 											} hover:shadow-2xl transition-all`}
 									>
 										{/* Header */}
@@ -311,18 +311,25 @@ function KDS() {
 												{order.items.map((item, idx) => (
 													<li
 														key={idx}
-														className={`border-b pb-2 ${item.status === 'served' || item.status === 'ready'
-																? 'border-gray-700 opacity-50'
-																: 'border-yellow-500'
+														className={`border-b pb-2 ${item.status === 'rejected'
+																? 'border-red-700 opacity-60'
+																: item.status === 'served' || item.status === 'ready'
+																	? 'border-gray-700 opacity-50'
+																	: 'border-yellow-500'
 															}`}
 													>
 														<div className="flex items-start justify-between">
-															<p className={`font-semibold text-lg ${item.status === 'served' || item.status === 'ready'
-																	? 'text-gray-500 line-through'
-																	: 'text-white'
+															<p className={`font-semibold text-lg ${item.status === 'rejected'
+																	? 'text-red-400 line-through'
+																	: item.status === 'served' || item.status === 'ready'
+																		? 'text-gray-500 line-through'
+																		: 'text-white'
 																}`}>
 																{item.quantity}x {item.name}
 															</p>
+															{item.status === 'rejected' && (
+																<span className="text-red-500 text-xl font-bold" title="Rejected">❌</span>
+															)}
 															{(item.status === 'served' || item.status === 'ready') && (
 																<span className="text-green-500 text-xl">✅</span>
 															)}

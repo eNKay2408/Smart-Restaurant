@@ -8,6 +8,10 @@ const OrderStatus: React.FC = () => {
     const location = useLocation();
     const { orderId: urlOrderId } = useParams<{ orderId: string }>();
 
+    // Get table_id from query params
+    const searchParams = new URLSearchParams(location.search);
+    const tableIdFromQuery = searchParams.get('table_id');
+
     // Priority: URL param > location.state
     const orderId = urlOrderId || location.state?.orderId;
     const orderNumber = location.state?.orderNumber;
@@ -53,7 +57,8 @@ const OrderStatus: React.FC = () => {
 
     // Load order and setup Socket.IO listener
     useEffect(() => {
-        if (!orderId) {
+        // If we have neither orderId nor table_id, show error
+        if (!orderId && !tableIdFromQuery) {
             setError('No order ID provided');
             setLoading(false);
             return;
@@ -144,7 +149,28 @@ const OrderStatus: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await orderService.getOrder(orderId);
+
+            let response;
+            if (orderId) {
+                // Fetch specific order by ID
+                response = await orderService.getOrder(orderId);
+            } else if (tableIdFromQuery) {
+                // Fetch latest order for table
+                const ordersResponse = await orderService.getOrders({ tableId: tableIdFromQuery });
+
+                if (!ordersResponse.success || !ordersResponse.data || ordersResponse.data.length === 0) {
+                    throw new Error('No active orders found for this table');
+                }
+
+                // Get the most recent order
+                const latestOrder = ordersResponse.data[0];
+                response = {
+                    success: true,
+                    data: latestOrder
+                };
+            } else {
+                throw new Error('No order ID or table ID provided');
+            }
 
             if (!response.success || !response.data) {
                 throw new Error(response.message || 'Failed to load order');

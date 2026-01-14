@@ -39,8 +39,8 @@ export const getMenuItems = async (req, res) => {
             sortOptions[sortBy] = order === 'asc' ? 1 : -1;
         }
 
-        // Pagination
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        // Pagination (disabled - show all items)
+        // const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const menuItems = await MenuItem.find(filter)
             .populate('categoryId', 'name')
@@ -49,21 +49,22 @@ export const getMenuItems = async (req, res) => {
                 model: 'Modifier',
                 select: 'name type required displayOrder options isActive'
             })
-            .sort(sortOptions)
-            .skip(skip)
-            .limit(parseInt(limit));
+            .sort(sortOptions);
+        // Remove pagination limits to show all items
+        // .skip(skip)
+        // .limit(parseInt(limit));
 
         const total = await MenuItem.countDocuments(filter);
 
         // Process menu items to combine embedded and referenced modifiers
         const processedMenuItems = menuItems.map(item => {
             let allModifiers = [];
-            
+
             // Add embedded modifiers (legacy)
             if (item.modifiers && item.modifiers.length > 0) {
                 allModifiers = [...item.modifiers];
             }
-            
+
             // Add referenced modifiers (new format)
             if (item.modifierIds && item.modifierIds.length > 0) {
                 allModifiers = [...allModifiers, ...item.modifierIds];
@@ -98,7 +99,7 @@ export const getMenuItems = async (req, res) => {
 export const getMenuItem = async (req, res) => {
     try {
         console.log('🔍 Fetching menu item:', req.params.id);
-        
+
         const menuItem = await MenuItem.findById(req.params.id)
             .populate('categoryId', 'name')
             .populate({
@@ -116,12 +117,12 @@ export const getMenuItem = async (req, res) => {
 
         // Combine embedded modifiers and referenced modifiers
         let allModifiers = [];
-        
+
         // Add embedded modifiers (legacy)
         if (menuItem.modifiers && menuItem.modifiers.length > 0) {
             allModifiers = [...menuItem.modifiers];
         }
-        
+
         // Add referenced modifiers (new format)
         if (menuItem.modifierIds && menuItem.modifierIds.length > 0) {
             allModifiers = [...allModifiers, ...menuItem.modifierIds];

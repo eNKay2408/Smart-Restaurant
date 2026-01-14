@@ -147,7 +147,7 @@ router.post("/", createOrderValidation, validate, createOrder);
 router.get(
 	"/",
 	protect,
-	authorize("admin", "waiter", "kitchen"),
+	authorize("admin", "waiter", "kitchen", "customer"),
 	getOrders
 );
 

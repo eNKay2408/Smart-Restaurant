@@ -99,6 +99,7 @@ const AdminMenuItemForm: React.FC = () => {
                 console.log('📄 Fetched menu item:', item);
                 console.log('🔧 Raw modifiers data:', item.modifiers);
                 console.log('🔧 Raw modifierIds data:', item.modifierIds);
+                console.log('🔧 Available modifiers:', availableModifiers);
 
                 // First, check if there are populated modifiers from modifierIds (current format)
                 if (item.modifierIds && Array.isArray(item.modifierIds)) {
@@ -107,14 +108,20 @@ const AdminMenuItemForm: React.FC = () => {
                         .map((modifier: any) => modifier._id || modifier.id);
                 }
 
-                // If no modifierIds, check the combined modifiers array
+                // If no modifierIds, check embedded modifiers array and match by name
                 if (modifierIds.length === 0 && item.modifiers && Array.isArray(item.modifiers)) {
-                    modifierIds = item.modifiers
-                        .filter(modifier => modifier && (modifier._id || modifier.id))
-                        .map((modifier: any) => modifier._id || modifier.id);
+                    // Embedded modifiers don't have _id, so match by name with availableModifiers
+                    const embeddedModifierNames = item.modifiers.map((mod: any) => mod.name);
+                    console.log('🔍 Embedded modifier names:', embeddedModifierNames);
+
+                    modifierIds = availableModifiers
+                        .filter(availMod => embeddedModifierNames.includes(availMod.name))
+                        .map(availMod => availMod.id);
+
+                    console.log('✅ Matched modifier IDs from embedded:', modifierIds);
                 }
 
-                console.log('🔧 Extracted modifier IDs:', modifierIds);
+                console.log('🔧 Final extracted modifier IDs:', modifierIds);
 
                 setFormData({
                     name: item.name || '',
@@ -619,7 +626,7 @@ const AdminMenuItemForm: React.FC = () => {
                                         <div className="w-full h-32 bg-gray-100 border border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
                                             {photo ? (
                                                 <img
-                                                    src={photo}
+                                                    src={photo.startsWith('http') ? photo : `http://localhost:5000${photo}`}
                                                     alt={`Photo ${index + 1}`}
                                                     className="w-full h-full object-cover"
                                                     onError={(e) => {

@@ -38,6 +38,10 @@ const MenuItemDetail: React.FC = () => {
     const [reviews, setReviews] = useState<any[]>([]);
     const [reviewStats, setReviewStats] = useState<any>(null);
     const [loadingReviews, setLoadingReviews] = useState(false);
+    const [currentReviewPage, setCurrentReviewPage] = useState(1);
+    const [totalReviewPages, setTotalReviewPages] = useState(1);
+    const [relatedItems, setRelatedItems] = useState<any[]>([]);
+    const reviewsPerPage = 5;
 
     // Fetch menu item data on mount
     useEffect(() => {
@@ -67,6 +71,25 @@ const MenuItemDetail: React.FC = () => {
                         }));
                         setModifierGroups(transformedModifiers);
                     }
+
+                    // Fetch related items from same category
+                    if (response.data.categoryId) {
+                        try {
+                            const categoryId = typeof response.data.categoryId === 'object'
+                                ? response.data.categoryId._id
+                                : response.data.categoryId;
+                            const relatedResponse = await menuService.getMenuItemsByCategory(categoryId);
+                            if (relatedResponse.success) {
+                                // Filter out current item and limit to 4 items
+                                const related = relatedResponse.data
+                                    .filter((relItem: any) => relItem._id !== itemId && relItem.status === 'available')
+                                    .slice(0, 4);
+                                setRelatedItems(related);
+                            }
+                        } catch (err) {
+                            console.error('Error fetching related items:', err);
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching menu item:', error);
@@ -78,26 +101,31 @@ const MenuItemDetail: React.FC = () => {
         fetchMenuItem();
     }, [itemId]);
 
-    // Fetch reviews
-    useEffect(() => {
-        const fetchReviews = async () => {
-            if (!itemId) return;
+    // Fetch reviews with pagination support
+    const fetchReviews = async (page = 1) => {
+        if (!itemId) return;
 
-            try {
-                setLoadingReviews(true);
-                const response = await reviewService.getMenuItemReviews(itemId, 1, 5);
+        try {
+            setLoadingReviews(true);
+            const response = await reviewService.getMenuItemReviews(itemId, page, reviewsPerPage);
 
-                if (response.success) {
-                    setReviews(response.data || []);
-                    setReviewStats(response.stats || null);
+            if (response.success) {
+                setReviews(response.data || []);
+                setReviewStats(response.stats || null);
+                setCurrentReviewPage(page);
+                if (response.pagination) {
+                    setTotalReviewPages(response.pagination.pages || 1);
                 }
-            } catch (error) {
-                console.error('Error fetching reviews:', error);
-            } finally {
-                setLoadingReviews(false);
             }
-        };
+        } catch (error) {
+            console.error('Error fetching reviews:', error);
+        } finally {
+            setLoadingReviews(false);
+        }
+    };
 
+    // Load initial reviews
+    useEffect(() => {
         fetchReviews();
     }, [itemId]);
 
@@ -463,7 +491,88 @@ const MenuItemDetail: React.FC = () => {
                             <p className="text-sm text-gray-500 mt-1">Be the first to review this item!</p>
                         </div>
                     )}
+
+                    {/* Review Pagination */}
+                    {reviewStats && reviewStats.total > reviewsPerPage && (
+                        <div className="mt-6 pt-4 border-t border-gray-100">
+                            <div className="flex items-center justify-center space-x-2">
+                                <button
+                                    onClick={() => fetchReviews(currentReviewPage - 1)}
+                                    disabled={currentReviewPage === 1 || loadingReviews}
+                                    className={`px-3 py-1 rounded text-sm font-medium ${currentReviewPage === 1 || loadingReviews
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                    Page {currentReviewPage} of {totalReviewPages}
+                                </span>
+                                <button
+                                    onClick={() => fetchReviews(currentReviewPage + 1)}
+                                    disabled={currentReviewPage >= totalReviewPages || loadingReviews}
+                                    className={`px-3 py-1 rounded text-sm font-medium ${currentReviewPage >= totalReviewPages || loadingReviews
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
+
+                {/* Related Items */}
+                {relatedItems.length > 0 && (
+                    <div className="bg-white mt-2 px-4 py-6 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">You May Also Like</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                            {relatedItems.map((relatedItem) => (
+                                <div
+                                    key={relatedItem._id}
+                                    onClick={() => {
+                                        navigate(`/item/${relatedItem._id}`, {
+                                            state: { tableInfo, returnPath }
+                                        });
+                                    }}
+                                    className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors"
+                                >
+                                    <div className="aspect-video bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                                        {relatedItem.images && relatedItem.images.length > 0 ? (
+                                            <img
+                                                src={getPrimaryImageUrl(relatedItem.images, relatedItem.primaryImageIndex)}
+                                                alt={relatedItem.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <span className="text-3xl">🍽️</span>
+                                        )}
+                                    </div>
+                                    <h4 className="font-semibold text-gray-900 text-sm mb-1 truncate">
+                                        {relatedItem.name}
+                                    </h4>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-bold text-blue-600">
+                                            ${relatedItem.price.toFixed(2)}
+                                        </p>
+                                        {relatedItem.averageRating > 0 && (
+                                            <div className="flex items-center">
+                                                <svg className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                                                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                                                </svg>
+                                                <span className="text-xs text-gray-600 ml-1">
+                                                    {relatedItem.averageRating.toFixed(1)}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Nutrition & Ingredients - Not available in backend yet */}
                 {/* 

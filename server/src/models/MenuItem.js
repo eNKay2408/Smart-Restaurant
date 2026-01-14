@@ -36,7 +36,7 @@ const menuItemSchema = new mongoose.Schema(
             ref: 'Restaurant',
             required: true,
         },
-        // Modifiers (e.g., Size, Extras)
+        // Modifiers (e.g., Size, Extras) - embedded format for backward compatibility
         modifiers: [
             {
                 name: {
@@ -64,6 +64,13 @@ const menuItemSchema = new mongoose.Schema(
                         },
                     },
                 ],
+            },
+        ],
+        // Modifier references - new format using separate Modifier collection
+        modifierIds: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Modifier',
             },
         ],
         // Allergen information

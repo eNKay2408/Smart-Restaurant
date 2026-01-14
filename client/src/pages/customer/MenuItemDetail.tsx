@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import menuService from '../../services/menuService';
-import { getPrimaryImageUrl } from '../../utils/imageHelper';
 import cartService from '../../services/cartService';
+import { useQRTable } from '../../hooks/useQRTable';
+import { getPrimaryImageUrl } from '../../utils/imageHelper';
 import { toast } from 'react-toastify';
 
 interface Modifier {
@@ -25,12 +26,14 @@ const MenuItemDetail: React.FC = () => {
     const location = useLocation();
     const { itemId } = useParams<{ itemId: string }>();
     const { tableInfo, returnPath } = location.state || {};
+    const { tableInfo: qrTableInfo } = useQRTable();
 
     const [quantity, setQuantity] = useState(1);
     const [specialInstructions, setSpecialInstructions] = useState('');
     const [item, setItem] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
+    const [addingToCart, setAddingToCart] = useState(false);
 
     // Fetch menu item data on mount
     useEffect(() => {
@@ -49,12 +52,12 @@ const MenuItemDetail: React.FC = () => {
                         const transformedModifiers = response.data.modifiers.map((modifier: any, idx: number) => ({
                             id: `mod-${idx}`,
                             name: modifier.name,
-                            required: false,
-                            multiSelect: true, // Backend modifiers support multi-select
+                            required: modifier.required || false,
+                            multiSelect: modifier.type === 'multiple', // Backend uses 'single' or 'multiple'
                             options: modifier.options.map((option: any, optIdx: number) => ({
                                 id: `${idx}-${optIdx}`,
                                 name: option.name,
-                                price: option.priceAdjust || 0,
+                                price: option.priceAdjustment || 0, // Backend uses 'priceAdjustment'
                                 selected: false
                             }))
                         }));
@@ -110,66 +113,92 @@ const MenuItemDetail: React.FC = () => {
     };
 
     const handleAddToCart = async () => {
+        // Check if item is available
+        if (!isAvailable) {
+            toast.error('This item is currently unavailable');
+            return;
+        }
+        
+        setAddingToCart(true);
+        
         try {
-            // Get tableId from tableInfo or localStorage
-            let currentTableId = tableInfo?.tableId;
-            if (!currentTableId) {
+            // Get current table info - priority: passed prop, QR scan, localStorage
+            let currentTableInfo = tableInfo || qrTableInfo;
+            
+            if (!currentTableInfo) {
+                // Try to get table info from localStorage
                 const savedTableInfo = localStorage.getItem('current_table_info');
                 if (savedTableInfo) {
                     try {
                         const tableData = JSON.parse(savedTableInfo);
-                        currentTableId = tableData.tableId;
+                        if (tableData.tableId) {
+                            currentTableInfo = tableData;
+                            console.log('🔄 Using tableId from localStorage:', tableData.tableId);
+                        }
                     } catch (e) {
-                        console.error('Failed to parse table info:', e);
+                        console.error('Failed to parse saved table info:', e);
                     }
                 }
             }
-
-            if (!currentTableId) {
-                toast.warning('Please scan QR code first');
+            
+            if (!currentTableInfo?.tableId) {
+                toast.error('Table information not available. Please scan QR code again.');
                 return;
             }
-
-            // Get restaurant ID
-            const restaurantId = tableInfo?.restaurantId || item.restaurantId;
+            
+            // Get restaurantId
+            const restaurantId = currentTableInfo.restaurantId || item.restaurantId;
             if (!restaurantId) {
                 toast.error('Restaurant information not available');
                 return;
             }
-
-            // Transform modifiers to backend format
-            const selectedModifierGroups = modifierGroups
-                .filter(group => group.options.some(opt => opt.selected))
+            
+            // Prepare modifiers in the expected format (CartModifier interface)
+            const selectedModifiers = modifierGroups
+                .filter(group => group.options.some(option => option.selected))
                 .map(group => ({
                     name: group.name,
                     options: group.options
-                        .filter(opt => opt.selected)
-                        .map(opt => ({
-                            name: opt.name,
-                            priceAdjustment: opt.price
+                        .filter(option => option.selected)
+                        .map(option => ({
+                            name: option.name,
+                            priceAdjustment: option.price
                         }))
                 }));
-
-            // Add to cart via API
-            await cartService.addItemToTableCart(currentTableId, {
+            
+            console.log('🛒 Adding to table cart:', currentTableInfo.tableId);
+            console.log('📝 Item data:', {
                 menuItemId: item._id,
-                quantity: quantity,
-                restaurantId: restaurantId,
-                modifiers: selectedModifierGroups,
-                specialInstructions: specialInstructions
+                quantity,
+                modifiers: selectedModifiers,
+                specialInstructions
             });
 
-            toast.success('✅ Added to cart!');
+            // Use table-based cart API
+            await cartService.addItemToTableCart(currentTableInfo.tableId, {
+                menuItemId: item._id,
+                quantity,
+                restaurantId: restaurantId,
+                modifiers: selectedModifiers,
+                specialInstructions
+            });
 
-            // Navigate back to menu or cart
+            // Show success feedback
+            toast.success('✅ Added to cart!');
+            
+            // Navigate back based on context
             if (returnPath) {
                 navigate(returnPath);
             } else {
-                navigate(`/cart?table_id=${currentTableId}`);
+                navigate('/menu');
             }
+            
         } catch (error: any) {
-            console.error('Failed to add to cart:', error);
-            toast.error('Failed to add to cart. Please try again.');
+            console.error('Add to cart error:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to add to cart. Please try again.';
+            toast.error(errorMessage);
+        } finally {
+            setAddingToCart(false);
         }
     };
 
@@ -187,6 +216,9 @@ const MenuItemDetail: React.FC = () => {
             </div>
         );
     }
+
+    // Calculate availability same as Menu page
+    const isAvailable = item.status === 'available' && item.isActive;
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -236,11 +268,11 @@ const MenuItemDetail: React.FC = () => {
                     </div>
 
                     <div className="flex items-center space-x-4 mb-4">
-                        <span className={`text-sm px-2 py-1 rounded-full ${item.available
+                        <span className={`text-sm px-2 py-1 rounded-full ${isAvailable
                             ? 'text-green-600 bg-green-100'
                             : 'text-red-600 bg-red-100'
                             }`}>
-                            {item.available ? '🟢 Available' : '🔴 Unavailable'}
+                            {isAvailable ? '🟢 Available' : '🔴 Unavailable'}
                         </span>
                         {item.category && (
                             <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
@@ -383,9 +415,26 @@ const MenuItemDetail: React.FC = () => {
 
                 <button
                     onClick={handleAddToCart}
-                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                    disabled={addingToCart || !isAvailable}
+                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${
+                        addingToCart || !isAvailable
+                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                 >
-                    Add to Cart
+                    {addingToCart ? (
+                        <span className="flex items-center justify-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Adding to Cart...
+                        </span>
+                    ) : !isAvailable ? (
+                        'Currently Unavailable'
+                    ) : (
+                        'Add to Cart'
+                    )}
                 </button>
             </div >
         </div >

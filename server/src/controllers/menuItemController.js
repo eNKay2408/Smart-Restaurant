@@ -44,11 +44,36 @@ export const getMenuItems = async (req, res) => {
 
         const menuItems = await MenuItem.find(filter)
             .populate('categoryId', 'name')
+            .populate({
+                path: 'modifierIds',
+                model: 'Modifier',
+                select: 'name type required displayOrder options isActive'
+            })
             .sort(sortOptions)
             .skip(skip)
             .limit(parseInt(limit));
 
         const total = await MenuItem.countDocuments(filter);
+
+        // Process menu items to combine embedded and referenced modifiers
+        const processedMenuItems = menuItems.map(item => {
+            let allModifiers = [];
+            
+            // Add embedded modifiers (legacy)
+            if (item.modifiers && item.modifiers.length > 0) {
+                allModifiers = [...item.modifiers];
+            }
+            
+            // Add referenced modifiers (new format)
+            if (item.modifierIds && item.modifierIds.length > 0) {
+                allModifiers = [...allModifiers, ...item.modifierIds];
+            }
+
+            return {
+                ...item.toObject(),
+                modifiers: allModifiers
+            };
+        });
 
         res.json({
             success: true,
@@ -56,7 +81,7 @@ export const getMenuItems = async (req, res) => {
             total,
             page: parseInt(page),
             pages: Math.ceil(total / parseInt(limit)),
-            data: menuItems,
+            data: processedMenuItems,
         });
     } catch (error) {
         res.status(500).json({
@@ -72,8 +97,15 @@ export const getMenuItems = async (req, res) => {
 // @access  Public
 export const getMenuItem = async (req, res) => {
     try {
+        console.log('🔍 Fetching menu item:', req.params.id);
+        
         const menuItem = await MenuItem.findById(req.params.id)
-            .populate('categoryId', 'name');
+            .populate('categoryId', 'name')
+            .populate({
+                path: 'modifierIds',
+                model: 'Modifier',
+                select: 'name type required displayOrder options isActive'
+            });
 
         if (!menuItem) {
             return res.status(404).json({
@@ -82,11 +114,39 @@ export const getMenuItem = async (req, res) => {
             });
         }
 
+        // Combine embedded modifiers and referenced modifiers
+        let allModifiers = [];
+        
+        // Add embedded modifiers (legacy)
+        if (menuItem.modifiers && menuItem.modifiers.length > 0) {
+            allModifiers = [...menuItem.modifiers];
+        }
+        
+        // Add referenced modifiers (new format)
+        if (menuItem.modifierIds && menuItem.modifierIds.length > 0) {
+            allModifiers = [...allModifiers, ...menuItem.modifierIds];
+        }
+
+        console.log('📄 Menu item loaded:', {
+            id: menuItem._id,
+            name: menuItem.name,
+            embeddedModifiers: menuItem.modifiers?.length || 0,
+            referencedModifiers: menuItem.modifierIds?.length || 0,
+            totalModifiers: allModifiers.length
+        });
+
+        // Return with combined modifiers
+        const responseData = {
+            ...menuItem.toObject(),
+            modifiers: allModifiers
+        };
+
         res.json({
             success: true,
-            data: menuItem,
+            data: responseData,
         });
     } catch (error) {
+        console.error('❌ Error fetching menu item:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching menu item',

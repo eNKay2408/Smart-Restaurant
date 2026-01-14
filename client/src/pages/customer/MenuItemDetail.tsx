@@ -167,10 +167,37 @@ const MenuItemDetail: React.FC = () => {
         return total;
     };
 
+    // Check if all required modifiers are selected
+    const checkRequiredModifiers = (): { valid: boolean; missingGroups: string[] } => {
+        const missingGroups: string[] = [];
+
+        modifierGroups.forEach(group => {
+            if (group.required) {
+                const hasSelection = group.options.some(option => option.selected);
+                if (!hasSelection) {
+                    missingGroups.push(group.name);
+                }
+            }
+        });
+
+        return {
+            valid: missingGroups.length === 0,
+            missingGroups
+        };
+    };
+
     const handleAddToCart = async () => {
         // Check if item is available
         if (!isAvailable) {
             toast.error('This item is currently unavailable');
+            return;
+        }
+
+        // Validate required modifiers
+        const validation = checkRequiredModifiers();
+        if (!validation.valid) {
+            const missingText = validation.missingGroups.join(', ');
+            toast.error(`Please select required options: ${missingText}`);
             return;
         }
 
@@ -275,6 +302,18 @@ const MenuItemDetail: React.FC = () => {
     // Calculate availability same as Menu page
     const isAvailable = item.status === 'available' && item.isActive;
 
+    // Check if all required modifiers are selected
+    const areRequiredModifiersSelected = () => {
+        return modifierGroups.every(group => {
+            if (group.required) {
+                return group.options.some(option => option.selected);
+            }
+            return true;
+        });
+    };
+
+    const canAddToCart = isAvailable && areRequiredModifiersSelected();
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -340,36 +379,56 @@ const MenuItemDetail: React.FC = () => {
                 </div>
 
                 {/* Modifiers */}
-                {modifierGroups.map((group) => (
-                    <div key={group.id} className="bg-white mt-2 px-4 py-6 border-b border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                            {group.name}
-                            {group.required && <span className="text-red-500 ml-1">*</span>}
-                        </h3>
-                        <div className="space-y-3">
-                            {group.options.map((option) => (
-                                <label
-                                    key={option.id}
-                                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
-                                >
-                                    <div className="flex items-center">
-                                        <input
-                                            type={group.multiSelect ? 'checkbox' : 'radio'}
-                                            name={group.id}
-                                            checked={option.selected}
-                                            onChange={() => handleModifierChange(group.id, option.id)}
-                                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                        />
-                                        <span className="ml-3 text-gray-900">{option.name}</span>
-                                    </div>
-                                    <span className="text-gray-600 font-medium">
-                                        {option.price > 0 ? `+$${option.price}` : 'Free'}
+                {modifierGroups.map((group) => {
+                    const hasSelection = group.options.some(option => option.selected);
+                    const showError = group.required && !hasSelection;
+
+                    return (
+                        <div key={group.id} className={`bg-white mt-2 px-4 py-6 border-b ${showError ? 'border-red-200' : 'border-gray-200'}`}>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    {group.name}
+                                    {group.required && <span className="text-red-500 ml-1">*</span>}
+                                </h3>
+                                {showError && (
+                                    <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                        Required
                                     </span>
-                                </label>
-                            ))}
+                                )}
+                            </div>
+                            <div className="space-y-3">
+                                {group.options.map((option) => (
+                                    <label
+                                        key={option.id}
+                                        className="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
+                                    >
+                                        <div className="flex items-center">
+                                            <input
+                                                type={group.multiSelect ? 'checkbox' : 'radio'}
+                                                name={group.id}
+                                                checked={option.selected}
+                                                onChange={() => handleModifierChange(group.id, option.id)}
+                                                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                            />
+                                            <span className="ml-3 text-gray-900">{option.name}</span>
+                                        </div>
+                                        <span className="text-gray-600 font-medium">
+                                            {option.price > 0 ? `+$${option.price}` : 'Free'}
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+                            {showError && (
+                                <p className="mt-2 text-sm text-red-600 flex items-center">
+                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please select an option from this group
+                                </p>
+                            )}
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
 
                 {/* Special Instructions */}
                 <div className="bg-white mt-2 px-4 py-6 border-b border-gray-200">
@@ -500,8 +559,8 @@ const MenuItemDetail: React.FC = () => {
                                     onClick={() => fetchReviews(currentReviewPage - 1)}
                                     disabled={currentReviewPage === 1 || loadingReviews}
                                     className={`px-3 py-1 rounded text-sm font-medium ${currentReviewPage === 1 || loadingReviews
-                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                                         }`}
                                 >
                                     Previous
@@ -513,8 +572,8 @@ const MenuItemDetail: React.FC = () => {
                                     onClick={() => fetchReviews(currentReviewPage + 1)}
                                     disabled={currentReviewPage >= totalReviewPages || loadingReviews}
                                     className={`px-3 py-1 rounded text-sm font-medium ${currentReviewPage >= totalReviewPages || loadingReviews
-                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                                         }`}
                                 >
                                     Next
@@ -661,8 +720,8 @@ const MenuItemDetail: React.FC = () => {
 
                 <button
                     onClick={handleAddToCart}
-                    disabled={addingToCart || !isAvailable}
-                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${addingToCart || !isAvailable
+                    disabled={addingToCart || !canAddToCart}
+                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${addingToCart || !canAddToCart
                         ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                         }`}
@@ -677,6 +736,8 @@ const MenuItemDetail: React.FC = () => {
                         </span>
                     ) : !isAvailable ? (
                         'Currently Unavailable'
+                    ) : !areRequiredModifiersSelected() ? (
+                        'Select Required Options'
                     ) : (
                         'Add to Cart'
                     )}

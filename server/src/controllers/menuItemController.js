@@ -60,14 +60,13 @@ export const getMenuItems = async (req, res) => {
         const processedMenuItems = menuItems.map(item => {
             let allModifiers = [];
 
-            // Add embedded modifiers (legacy)
-            if (item.modifiers && item.modifiers.length > 0) {
-                allModifiers = [...item.modifiers];
-            }
-
-            // Add referenced modifiers (new format)
+            // Prioritize referenced modifiers (new format) over embedded modifiers (legacy)
             if (item.modifierIds && item.modifierIds.length > 0) {
-                allModifiers = [...allModifiers, ...item.modifierIds];
+                // Use new format (references to Modifier collection)
+                allModifiers = item.modifierIds;
+            } else if (item.modifiers && item.modifiers.length > 0) {
+                // Fallback to embedded modifiers (legacy format) only if no modifierIds
+                allModifiers = item.modifiers;
             }
 
             return {
@@ -118,14 +117,13 @@ export const getMenuItem = async (req, res) => {
         // Combine embedded modifiers and referenced modifiers
         let allModifiers = [];
 
-        // Add embedded modifiers (legacy)
-        if (menuItem.modifiers && menuItem.modifiers.length > 0) {
-            allModifiers = [...menuItem.modifiers];
-        }
-
-        // Add referenced modifiers (new format)
+        // Prioritize referenced modifiers (new format) over embedded modifiers (legacy)
         if (menuItem.modifierIds && menuItem.modifierIds.length > 0) {
-            allModifiers = [...allModifiers, ...menuItem.modifierIds];
+            // Use new format (references to Modifier collection)
+            allModifiers = menuItem.modifierIds;
+        } else if (menuItem.modifiers && menuItem.modifiers.length > 0) {
+            // Fallback to embedded modifiers (legacy format) only if no modifierIds
+            allModifiers = menuItem.modifiers;
         }
 
         console.log('📄 Menu item loaded:', {

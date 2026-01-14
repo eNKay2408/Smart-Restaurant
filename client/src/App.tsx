@@ -8,6 +8,10 @@ import Home from "./pages/Home";
 import Menu from "./pages/Menu";
 import About from "./pages/About";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 import WaiterOrders from "./pages/waiter/Orders";
 import WaiterBill from "./pages/waiter/Bill";
@@ -67,6 +71,10 @@ function App() {
 					<Route path="/table" element={<Menu />} /> {/* For QR token access */}
 					<Route path="/about" element={<About />} />
 					<Route path="/login" element={<Login />} />
+					<Route path="/register" element={<Register />} />
+					<Route path="/forgot-password" element={<ForgotPassword />} />
+					<Route path="/reset-password/:token" element={<ResetPassword />} />
+					<Route path="/verify-email/:token" element={<VerifyEmail />} />
 					{/* Customer Routes */}
 					<Route path="/item/:itemId" element={<MenuItemDetail />} />
 					<Route path="/cart" element={<Cart />} />

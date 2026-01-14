@@ -3,9 +3,76 @@ import MenuItem from '../models/MenuItem.js';
 import Order from '../models/Order.js';
 import mongoose from 'mongoose';
 
-// @desc    Create a review
-// @route   POST /api/reviews
-// @access  Private (Customer)
+/**
+ * @swagger
+ * /api/reviews:
+ *   post:
+ *     summary: Create a review for a menu item
+ *     description: Customer can create a review for a menu item they have ordered. Order must be completed.
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - menuItemId
+ *               - orderId
+ *               - rating
+ *             properties:
+ *               menuItemId:
+ *                 type: string
+ *                 description: ID of the menu item to review
+ *                 example: 507f1f77bcf86cd799439011
+ *               orderId:
+ *                 type: string
+ *                 description: ID of the order containing this menu item
+ *                 example: 507f1f77bcf86cd799439012
+ *               rating:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 description: Rating from 1 to 5 stars
+ *                 example: 5
+ *               comment:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Optional review comment
+ *                 example: Excellent dish! Highly recommend.
+ *     responses:
+ *       201:
+ *         description: Review created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Review created successfully
+ *                 data:
+ *                   $ref: '#/components/schemas/Review'
+ *       400:
+ *         description: Bad request - validation error or already reviewed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized - not authenticated
+ *       403:
+ *         description: Forbidden - not a customer
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Server error
+ */
 export const createReview = async (req, res) => {
     try {
         const { menuItemId, orderId, rating, comment } = req.body;
@@ -86,6 +153,71 @@ export const createReview = async (req, res) => {
     }
 };
 
+/**
+ * @swagger
+ * /api/reviews/menu-item/{menuItemId}:
+ *   get:
+ *     summary: Get all reviews for a menu item
+ *     description: Retrieve reviews with pagination, statistics, and rating distribution
+ *     tags: [Reviews]
+ *     parameters:
+ *       - in: path
+ *         name: menuItemId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the menu item
+ *         example: 507f1f77bcf86cd799439011
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Number of reviews per page
+ *     responses:
+ *       200:
+ *         description: Reviews retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Review'
+ *                 stats:
+ *                   $ref: '#/components/schemas/ReviewStats'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     total:
+ *                       type: integer
+ *                       example: 24
+ *                     pages:
+ *                       type: integer
+ *                       example: 3
+ *       500:
+ *         description: Server error
+ */
 // @desc    Get reviews for a menu item
 // @route   GET /api/reviews/menu-item/:menuItemId
 // @access  Public
@@ -164,6 +296,37 @@ export const getMenuItemReviews = async (req, res) => {
     }
 };
 
+/**
+ * @swagger
+ * /api/reviews/my-reviews:
+ *   get:
+ *     summary: Get customer's own reviews
+ *     description: Retrieve all reviews created by the authenticated customer
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Reviews retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Review'
+ *       401:
+ *         description: Unauthorized - not authenticated
+ *       403:
+ *         description: Forbidden - not a customer
+ *       500:
+ *         description: Server error
+ */
 // @desc    Get customer's reviews
 // @route   GET /api/reviews/my-reviews
 // @access  Private (Customer)
@@ -190,6 +353,65 @@ export const getMyReviews = async (req, res) => {
     }
 };
 
+/**
+ * @swagger
+ * /api/reviews/can-review/{orderId}:
+ *   get:
+ *     summary: Check if customer can review items from an order
+ *     description: Verify if customer can review menu items from a specific order
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the order
+ *         example: 507f1f77bcf86cd799439011
+ *     responses:
+ *       200:
+ *         description: Review eligibility checked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 canReview:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: You can review items from this order
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       menuItemId:
+ *                         type: string
+ *                         example: 507f1f77bcf86cd799439012
+ *                       name:
+ *                         type: string
+ *                         example: Grilled Salmon
+ *                       alreadyReviewed:
+ *                         type: boolean
+ *                         example: false
+ *       400:
+ *         description: Bad request - order not eligible for review
+ *       401:
+ *         description: Unauthorized - not authenticated
+ *       403:
+ *         description: Forbidden - not a customer or not your order
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Server error
+ */
 // @desc    Check if customer can review items from an order
 // @route   GET /api/reviews/can-review/:orderId
 // @access  Private (Customer)

@@ -289,6 +289,107 @@ const options = {
                         },
                     },
                 },
+                Review: {
+                    type: 'object',
+                    properties: {
+                        _id: {
+                            type: 'string',
+                            example: '507f1f77bcf86cd799439011',
+                        },
+                        menuItemId: {
+                            type: 'string',
+                            example: '507f1f77bcf86cd799439011',
+                            description: 'ID of the menu item being reviewed',
+                        },
+                        customerId: {
+                            type: 'object',
+                            properties: {
+                                _id: {
+                                    type: 'string',
+                                    example: '507f1f77bcf86cd799439012',
+                                },
+                                fullName: {
+                                    type: 'string',
+                                    example: 'John Doe',
+                                },
+                                avatar: {
+                                    type: 'string',
+                                    example: '/uploads/avatars/john.jpg',
+                                },
+                            },
+                            description: 'Customer who wrote the review',
+                        },
+                        orderId: {
+                            type: 'string',
+                            example: '507f1f77bcf86cd799439013',
+                            description: 'ID of the order containing this menu item',
+                        },
+                        rating: {
+                            type: 'integer',
+                            minimum: 1,
+                            maximum: 5,
+                            example: 5,
+                            description: 'Rating from 1 to 5 stars',
+                        },
+                        comment: {
+                            type: 'string',
+                            maxLength: 500,
+                            example: 'Excellent dish! Highly recommend.',
+                            description: 'Optional review comment',
+                        },
+                        createdAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-01-14T12:00:00.000Z',
+                        },
+                        updatedAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-01-14T12:00:00.000Z',
+                        },
+                    },
+                },
+                ReviewStats: {
+                    type: 'object',
+                    properties: {
+                        average: {
+                            type: 'number',
+                            example: 4.5,
+                            description: 'Average rating',
+                        },
+                        total: {
+                            type: 'integer',
+                            example: 24,
+                            description: 'Total number of reviews',
+                        },
+                        distribution: {
+                            type: 'object',
+                            properties: {
+                                '5': {
+                                    type: 'integer',
+                                    example: 15,
+                                },
+                                '4': {
+                                    type: 'integer',
+                                    example: 6,
+                                },
+                                '3': {
+                                    type: 'integer',
+                                    example: 2,
+                                },
+                                '2': {
+                                    type: 'integer',
+                                    example: 1,
+                                },
+                                '1': {
+                                    type: 'integer',
+                                    example: 0,
+                                },
+                            },
+                            description: 'Count of reviews by star rating',
+                        },
+                    },
+                },
             },
         },
         security: [
@@ -325,9 +426,16 @@ const options = {
                 name: 'Payments',
                 description: 'Payment processing and transactions',
             },
+            {
+                name: 'Reviews',
+                description: 'Customer reviews and ratings for menu items',
+            },
         ],
     },
-    apis: [path.join(__dirname, '../routes/*.js')], // Path to the API routes
+    apis: [
+        path.join(__dirname, '../routes/*.js'),
+        path.join(__dirname, '../controllers/*.js'), // Scan controllers for JSDoc comments
+    ],
 };
 
 const swaggerSpec = swaggerJsdoc(options);

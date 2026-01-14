@@ -121,6 +121,132 @@ class AuthService {
 		const user = this.getCurrentUser();
 		return user?.role === role;
 	}
+
+	/**
+	 * Register new customer account
+	 */
+	async register(registerData: {
+		fullName: string;
+		email: string;
+		password: string;
+	}): Promise<LoginResponse> {
+		try {
+			const response = await axiosInstance.post<LoginResponse>(
+				"/auth/register",
+				{
+					fullName: registerData.fullName,
+					email: registerData.email,
+					password: registerData.password,
+					role: "customer",
+				}
+			);
+
+			// Store token and user info if registration includes auto-login
+			if (response.data.success && response.data.data) {
+				localStorage.setItem("token", response.data.data.accessToken);
+				localStorage.setItem("refreshToken", response.data.data.refreshToken);
+				localStorage.setItem("user", JSON.stringify(response.data.data.user));
+
+				// Dispatch custom event to notify components
+				window.dispatchEvent(new Event("auth-change"));
+			}
+
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: "An error occurred during registration. Please try again.",
+			};
+		}
+	}
+
+	/**
+	 * Request password reset email
+	 */
+	async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+		try {
+			const response = await axiosInstance.post<{ success: boolean; message: string }>(
+				"/auth/forgot-password",
+				{ email }
+			);
+
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: "Failed to send password reset email. Please try again.",
+			};
+		}
+	}
+
+	/**
+	 * Reset password using token
+	 */
+	async resetPassword(
+		token: string,
+		password: string
+	): Promise<{ success: boolean; message: string }> {
+		try {
+			const response = await axiosInstance.post<{ success: boolean; message: string }>(
+				`/auth/reset-password/${token}`,
+				{ password }
+			);
+
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: "Failed to reset password. The token may have expired.",
+			};
+		}
+	}
+
+	/**
+	 * Verify email using token
+	 */
+	async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
+		try {
+			const response = await axiosInstance.get<{ success: boolean; message: string }>(
+				`/auth/verify-email/${token}`
+			);
+
+			return response.data;
+		} catch (error: any) {
+			if (error.response && error.response.data) {
+				throw error.response.data;
+			}
+			throw {
+				success: false,
+				message: "Email verification failed. The link may have expired.",
+			};
+		}
+	}
+
+	/**
+	 * Check if email is available for registration
+	 */
+	async checkEmailAvailability(email: string): Promise<boolean> {
+		try {
+			const response = await axiosInstance.get<{
+				success: boolean;
+				available: boolean;
+			}>(`/auth/check-email/${email}`);
+
+			return response.data.available;
+		} catch (error: any) {
+			console.error("Error checking email availability:", error);
+			return false;
+		}
+	}
 }
 
 // Export a singleton instance

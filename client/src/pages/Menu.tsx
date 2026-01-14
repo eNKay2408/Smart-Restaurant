@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQRTable } from '../hooks/useQRTable';
 import { useMenu } from '../hooks/useMenu';
@@ -24,11 +24,14 @@ function Menu() {
         error: menuError,
         searchItems,
         filterByCategory,
+        sortItems,
         resetFilters
     } = useMenu(tableInfo?.restaurantId);
 
     const [cartItemsCount, setCartItemsCount] = useState(0);
     const [addingToCart, setAddingToCart] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     // Check if navigated from rejected order
     useEffect(() => {
@@ -245,7 +248,7 @@ function Menu() {
                     <>
                         {/* Categories */}
                         {categories.length > 0 && (
-                            <div className="px-4 mt-4 mb-6">
+                            <div className="px-4 mt-4 mb-4">
                                 <CategoryFilter
                                     categories={categories}
                                     selectedCategory={filters.selectedCategory}
@@ -253,6 +256,33 @@ function Menu() {
                                 />
                             </div>
                         )}
+
+                        {/* Sort & Filter Options */}
+                        <div className="px-4 mb-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                                    </svg>
+                                    <select
+                                        value={filters.sortBy}
+                                        onChange={(e) => {
+                                            sortItems(e.target.value as any);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                        <option value="name">Name (A-Z)</option>
+                                        <option value="price">Price (Low to High)</option>
+                                        <option value="popularity">Most Popular</option>
+                                        <option value="newest">Newest</option>
+                                    </select>
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                    {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Menu Items */}
                         <div className="px-4">
@@ -265,7 +295,10 @@ function Menu() {
                                     </p>
                                     {!menuError && (
                                         <button
-                                            onClick={resetFilters}
+                                            onClick={() => {
+                                                resetFilters();
+                                                setCurrentPage(1);
+                                            }}
                                             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                                         >
                                             Clear all filters
@@ -273,95 +306,217 @@ function Menu() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    {filteredItems.map((item) => {
-                                        const isAvailable = item.status === 'available' && item.isActive;
-                                        const categoryName = getCategoryName(item.categoryId);
+                                <>
+                                    {/* Chef's Recommendations */}
+                                    {filters.selectedCategory === null && filters.searchQuery === '' && (
+                                        <div className="mb-6">
+                                            {filteredItems.filter(item => item.isRecommended && item.status === 'available').length > 0 && (
+                                                <div className="mb-4">
+                                                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                                                        <span className="text-2xl mr-2">👨‍🍳</span>
+                                                        Chef's Recommendations
+                                                    </h3>
+                                                    <div className="grid grid-cols-1 gap-3">
+                                                        {filteredItems
+                                                            .filter(item => item.isRecommended && item.status === 'available')
+                                                            .slice(0, 3)
+                                                            .map((item) => {
+                                                                const categoryName = getCategoryName(item.categoryId);
 
-                                        return (
-                                            <div
-                                                key={item._id}
-                                                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
-                                                onClick={() => viewItemDetails(item._id)}
-                                            >
-                                                <div className="flex space-x-4">
-                                                    {/* Item Image */}
-                                                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                                        {item.images && item.images.length > 0 ? (
-                                                            <img
-                                                                src={getPrimaryImageUrl(item.images, item.primaryImageIndex)}
-                                                                alt={item.name}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <span className="text-3xl">{getCategoryEmoji(categoryName)}</span>
-                                                        )}
+                                                                return (
+                                                                    <div
+                                                                        key={item._id}
+                                                                        className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl shadow-sm border-2 border-amber-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                                                                        onClick={() => viewItemDetails(item._id)}
+                                                                    >
+                                                                        <div className="flex space-x-4">
+                                                                            <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                                                {item.images && item.images.length > 0 ? (
+                                                                                    <img
+                                                                                        src={getPrimaryImageUrl(item.images, item.primaryImageIndex)}
+                                                                                        alt={item.name}
+                                                                                        className="w-full h-full object-cover"
+                                                                                    />
+                                                                                ) : (
+                                                                                    <span className="text-3xl">{getCategoryEmoji(categoryName)}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className="flex justify-between items-start mb-1">
+                                                                                    <h3 className="text-lg font-semibold text-gray-900 truncate">
+                                                                                        {item.name}
+                                                                                    </h3>
+                                                                                    <p className="text-lg font-bold text-amber-700 ml-4">${item.price.toFixed(2)}</p>
+                                                                                </div>
+                                                                                <p className="text-sm text-gray-600 line-clamp-2">
+                                                                                    {item.description}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                     </div>
-
-                                                    {/* Item Details */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <h3 className="text-lg font-semibold text-gray-900 truncate">
-                                                                {item.name}
-                                                            </h3>
-                                                            <div className="text-right ml-4">
-                                                                <p className="text-lg font-bold text-gray-900">${item.price.toFixed(2)}</p>
-                                                                {!isAvailable && (
-                                                                    <span className="text-xs text-red-500">🔴 Sold Out</span>
-                                                                )}
-                                                                {isAvailable && (
-                                                                    <span className="text-xs text-green-500">🟢 Available</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center space-x-2 mb-2">
-                                                            <div className="flex text-yellow-400 text-sm">
-                                                                {[...Array(5)].map((_, i) => (
-                                                                    <span key={i} className={i < Math.round(item.averageRating || 0) ? 'text-yellow-400' : 'text-gray-300'}>★</span>
-                                                                ))}
-                                                            </div>
-                                                            {(item.totalReviews || 0) > 0 && (
-                                                                <span className="text-sm text-gray-500">({item.totalReviews} {item.totalReviews === 1 ? 'review' : 'reviews'})</span>
-                                                            )}
-                                                        </div>
-
-                                                        <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                                                            {item.description}
-                                                        </p>
-
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-xs text-gray-500">{categoryName}</span>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (isAvailable) {
-                                                                        addToCart(item._id);
-                                                                    }
-                                                                }}
-                                                                disabled={!isAvailable || addingToCart === item._id}
-                                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isAvailable
-                                                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                                    } ${addingToCart === item._id ? 'opacity-50 cursor-wait' : ''}`}
-                                                            >
-                                                                {addingToCart === item._id ? (
-                                                                    <span className="flex items-center">
-                                                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                        </svg>
-                                                                        Adding...
-                                                                    </span>
-                                                                ) : '+ Add'}
-                                                            </button>
-                                                        </div>
-                                                    </div>
+                                                    <div className="border-t border-gray-200 my-6"></div>
                                                 </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Regular Menu Items with Pagination */}
+                                    <div className="space-y-4">
+                                        {filteredItems
+                                            .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                                            .map((item) => {
+                                                const isAvailable = item.status === 'available' && item.isActive;
+                                                const categoryName = getCategoryName(item.categoryId);
+
+                                                return (
+                                                    <div
+                                                        key={item._id}
+                                                        className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
+                                                        onClick={() => viewItemDetails(item._id)}
+                                                    >
+                                                        <div className="flex space-x-4">
+                                                            {/* Item Image */}
+                                                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                                {item.images && item.images.length > 0 ? (
+                                                                    <img
+                                                                        src={getPrimaryImageUrl(item.images, item.primaryImageIndex)}
+                                                                        alt={item.name}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <span className="text-3xl">{getCategoryEmoji(categoryName)}</span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Item Details */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex justify-between items-start mb-1">
+                                                                    <h3 className="text-lg font-semibold text-gray-900 truncate">
+                                                                        {item.name}
+                                                                    </h3>
+                                                                    <div className="text-right ml-4">
+                                                                        <p className="text-lg font-bold text-gray-900">${item.price.toFixed(2)}</p>
+                                                                        {!isAvailable && (
+                                                                            <span className="text-xs text-red-500">🔴 Sold Out</span>
+                                                                        )}
+                                                                        {isAvailable && (
+                                                                            <span className="text-xs text-green-500">🟢 Available</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex items-center space-x-2 mb-2">
+                                                                    <div className="flex text-yellow-400 text-sm">
+                                                                        {[...Array(5)].map((_, i) => (
+                                                                            <span key={i} className={i < Math.round(item.averageRating || 0) ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+                                                                        ))}
+                                                                    </div>
+                                                                    {(item.totalReviews || 0) > 0 && (
+                                                                        <span className="text-sm text-gray-500">({item.totalReviews} {item.totalReviews === 1 ? 'review' : 'reviews'})</span>
+                                                                    )}
+                                                                </div>
+
+                                                                <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                                                                    {item.description}
+                                                                </p>
+
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs text-gray-500">{categoryName}</span>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (isAvailable) {
+                                                                                addToCart(item._id);
+                                                                            }
+                                                                        }}
+                                                                        disabled={!isAvailable || addingToCart === item._id}
+                                                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isAvailable
+                                                                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                            } ${addingToCart === item._id ? 'opacity-50 cursor-wait' : ''}`}
+                                                                    >
+                                                                        {addingToCart === item._id ? (
+                                                                            <span className="flex items-center">
+                                                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                                </svg>
+                                                                                Adding...
+                                                                            </span>
+                                                                        ) : '+ Add'}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+
+                                    {/* Pagination */}
+                                    {filteredItems.length > itemsPerPage && (
+                                        <div className="mt-6 pb-4">
+                                            <div className="flex items-center justify-center space-x-2">
+                                                <button
+                                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                                    disabled={currentPage === 1}
+                                                    className={`px-4 py-2 rounded-lg font-medium ${currentPage === 1
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    Previous
+                                                </button>
+                                                <div className="flex items-center space-x-1">
+                                                    {Array.from({ length: Math.ceil(filteredItems.length / itemsPerPage) }, (_, i) => i + 1)
+                                                        .filter(page => {
+                                                            const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+                                                            if (totalPages <= 7) return true;
+                                                            if (page === 1 || page === totalPages) return true;
+                                                            if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                                                            return false;
+                                                        })
+                                                        .map((page, index, array) => {
+                                                            const prevPage = array[index - 1];
+                                                            const showEllipsis = prevPage && page - prevPage > 1;
+                                                            return (
+                                                                <React.Fragment key={page}>
+                                                                    {showEllipsis && (
+                                                                        <span className="px-2 text-gray-400">...</span>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => setCurrentPage(page)}
+                                                                        className={`w-10 h-10 rounded-lg font-medium ${currentPage === page
+                                                                            ? 'bg-blue-600 text-white'
+                                                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                                                            }`}
+                                                                    >
+                                                                        {page}
+                                                                    </button>
+                                                                </React.Fragment>
+                                                            );
+                                                        })}
+                                                </div>
+                                                <button
+                                                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredItems.length / itemsPerPage), prev + 1))}
+                                                    disabled={currentPage >= Math.ceil(filteredItems.length / itemsPerPage)}
+                                                    className={`px-4 py-2 rounded-lg font-medium ${currentPage >= Math.ceil(filteredItems.length / itemsPerPage)
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    Next
+                                                </button>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                            <p className="text-center text-sm text-gray-600 mt-3">
+                                                Page {currentPage} of {Math.ceil(filteredItems.length / itemsPerPage)}
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </>

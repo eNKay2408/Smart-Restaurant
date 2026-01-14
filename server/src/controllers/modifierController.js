@@ -90,7 +90,7 @@ export const createModifier = async (req, res, next) => {
             required,
             displayOrder,
             options,
-            restaurantId,
+            restaurantId: restaurantId || req.user.restaurantId,
         });
 
         res.status(201).json({

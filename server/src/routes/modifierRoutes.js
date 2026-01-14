@@ -55,8 +55,7 @@ const createModifierValidation = [
         .isBoolean()
         .withMessage('isActive must be a boolean'),
     body('restaurantId')
-        .notEmpty()
-        .withMessage('Restaurant ID is required')
+        .optional()
         .isMongoId()
         .withMessage('Invalid restaurant ID'),
 ];

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRestaurant } from '../contexts/RestaurantContext';
 import { authService } from '../services/authService';
 import type { LoginRequest, ApiError } from '../types/auth.types';
 
 function Login() {
     const navigate = useNavigate();
+    const { setRestaurantId } = useRestaurant();
     const [formData, setFormData] = useState<LoginRequest>({
         email: '',
         password: '',
@@ -23,10 +25,15 @@ function Login() {
 
         try {
             const response = await authService.login(formData);
-            
+
             if (response.success) {
                 setSuccess('Login successful! Redirecting...');
-                
+
+                // Save restaurantId to context if available
+                if (response.data.user.restaurantId) {
+                    setRestaurantId(response.data.user.restaurantId);
+                }
+
                 // Redirect based on user role
                 setTimeout(() => {
                     const userRole = response.data.user.role;
@@ -65,7 +72,7 @@ function Login() {
             kitchen: { email: 'kitchen@restaurant.com', password: 'Kitchen123' },
             customer: { email: 'customer@example.com', password: 'Customer123' },
         };
-        
+
         const creds = credentials[role as keyof typeof credentials];
         if (creds) {
             setFormData({

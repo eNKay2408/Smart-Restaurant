@@ -128,17 +128,38 @@ export const getTableStatus = async (req, res) => {
 			.select("tableNumber status capacity")
 			.sort({ tableNumber: 1 });
 
-		const tableStatus = tables.map((table) => ({
-			id: table._id,
-			tableNumber: table.tableNumber,
-			status: table.status || "available",
-			label:
-				table.status === "occupied"
-					? "Active"
-					: table.status === "reserved"
-						? "Reserved"
-						: "Free",
-		}));
+		// Get all active orders (not completed, rejected, or cancelled)
+		const activeOrders = await Order.find({
+			status: { $in: ['pending', 'accepted', 'preparing', 'ready', 'served'] }
+		}).select('tableId status');
+
+		// Create a map of table IDs with active orders
+		const tablesWithOrders = new Set(
+			activeOrders.map(order => order.tableId.toString())
+		);
+
+		const tableStatus = tables.map((table) => {
+			// Check if table has active orders
+			const hasActiveOrder = tablesWithOrders.has(table._id.toString());
+
+			// Determine status: if has active order, mark as occupied
+			let status = table.status || "available";
+			if (hasActiveOrder) {
+				status = "occupied";
+			}
+
+			return {
+				id: table._id,
+				tableNumber: table.tableNumber,
+				status: status,
+				label:
+					status === "occupied"
+						? "Active"
+						: status === "reserved"
+							? "Reserved"
+							: "Free",
+			};
+		});
 
 		res.json({
 			success: true,

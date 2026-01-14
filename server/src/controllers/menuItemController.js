@@ -13,7 +13,7 @@ export const getMenuItems = async (req, res) => {
             sortBy = 'createdAt',
             order = 'desc',
             page = 1,
-            limit = 20,
+            limit = 1000, // Increased to show all items by default
         } = req.query;
 
         // Build filter
@@ -100,9 +100,12 @@ export const getMenuItem = async (req, res) => {
 // @access  Private (Admin only)
 export const createMenuItem = async (req, res) => {
     try {
+        // Remove restaurantId from body to avoid conflicts
+        const { restaurantId, ...itemData } = req.body;
+
         const menuItem = await MenuItem.create({
-            ...req.body,
-            restaurantId: req.body.restaurantId || req.user.restaurantId,
+            ...itemData,
+            restaurantId: req.user.restaurantId || restaurantId,
         });
 
         res.status(201).json({
@@ -111,6 +114,8 @@ export const createMenuItem = async (req, res) => {
             data: menuItem,
         });
     } catch (error) {
+        console.error('Error creating menu item:', error.message);
+        console.error('Request body:', JSON.stringify(req.body, null, 2));
         res.status(500).json({
             success: false,
             message: 'Error creating menu item',

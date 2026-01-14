@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import menuService from '../../services/menuService';
 import { getPrimaryImageUrl } from '../../utils/imageHelper';
+import cartService from '../../services/cartService';
+import { toast } from 'react-toastify';
 
 interface Modifier {
     id: string;
@@ -107,28 +109,67 @@ const MenuItemDetail: React.FC = () => {
         return total;
     };
 
-    const handleAddToCart = () => {
-        const selectedModifiers = modifierGroups.flatMap(group =>
-            group.options.filter(option => option.selected)
-        );
+    const handleAddToCart = async () => {
+        try {
+            // Get tableId from tableInfo or localStorage
+            let currentTableId = tableInfo?.tableId;
+            if (!currentTableId) {
+                const savedTableInfo = localStorage.getItem('current_table_info');
+                if (savedTableInfo) {
+                    try {
+                        const tableData = JSON.parse(savedTableInfo);
+                        currentTableId = tableData.tableId;
+                    } catch (e) {
+                        console.error('Failed to parse table info:', e);
+                    }
+                }
+            }
 
-        const cartItem = {
-            itemId: item.id,
-            name: item.name,
-            price: item.price,
-            quantity,
-            modifiers: selectedModifiers,
-            specialInstructions,
-            totalPrice: calculateTotalPrice()
-        };
+            if (!currentTableId) {
+                toast.warning('Please scan QR code first');
+                return;
+            }
 
-        console.log('Adding to cart:', cartItem);
+            // Get restaurant ID
+            const restaurantId = tableInfo?.restaurantId || item.restaurantId;
+            if (!restaurantId) {
+                toast.error('Restaurant information not available');
+                return;
+            }
 
-        // Navigate back to menu or cart
-        if (returnPath) {
-            navigate(returnPath);
-        } else {
-            navigate('/cart');
+            // Transform modifiers to backend format
+            const selectedModifierGroups = modifierGroups
+                .filter(group => group.options.some(opt => opt.selected))
+                .map(group => ({
+                    name: group.name,
+                    options: group.options
+                        .filter(opt => opt.selected)
+                        .map(opt => ({
+                            name: opt.name,
+                            priceAdjustment: opt.price
+                        }))
+                }));
+
+            // Add to cart via API
+            await cartService.addItemToTableCart(currentTableId, {
+                menuItemId: item._id,
+                quantity: quantity,
+                restaurantId: restaurantId,
+                modifiers: selectedModifierGroups,
+                specialInstructions: specialInstructions
+            });
+
+            toast.success('✅ Added to cart!');
+
+            // Navigate back to menu or cart
+            if (returnPath) {
+                navigate(returnPath);
+            } else {
+                navigate(`/cart?table_id=${currentTableId}`);
+            }
+        } catch (error: any) {
+            console.error('Failed to add to cart:', error);
+            toast.error('Failed to add to cart. Please try again.');
         }
     };
 

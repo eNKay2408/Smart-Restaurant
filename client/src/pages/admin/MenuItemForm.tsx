@@ -200,7 +200,20 @@ const AdminMenuItemForm: React.FC = () => {
             // Find selected category
             const selectedCategory = categories.find(cat => cat.name === formData.category);
 
-            const menuItemData = {
+            // Transform modifiers from frontend format to backend format
+            const transformedModifiers = formData.modifiers
+                .filter(group => group.name.trim() !== '') // Only include groups with names
+                .map(group => ({
+                    name: group.name,
+                    type: group.multiSelect ? 'multiple' : 'single',
+                    required: group.required,
+                    options: group.items.map(item => ({
+                        name: item.name,
+                        priceAdjustment: item.price
+                    }))
+                }));
+
+            const menuItemData: any = {
                 name: formData.name,
                 description: formData.description,
                 price: parseFloat(formData.price),
@@ -208,8 +221,12 @@ const AdminMenuItemForm: React.FC = () => {
                 status: formData.status,
                 prepTime: parseInt(formData.prepTime) || 15,
                 images: formData.photos,
-                restaurantId: 'default-restaurant' // You may want to get this from context
             };
+
+            // Only include modifiers if there are any
+            if (transformedModifiers.length > 0) {
+                menuItemData.modifiers = transformedModifiers;
+            }
 
             if (isEditing && id) {
                 await menuService.updateMenuItem(id, menuItemData);
@@ -247,6 +264,58 @@ const AdminMenuItemForm: React.FC = () => {
         setFormData(prev => ({
             ...prev,
             modifiers: prev.modifiers.filter(group => group.id !== groupId)
+        }));
+    };
+
+    const updateModifierGroup = (groupId: string, field: keyof ModifierGroup, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            modifiers: prev.modifiers.map(group =>
+                group.id === groupId ? { ...group, [field]: value } : group
+            )
+        }));
+    };
+
+    const addModifierItem = (groupId: string) => {
+        const newItem: ModifierItem = {
+            id: `${groupId}-${Date.now()}`,
+            name: '',
+            price: 0
+        };
+        setFormData(prev => ({
+            ...prev,
+            modifiers: prev.modifiers.map(group =>
+                group.id === groupId
+                    ? { ...group, items: [...group.items, newItem] }
+                    : group
+            )
+        }));
+    };
+
+    const updateModifierItem = (groupId: string, itemId: string, field: keyof ModifierItem, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            modifiers: prev.modifiers.map(group =>
+                group.id === groupId
+                    ? {
+                        ...group,
+                        items: group.items.map(item =>
+                            item.id === itemId ? { ...item, [field]: value } : item
+                        )
+                    }
+                    : group
+            )
+        }));
+    };
+
+    const removeModifierItem = (groupId: string, itemId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            modifiers: prev.modifiers.map(group =>
+                group.id === groupId
+                    ? { ...group, items: group.items.filter(item => item.id !== itemId) }
+                    : group
+            )
         }));
     };
 
@@ -470,28 +539,101 @@ const AdminMenuItemForm: React.FC = () => {
                         <div className="space-y-4">
                             {formData.modifiers.map((group) => (
                                 <div key={group.id} className="border border-gray-200 rounded-lg p-4">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center space-x-4">
+                                    {/* Group Header */}
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex-1">
                                             <input
-                                                type="checkbox"
-                                                checked={true}
-                                                readOnly
-                                                className="h-4 w-4 text-blue-600"
+                                                type="text"
+                                                value={group.name}
+                                                onChange={(e) => updateModifierGroup(group.id, 'name', e.target.value)}
+                                                placeholder="Group name (e.g., Size, Extras)"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
                                             />
-                                            <span className="font-medium text-gray-900">{group.name}</span>
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => removeModifierGroup(group.id)}
-                                            className="text-red-600 hover:bg-red-50 p-1 rounded"
+                                            className="ml-3 text-red-600 hover:bg-red-50 p-2 rounded transition-colors"
+                                            title="Remove modifier group"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
                                     </div>
-                                    <div className="text-sm text-gray-600 ml-8">
-                                        ({group.items.map(item => `${item.name} +$${item.price}`).join(', ')})
+
+                                    {/* Group Options */}
+                                    <div className="flex items-center space-x-6 mb-4">
+                                        <label className="flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={group.required}
+                                                onChange={(e) => updateModifierGroup(group.id, 'required', e.target.checked)}
+                                                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-700">Required</span>
+                                        </label>
+                                        <label className="flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={group.multiSelect}
+                                                onChange={(e) => updateModifierGroup(group.id, 'multiSelect', e.target.checked)}
+                                                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-700">Multi-select</span>
+                                        </label>
+                                    </div>
+
+                                    {/* Modifier Items */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-medium text-gray-700">Items</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => addModifierItem(group.id)}
+                                                className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                            >
+                                                + Add Item
+                                            </button>
+                                        </div>
+
+                                        {group.items.length === 0 ? (
+                                            <p className="text-sm text-gray-500 italic py-2">No items added yet</p>
+                                        ) : (
+                                            group.items.map((item) => (
+                                                <div key={item.id} className="flex items-center space-x-2 bg-gray-50 p-2 rounded">
+                                                    <input
+                                                        type="text"
+                                                        value={item.name}
+                                                        onChange={(e) => updateModifierItem(group.id, item.id, 'name', e.target.value)}
+                                                        placeholder="Item name"
+                                                        className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                    />
+                                                    <div className="flex items-center">
+                                                        <span className="text-gray-500 mr-1">$</span>
+                                                        <input
+                                                            type="number"
+                                                            value={item.price}
+                                                            onChange={(e) => updateModifierItem(group.id, item.id, 'price', parseFloat(e.target.value) || 0)}
+                                                            placeholder="0.00"
+                                                            step="0.01"
+                                                            min="0"
+                                                            className="w-20 px-2 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeModifierItem(group.id, item.id)}
+                                                        className="text-red-600 hover:bg-red-50 p-1 rounded transition-colors"
+                                                        title="Remove item"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             ))}

@@ -15,6 +15,7 @@ export interface MenuItem {
 	isRecommended?: boolean; // Backend field
 	totalOrders?: number; // For popularity sorting
 	averageRating?: number;
+	totalReviews?: number; // Review count from backend
 	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;

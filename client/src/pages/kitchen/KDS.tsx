@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import orderService from "../../services/orderService";
 import { useSocket } from "../../hooks/useSocket";
 import type { Order } from "../../types/order.types";
+import AdminLayout from "../../components/AdminLayout";
 
 function KDS() {
 	const [orders, setOrders] = useState<Order[]>([]);
@@ -162,47 +163,19 @@ function KDS() {
 
 	if (loading && orders.length === 0) {
 		return (
-			<div className="min-h-screen bg-gray-900 flex items-center justify-center">
-				<div className="text-3xl font-bold text-white">
-					Loading Kitchen Display...
+			<AdminLayout>
+				<div className="flex items-center justify-center h-64">
+					<div className="text-3xl font-bold text-gray-900">
+						Loading Kitchen Display...
+					</div>
 				</div>
-			</div>
+			</AdminLayout>
 		);
 	}
 
 	return (
-		<div className="min-h-screen bg-gray-900 text-white">
-			<div className="container mx-auto px-4 py-6">
-				{/* Header */}
-				<div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-					<div className="flex items-center gap-3">
-						<h1 className="text-3xl md:text-4xl font-bold text-center md:text-left">
-							🍳 Kitchen Display System
-						</h1>
-						<div className="flex items-center gap-2">
-							<div
-								className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
-									}`}
-							></div>
-							<span className="text-sm text-gray-400">
-								{isConnected ? "Live" : "Offline"}
-							</span>
-						</div>
-					</div>
-					<div className="text-center md:text-right">
-						<p className="text-xl md:text-2xl font-bold">
-							{new Date().toLocaleTimeString()}
-						</p>
-						<p className="text-sm text-gray-400">
-							{
-								orders.filter((o) =>
-									filter === "all" ? true : o.status === filter
-								).length
-							}{" "}
-							Active Orders
-						</p>
-					</div>
-				</div>
+		<AdminLayout>
+			<div className="space-y-6">
 
 				{error && (
 					<div className="bg-red-600 text-white px-4 py-3 rounded mb-4">
@@ -214,31 +187,30 @@ function KDS() {
 				<div className="mb-6 flex flex-wrap gap-2">
 					<button
 						onClick={() => setFilter("accepted")}
-						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "accepted"
-							? "bg-blue-600 shadow-lg scale-105"
-							: "bg-gray-700 hover:bg-gray-600"
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${filter === "accepted"
+							? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg"
+							: "bg-white text-gray-700 hover:bg-gray-100"
 							}`}
 					>
-						🆕 New ({orders.filter((o) => o.status === "accepted").length})
+						📋 New Orders ({orders.filter((o) => o.status === "accepted").length})
 					</button>
 					<button
 						onClick={() => setFilter("preparing")}
-						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "preparing"
-							? "bg-orange-600 shadow-lg scale-105"
-							: "bg-gray-700 hover:bg-gray-600"
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${filter === "preparing"
+							? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg"
+							: "bg-white text-gray-700 hover:bg-gray-100"
 							}`}
 					>
-						🔥 Preparing (
-						{orders.filter((o) => o.status === "preparing").length})
+						🔥 Preparing ({orders.filter((o) => o.status === "preparing").length})
 					</button>
 					<button
 						onClick={() => setFilter("all")}
-						className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold transition-all text-sm md:text-lg ${filter === "all"
-							? "bg-purple-600 shadow-lg scale-105"
-							: "bg-gray-700 hover:bg-gray-600"
+						className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${filter === "all"
+							? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg"
+							: "bg-white text-gray-700 hover:bg-gray-100"
 							}`}
 					>
-						📋 All ({orders.length})
+						📊 All Orders ({orders.length})
 					</button>
 				</div>
 
@@ -261,19 +233,20 @@ function KDS() {
 								return (
 									<div
 										key={order._id}
-										className={`bg-gray-800 rounded-xl p-4 border-4 ${overdue
-											? "border-red-500 animate-pulse"
-											: "border-gray-700"
-											} hover:shadow-2xl transition-all`}
+										className={`bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow  ${overdue ? "border-2 border-red-500 animate-pulse" : "border-2 border-gray-500"
+											} `}
 									>
 										{/* Header */}
-										<div className="flex justify-between items-start mb-3">
+										<div className="flex justify-between items-start mb-4">
 											<div>
-												<h3 className="text-2xl font-bold">
+												<h3 className="text-xl font-bold text-gray-800">
 													{order.orderNumber}
 												</h3>
-												<p className="text-lg text-gray-300">
+												<p className="text-sm text-gray-600">
 													Table {order.tableId.tableNumber}
+												</p>
+												<p className="text-xs text-gray-500">
+													{formatTime(order.createdAt)}
 												</p>
 											</div>
 											<span
@@ -378,7 +351,7 @@ function KDS() {
 													onClick={() =>
 														handleStatusChange(order._id, "preparing")
 													}
-													className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-bold text-lg transition-all hover:scale-105"
+													className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
 												>
 													🔥 Start Preparing
 												</button>
@@ -386,13 +359,13 @@ function KDS() {
 											{order.status === "preparing" && (
 												<button
 													onClick={() => handleStatusChange(order._id, "ready")}
-													className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold text-lg transition-all hover:scale-105"
+													className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
 												>
 													✅ Mark Ready
 												</button>
 											)}
 											{order.status === "ready" && (
-												<div className="w-full bg-green-500 text-white py-3 rounded-lg font-bold text-lg text-center">
+												<div className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg font-medium text-center">
 													✅ READY FOR PICKUP
 												</div>
 											)}
@@ -403,7 +376,7 @@ function KDS() {
 					</div>
 				)}
 			</div>
-		</div>
+		</AdminLayout>
 	);
 }
 

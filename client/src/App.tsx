@@ -47,7 +47,7 @@ function App() {
 	return (
 		<RestaurantProvider>
 			<div>
-				{!isAdminPage && !isCustomerDetailPage && <Navbar />}
+				{!isAdminPage && !isCustomerDetailPage }
 				<ToastContainer
 					position="top-right"
 					autoClose={3000}
@@ -61,12 +61,10 @@ function App() {
 				/>
 				<Routes>
 					{/* Public Routes */}
-					<Route path="/" element={<Home />} />
+					<Route path="/" element={<Login />} />
 					<Route path="/menu" element={<Menu />} />
 					<Route path="/menu/table/:tableId" element={<Menu />} />
 					<Route path="/table" element={<Menu />} /> {/* For QR token access */}
-					<Route path="/about" element={<About />} />
-					<Route path="/login" element={<Login />} />
 					{/* Customer Routes */}
 					<Route path="/item/:itemId" element={<MenuItemDetail />} />
 					<Route path="/cart" element={<Cart />} />

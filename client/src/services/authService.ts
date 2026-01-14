@@ -81,7 +81,7 @@ class AuthService {
 		// Dispatch custom event to notify components
 		window.dispatchEvent(new Event("auth-change"));
 
-		window.location.href = "/login";
+		window.location.href = "/";
 	}
 
 	/**

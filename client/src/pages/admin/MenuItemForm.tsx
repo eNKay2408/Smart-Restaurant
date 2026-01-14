@@ -214,7 +214,20 @@ const AdminMenuItemForm: React.FC = () => {
             // Find selected category
             const selectedCategory = categories.find(cat => cat.name === formData.category);
 
-            const menuItemData = {
+            // Transform modifiers from frontend format to backend format
+            const transformedModifiers = formData.modifiers
+                .filter(group => group.name.trim() !== '') // Only include groups with names
+                .map(group => ({
+                    name: group.name,
+                    type: group.multiSelect ? 'multiple' : 'single',
+                    required: group.required,
+                    options: group.items.map(item => ({
+                        name: item.name,
+                        priceAdjustment: item.price
+                    }))
+                }));
+
+            const menuItemData: any = {
                 name: formData.name,
                 description: formData.description,
                 price: parseFloat(formData.price),
@@ -333,6 +346,58 @@ const AdminMenuItemForm: React.FC = () => {
             ...prev,
             options: prev.options.map((opt, i) => 
                 i === index ? { ...opt, [field]: value } : opt
+            )
+        }));
+    };
+
+    const updateModifierGroup = (groupId: string, field: keyof ModifierGroup, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            modifiers: prev.modifiers.map(group =>
+                group.id === groupId ? { ...group, [field]: value } : group
+            )
+        }));
+    };
+
+    const addModifierItem = (groupId: string) => {
+        const newItem: ModifierItem = {
+            id: `${groupId}-${Date.now()}`,
+            name: '',
+            price: 0
+        };
+        setFormData(prev => ({
+            ...prev,
+            modifiers: prev.modifiers.map(group =>
+                group.id === groupId
+                    ? { ...group, items: [...group.items, newItem] }
+                    : group
+            )
+        }));
+    };
+
+    const updateModifierItem = (groupId: string, itemId: string, field: keyof ModifierItem, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            modifiers: prev.modifiers.map(group =>
+                group.id === groupId
+                    ? {
+                        ...group,
+                        items: group.items.map(item =>
+                            item.id === itemId ? { ...item, [field]: value } : item
+                        )
+                    }
+                    : group
+            )
+        }));
+    };
+
+    const removeModifierItem = (groupId: string, itemId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            modifiers: prev.modifiers.map(group =>
+                group.id === groupId
+                    ? { ...group, items: group.items.filter(item => item.id !== itemId) }
+                    : group
             )
         }));
     };

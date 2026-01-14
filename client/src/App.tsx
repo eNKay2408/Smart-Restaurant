@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { RestaurantProvider } from './contexts/RestaurantContext';
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
@@ -42,151 +43,153 @@ function App() {
 	].some((path) => location.pathname.includes(path));
 
 	return (
-		<div>
-			{!isAdminPage && !isCustomerDetailPage && <Navbar />}
-			<ToastContainer
-				position="top-right"
-				autoClose={3000}
-				hideProgressBar={false}
-				newestOnTop
-				closeOnClick
-				rtl={false}
-				pauseOnFocusLoss
-				draggable
-				pauseOnHover
-			/>
-			<Routes>
-				{/* Public Routes */}
-				<Route path="/" element={<Home />} />
-				<Route path="/menu" element={<Menu />} />
-				<Route path="/menu/table/:tableId" element={<Menu />} />
-				<Route path="/table" element={<Menu />} /> {/* For QR token access */}
-				<Route path="/about" element={<About />} />
-				<Route path="/login" element={<Login />} />
-				{/* Customer Routes */}
-				<Route path="/item/:itemId" element={<MenuItemDetail />} />
-				<Route path="/cart" element={<Cart />} />
-				<Route path="/order-status" element={<OrderStatus />} />
-				<Route path="/order-status/:orderId" element={<OrderStatus />} />
-				<Route path="/payment" element={<Payment />} />
-				{/* Staff Routes */}
-				<Route
-					path="/waiter/orders"
-					element={
-						<ProtectedRoute requiredRole="waiter">
-							<WaiterOrders />
-						</ProtectedRoute>
-					}
+		<RestaurantProvider>
+			<div>
+				{!isAdminPage && !isCustomerDetailPage && <Navbar />}
+				<ToastContainer
+					position="top-right"
+					autoClose={3000}
+					hideProgressBar={false}
+					newestOnTop
+					closeOnClick
+					rtl={false}
+					pauseOnFocusLoss
+					draggable
+					pauseOnHover
 				/>
-				<Route
-					path="/waiter/bill/:orderId"
-					element={
-						<ProtectedRoute requiredRole="waiter">
-							<WaiterBill />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/waiter/pending-payments"
-					element={
-						<ProtectedRoute requiredRole="waiter">
-							<PendingPayments />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/kitchen/kds"
-					element={
-						<ProtectedRoute requiredRole="kitchen">
-							<KDS />
-						</ProtectedRoute>
-					}
-				/>
-				{/* Admin Routes */}
-				<Route
-					path="/admin/dashboard"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminDashboard />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/menu"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminMenuManagement />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/menu/add"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminMenuItemForm />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/menu/edit/:id"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminMenuItemForm />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/tables"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminTableManagement />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/orders"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminKDS />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/kds"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminKDS />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/reports"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminReports />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/categories"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminCategoryManagement />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/admin/modifiers"
-					element={
-						<ProtectedRoute requiredRole="admin">
-							<AdminModifierManagement />
-						</ProtectedRoute>
-					}
-				/>
-				{/* Catch all */}
-				<Route path="*" element={<NotFound />} />
-			</Routes>
-		</div>
+				<Routes>
+					{/* Public Routes */}
+					<Route path="/" element={<Home />} />
+					<Route path="/menu" element={<Menu />} />
+					<Route path="/menu/table/:tableId" element={<Menu />} />
+					<Route path="/table" element={<Menu />} /> {/* For QR token access */}
+					<Route path="/about" element={<About />} />
+					<Route path="/login" element={<Login />} />
+					{/* Customer Routes */}
+					<Route path="/item/:itemId" element={<MenuItemDetail />} />
+					<Route path="/cart" element={<Cart />} />
+					<Route path="/order-status" element={<OrderStatus />} />
+					<Route path="/order-status/:orderId" element={<OrderStatus />} />
+					<Route path="/payment" element={<Payment />} />
+					{/* Staff Routes */}
+					<Route
+						path="/waiter/orders"
+						element={
+							<ProtectedRoute requiredRole="waiter">
+								<WaiterOrders />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/waiter/bill/:orderId"
+						element={
+							<ProtectedRoute requiredRole="waiter">
+								<WaiterBill />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/waiter/pending-payments"
+						element={
+							<ProtectedRoute requiredRole="waiter">
+								<PendingPayments />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/kitchen/kds"
+						element={
+							<ProtectedRoute requiredRole="kitchen">
+								<KDS />
+							</ProtectedRoute>
+						}
+					/>
+					{/* Admin Routes */}
+					<Route
+						path="/admin/dashboard"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminDashboard />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/menu"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminMenuManagement />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/menu/add"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminMenuItemForm />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/menu/edit/:id"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminMenuItemForm />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/tables"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminTableManagement />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/orders"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminKDS />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/kds"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminKDS />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/reports"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminReports />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/categories"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminCategoryManagement />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/modifiers"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminModifierManagement />
+							</ProtectedRoute>
+						}
+					/>
+					{/* Catch all */}
+					<Route path="*" element={<NotFound />} />
+				</Routes>
+			</div>
+		</RestaurantProvider>
 	);
 }
 

@@ -34,7 +34,7 @@ const AdminMenuManagement: React.FC = () => {
                 const transformedItems: MenuItem[] = response.data.map(item => ({
                     ...item,
                     id: item._id,
-                    category: typeof item.categoryId === 'object' ? item.categoryId.name : 'Unknown'
+                    category: (item.categoryId && typeof item.categoryId === 'object') ? item.categoryId.name : 'Unknown'
                 }));
                 setMenuItems(transformedItems);
             }

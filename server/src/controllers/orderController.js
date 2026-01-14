@@ -22,7 +22,7 @@ export const getOrders = async (req, res) => {
 			sortBy = "createdAt",
 			order = "desc",
 			page = 1,
-			limit = 20,
+			limit = 1000, // Increased to show all orders by default
 		} = req.query;
 
 		// Build filter

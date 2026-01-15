@@ -81,7 +81,7 @@ function Menu() {
         }
     };
 
-    const addToCart = async (itemId: string) => {
+    const addToCart = async (itemId: string, isRecommendation: boolean = false) => {
         // Get restaurantId from tableInfo or from the menu item itself
         const item = filteredItems.find(i => i._id === itemId);
         const restaurantId = tableInfo?.restaurantId || item?.restaurantId;
@@ -89,6 +89,17 @@ function Menu() {
         if (!restaurantId) {
             toast.error('Restaurant information not available');
             return;
+        }
+
+        // Check if item has required modifiers
+        if (!isRecommendation && item?.modifiers && item.modifiers.length > 0) {
+            const hasRequiredModifiers = item.modifiers.some((modifier: any) => modifier.required === true);
+            
+            if (hasRequiredModifiers) {
+                // Navigate to item detail page for modifier selection
+                viewItemDetails(itemId);
+                return;
+            }
         }
 
         // Get tableId from tableInfo or localStorage
@@ -332,12 +343,12 @@ function Menu() {
                                                             .slice(0, 3)
                                                             .map((item) => {
                                                                 const categoryName = getCategoryName(item.categoryId);
+                                                                const isAvailable = item.status === 'available' && item.isActive;
 
                                                                 return (
                                                                     <div
                                                                         key={item._id}
-                                                                        className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl shadow-sm border-2 border-amber-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
-                                                                        onClick={() => viewItemDetails(item._id)}
+                                                                        className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl shadow-sm border-2 border-amber-200 p-4 hover:shadow-md transition-shadow"
                                                                     >
                                                                         <div className="flex space-x-4">
                                                                             <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -353,14 +364,48 @@ function Menu() {
                                                                             </div>
                                                                             <div className="flex-1 min-w-0">
                                                                                 <div className="flex justify-between items-start mb-1">
-                                                                                    <h3 className="text-lg font-semibold text-gray-900 truncate">
+                                                                                    <h3 
+                                                                                        className="text-lg font-semibold text-gray-900 truncate cursor-pointer hover:text-amber-700"
+                                                                                        onClick={() => viewItemDetails(item._id)}
+                                                                                    >
                                                                                         {item.name}
                                                                                     </h3>
                                                                                     <p className="text-lg font-bold text-amber-700 ml-4">${item.price.toFixed(2)}</p>
                                                                                 </div>
-                                                                                <p className="text-sm text-gray-600 line-clamp-2">
+                                                                                <p 
+                                                                                    className="text-sm text-gray-600 line-clamp-2 cursor-pointer"
+                                                                                    onClick={() => viewItemDetails(item._id)}
+                                                                                >
                                                                                     {item.description}
                                                                                 </p>
+                                                                                
+                                                                                <div className="flex items-center justify-between mt-3">
+                                                                                    <span className="text-xs text-amber-600 font-medium">👨‍🍳 Chef's Choice</span>
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            if (isAvailable) {
+                                                                                                addToCart(item._id, true); // Pass true for recommendations
+                                                                                            }
+                                                                                        }}
+                                                                                        disabled={!isAvailable || addingToCart === item._id}
+                                                                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                                                                            isAvailable
+                                                                                                ? 'bg-amber-600 text-white hover:bg-amber-700'
+                                                                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                                        } ${addingToCart === item._id ? 'opacity-50 cursor-wait' : ''}`}
+                                                                                    >
+                                                                                        {addingToCart === item._id ? (
+                                                                                            <span className="flex items-center">
+                                                                                                <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                                                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                                                </svg>
+                                                                                                Adding...
+                                                                                            </span>
+                                                                                        ) : '+ Add'}
+                                                                                    </button>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     </div>

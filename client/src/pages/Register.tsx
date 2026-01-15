@@ -80,9 +80,20 @@ function Register() {
             if (response.success) {
                 toast.success('Registration successful! Please check your email to verify your account.');
 
-                // Redirect to login after 2 seconds
+                // Check if user came from QR scan
+                const returnUrl = localStorage.getItem('return_after_register');
+                localStorage.removeItem('return_after_register');
+                
+                // Mark as authenticated for QR session
+                localStorage.setItem('qr_session_authenticated', 'true');
+
+                // Redirect to return URL or login after 2 seconds
                 setTimeout(() => {
-                    navigate('/login');
+                    if (returnUrl) {
+                        window.location.href = returnUrl;
+                    } else {
+                        navigate('/login');
+                    }
                 }, 2000);
             }
         } catch (error: any) {

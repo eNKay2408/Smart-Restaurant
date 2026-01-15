@@ -14,6 +14,7 @@ export function useQRTable() {
 	const [isValidTable, setIsValidTable] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const [showLoginModal, setShowLoginModal] = useState(false);
 
 	useEffect(() => {
 		const extractTableInfo = async () => {
@@ -42,6 +43,13 @@ export function useQRTable() {
 							setTableInfo(tableData);
 							setIsValidTable(true);
 							setError(null);
+							
+							// Check if user needs to authenticate
+							const isAuthenticated = localStorage.getItem('qr_session_authenticated');
+							if (!isAuthenticated) {
+								setShowLoginModal(true);
+							}
+							
 							return;
 						} else {
 							throw new Error('Invalid QR token');
@@ -219,9 +227,16 @@ export function useQRTable() {
 	// Helper function to clear table info (for logout or reset)
 	const clearTableInfo = () => {
 		localStorage.removeItem('current_table_info');
+		localStorage.removeItem('qr_session_authenticated');
+		localStorage.removeItem('guest_user');
 		setTableInfo(null);
 		setIsValidTable(false);
 		setError(null);
+	};
+
+	// Helper function to close login modal
+	const closeLoginModal = () => {
+		setShowLoginModal(false);
 	};
 
 	return {
@@ -229,8 +244,10 @@ export function useQRTable() {
 		isValidTable,
 		isLoading,
 		error,
+		showLoginModal,
 		generateQRUrl,
-		clearTableInfo
+		clearTableInfo,
+		closeLoginModal
 	};
 }
 

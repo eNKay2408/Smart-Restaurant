@@ -12,6 +12,7 @@ export interface User {
     avatar?: string;
     isEmailVerified?: boolean;
     restaurantId?: string;
+    isGuest?: boolean;
 }
 
 export interface LoginResponse {

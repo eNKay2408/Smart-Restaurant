@@ -88,6 +88,17 @@ class AuthService {
 	 * Get current logged-in user from localStorage
 	 */
 	getCurrentUser(): User | null {
+		// Check for guest user first
+		const guestUserStr = localStorage.getItem("guest_user");
+		if (guestUserStr) {
+			try {
+				return JSON.parse(guestUserStr) as User;
+			} catch (error) {
+				console.error("Error parsing guest user data:", error);
+			}
+		}
+
+		// Check for authenticated user
 		const userStr = localStorage.getItem("user");
 		if (userStr) {
 			try {
@@ -111,7 +122,14 @@ class AuthService {
 	 * Check if user is authenticated
 	 */
 	isAuthenticated(): boolean {
-		return !!this.getToken();
+		return !!this.getToken() || !!localStorage.getItem("guest_user");
+	}
+
+	/**
+	 * Check if current user is a guest
+	 */
+	isGuest(): boolean {
+		return !!localStorage.getItem("guest_user");
 	}
 
 	/**

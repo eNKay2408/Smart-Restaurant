@@ -6,6 +6,7 @@ import { SearchBar } from '../components/SearchBar';
 import { CategoryFilter } from '../components/CategoryFilter';
 import cartService from '../services/cartService';
 import QRScanRequired from '../components/QRScanRequired';
+import QRLoginModal from '../components/QRLoginModal';
 import { toast } from 'react-toastify';
 import { getPrimaryImageUrl } from '../utils/imageHelper';
 
@@ -13,7 +14,7 @@ import { getPrimaryImageUrl } from '../utils/imageHelper';
 function Menu() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { tableInfo, isValidTable, error: qrError, isLoading: qrLoading } = useQRTable();
+    const { tableInfo, isValidTable, error: qrError, isLoading: qrLoading, showLoginModal, closeLoginModal } = useQRTable();
 
     // Use backend data through useMenu hook
     const {
@@ -182,8 +183,23 @@ function Menu() {
 
     const isLoading = qrLoading || menuLoading;
 
+    const handleGuestContinue = () => {
+        toast.success('Welcome! Continue browsing as a guest.', {
+            position: 'top-center',
+            autoClose: 3000,
+        });
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
+            {/* QR Login Modal */}
+            <QRLoginModal
+                isOpen={showLoginModal}
+                onClose={closeLoginModal}
+                onGuestContinue={handleGuestContinue}
+                tableNumber={tableInfo?.tableNumber}
+            />
+
             {/* Mobile Header */}
             <div className="sticky top-0 bg-white shadow-sm border-b border-gray-200 z-10">
                 <div className="flex items-center justify-between px-4 py-3">

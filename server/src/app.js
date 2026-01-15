@@ -32,6 +32,7 @@ import reportRoutes from "./routes/reportRoutes.js";
 import promotionRoutes from "./routes/promotionRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 // Connect to database
 connectDB();
@@ -141,6 +142,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/promotions", promotionRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/users", userRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

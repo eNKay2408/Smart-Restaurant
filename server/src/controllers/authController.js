@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import { generateAccessToken, generateRefreshToken } from '../config/jwt.js';
+import emailService from '../services/emailService.js';
 
 // @desc    Register new user (Customer)
 // @route   POST /api/auth/register
@@ -29,8 +30,14 @@ export const register = async (req, res) => {
         const verificationToken = user.generateEmailVerificationToken();
         await user.save();
 
-        // TODO: Send verification email (implement in Week 2)
-        // await sendVerificationEmail(user.email, verificationToken);
+        // Send verification email
+        try {
+            await emailService.sendVerificationEmail(user.email, verificationToken);
+            console.log('✅ Verification email sent to:', user.email);
+        } catch (emailError) {
+            console.error('❌ Failed to send verification email:', emailError.message);
+            // Don't fail registration if email fails
+        }
 
         // Generate tokens
         const accessToken = generateAccessToken(user._id);
@@ -239,13 +246,19 @@ export const forgotPassword = async (req, res) => {
         const resetToken = user.generatePasswordResetToken();
         await user.save();
 
-        // TODO: Send reset email (implement in Week 2)
-        // await sendPasswordResetEmail(user.email, resetToken);
+        // Send reset email
+        try {
+            await emailService.sendPasswordResetEmail(user.email, resetToken);
+            console.log('✅ Password reset email sent to:', user.email);
+        } catch (emailError) {
+            console.error('❌ Failed to send reset email:', emailError.message);
+            // Still return success to prevent email enumeration attacks
+        }
 
         res.json({
             success: true,
             message: 'Password reset email sent',
-            // For development only - remove in production
+            // For development only - show token in console/response
             ...(process.env.NODE_ENV === 'development' && { resetToken }),
         });
     } catch (error) {

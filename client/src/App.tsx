@@ -35,6 +35,7 @@ import OrderStatus from "./pages/customer/OrderStatus";
 import Payment from "./pages/customer/Payment";
 import OrderHistory from "./pages/customer/OrderHistory";
 import ReviewOrder from "./pages/customer/ReviewOrder";
+import Profile from "./pages/customer/Profile";
 
 function App() {
 	const location = useLocation();
@@ -51,7 +52,7 @@ function App() {
 	return (
 		<RestaurantProvider>
 			<div>
-				{!isAdminPage && !isCustomerDetailPage }
+				{!isAdminPage && !isCustomerDetailPage}
 				<ToastContainer
 					position="top-right"
 					autoClose={3000}
@@ -82,6 +83,7 @@ function App() {
 					<Route path="/order-status/:orderId" element={<OrderStatus />} />
 					<Route path="/order-history" element={<OrderHistory />} />
 					<Route path="/review/:orderId" element={<ReviewOrder />} />
+					<Route path="/profile" element={<Profile />} />
 					<Route path="/payment" element={<Payment />} />
 					{/* Staff Routes */}
 					<Route

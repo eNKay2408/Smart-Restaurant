@@ -232,6 +232,75 @@ class AuthService {
 	}
 
 	/**
+	 * Get current user profile
+	 */
+	async getProfile(): Promise<{ success: boolean; data?: any; message?: string }> {
+		try {
+			const response = await axiosInstance.get('/auth/me');
+			return {
+				success: true,
+				data: response.data.data
+			};
+		} catch (error: any) {
+			console.error('Error fetching profile:', error);
+			return {
+				success: false,
+				message: error.response?.data?.message || 'Failed to fetch profile'
+			};
+		}
+	}
+
+	/**
+	 * Update user profile
+	 */
+	async updateProfile(profileData: {
+		fullName?: string;
+		phone?: string;
+		preferences?: any;
+	}): Promise<{ success: boolean; data?: any; message?: string }> {
+		try {
+			const response = await axiosInstance.put('/auth/profile', profileData);
+
+			// Update stored user data
+			if (response.data.data) {
+				localStorage.setItem('user', JSON.stringify(response.data.data));
+				window.dispatchEvent(new Event('auth-change'));
+			}
+
+			return {
+				success: true,
+				data: response.data.data,
+				message: response.data.message
+			};
+		} catch (error: any) {
+			console.error('Error updating profile:', error);
+			return {
+				success: false,
+				message: error.response?.data?.message || 'Failed to update profile'
+			};
+		}
+	}
+
+	/**
+	 * Update password
+	 */
+	async updatePassword(passwordData: {
+		currentPassword: string;
+		newPassword: string;
+	}): Promise<{ success: boolean; message?: string }> {
+		try {
+			const response = await axiosInstance.put('/auth/password', passwordData);
+			return {
+				success: true,
+				message: response.data.message
+			};
+		} catch (error: any) {
+			console.error('Error updating password:', error);
+			throw error; // Re-throw to let component handle error
+		}
+	}
+
+	/**
 	 * Check if email is available for registration
 	 */
 	async checkEmailAvailability(email: string): Promise<boolean> {

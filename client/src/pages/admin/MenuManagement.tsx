@@ -21,6 +21,7 @@ const AdminMenuManagement: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'price-asc' | 'price-desc' | 'popularity'>('newest');
     const itemsPerPage = 10;
 
     // Fetch menu items from backend
@@ -85,9 +86,34 @@ const AdminMenuManagement: React.FC = () => {
             );
         }
 
-        setFilteredItems(filtered);
+        // Sort items
+        const sorted = [...filtered].sort((a, b) => {
+            switch (sortBy) {
+                case 'newest':
+                    // Sort by creation date (newest first)
+                    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+                case 'oldest':
+                    // Sort by creation date (oldest first)
+                    return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+                case 'price-asc':
+                    // Sort by price (low to high)
+                    return a.price - b.price;
+                case 'price-desc':
+                    // Sort by price (high to low)
+                    return b.price - a.price;
+                case 'popularity':
+                    // Sort by popularity (based on order count or rating)
+                    const aPopularity = (a.totalOrders || 0) + (a.averageRating || 0) * 10;
+                    const bPopularity = (b.totalOrders || 0) + (b.averageRating || 0) * 10;
+                    return bPopularity - aPopularity;
+                default:
+                    return 0;
+            }
+        });
+
+        setFilteredItems(sorted);
         setCurrentPage(1);
-    }, [menuItems, selectedCategory, searchQuery]);
+    }, [menuItems, selectedCategory, searchQuery, sortBy]);
 
     const getStatusBadge = (status: string) => {
         const statusConfig = {
@@ -240,19 +266,40 @@ const AdminMenuManagement: React.FC = () => {
                         </div>
 
                         {/* Search */}
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <div className="flex items-center space-x-3">
+                            {/* Sort Dropdown */}
+                            <div className="flex items-center space-x-2">
+                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
                                 </svg>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value as any)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                                >
+                                    <option value="newest">Newest First</option>
+                                    <option value="oldest">Oldest First</option>
+                                    <option value="price-asc">Price: Low to High</option>
+                                    <option value="price-desc">Price: High to Low</option>
+                                    <option value="popularity">Most Popular</option>
+                                </select>
                             </div>
-                            <input
-                                type="text"
-                                placeholder="Search items..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 pr-4 py-2 w-full lg:w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
+
+                            {/* Search Input */}
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search items..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-10 pr-4 py-2 w-full lg:w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -27,6 +27,8 @@ import AdminKDS from "./pages/admin/KDS";
 import AdminReports from "./pages/admin/Reports";
 import AdminCategoryManagement from "./pages/admin/CategoryManagement";
 import AdminModifierManagement from "./pages/admin/ModifierManagement";
+import AdminUserManagement from "./pages/admin/UserManagement";
+import AdminProfile from "./pages/admin/Profile";
 
 // Customer Pages
 import MenuItemDetail from "./pages/customer/MenuItemDetail";
@@ -196,6 +198,22 @@ function App() {
 						element={
 							<ProtectedRoute requiredRole="admin">
 								<AdminModifierManagement />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/users"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminUserManagement />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/profile"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminProfile />
 							</ProtectedRoute>
 						}
 					/>

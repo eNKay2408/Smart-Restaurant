@@ -28,7 +28,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 }
             ];
         }
-        
+
         if (isKitchen) {
             return [
                 {
@@ -38,7 +38,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 }
             ];
         }
-        
+
         // Default admin menu items
         return [
             {
@@ -67,6 +67,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 icon: '📋'
             },
             {
+                path: '/admin/users',
+                name: 'Users',
+                icon: '👥'
+            },
+            {
                 path: '/admin/reports',
                 name: 'Reports',
                 icon: '📈'
@@ -91,9 +96,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                             <div>
                                 <h1 className="text-xl font-bold text-gray-800">Smart Restaurant</h1>
                                 <p className="text-sm text-gray-600">
-                                    {isAdmin ? 'Admin Panel' : 
-                                     isWaiter ? 'Waiter Panel' : 
-                                     isKitchen ? 'Kitchen Panel' : 'Staff Panel'}
+                                    {isAdmin ? 'Admin Panel' :
+                                        isWaiter ? 'Waiter Panel' :
+                                            isKitchen ? 'Kitchen Panel' : 'Staff Panel'}
                                 </p>
                             </div>
                         </div>
@@ -150,16 +155,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                             <div key={index} className="relative group">
                                 <Link
                                     to={item.path}
-                                    className={`flex items-center px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                                        isActivePath(item.path) 
-                                            ? 'bg-blue-600 text-white shadow-sm' 
+                                    className={`flex items-center px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${isActivePath(item.path)
+                                            ? 'bg-blue-600 text-white shadow-sm'
                                             : 'text-gray-700 hover:bg-gray-100'
-                                    }`}
+                                        }`}
                                 >
                                     <span className="text-lg mr-2">{item.icon}</span>
                                     <span className="font-medium">{item.name}</span>
                                 </Link>
-                                
+
                                 {/* Submenu Dropdown */}
                                 {item.submenu && (
                                     <div className="absolute left-0 top-full mt-1 min-w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-40 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
@@ -167,11 +171,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                                             <Link
                                                 key={subIndex}
                                                 to={subItem.path}
-                                                className={`block px-4 py-2 text-sm transition-colors ${
-                                                    location.pathname === subItem.path 
-                                                        ? 'bg-blue-50 text-blue-700 font-medium' 
+                                                className={`block px-4 py-2 text-sm transition-colors ${location.pathname === subItem.path
+                                                        ? 'bg-blue-50 text-blue-700 font-medium'
                                                         : 'text-gray-600 hover:bg-gray-50'
-                                                }`}
+                                                    }`}
                                             >
                                                 {subItem.name}
                                             </Link>
@@ -191,8 +194,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
             {/* Click outside to close user menu */}
             {showUserMenu && (
-                <div 
-                    className="fixed inset-0 z-40" 
+                <div
+                    className="fixed inset-0 z-40"
                     onClick={() => setShowUserMenu(false)}
                 />
             )}

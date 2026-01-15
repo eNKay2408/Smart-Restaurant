@@ -17,7 +17,7 @@ export function useQRTable() {
 	const [showLoginModal, setShowLoginModal] = useState(false);
 
 	useEffect(() => {
-		const extractTableInfo = async () => {
+		const extractTableInfo = async () => {		
 			setIsLoading(true);
 			setError(null);
 
@@ -36,7 +36,6 @@ export function useQRTable() {
 								tableNumber: typeof response.data.tableNumber === 'string' ? parseInt(response.data.tableNumber) : response.data.tableNumber,
 								area: response.data.location || 'Main Dining'
 							};
-
 							// Save to localStorage for persistence across navigation
 							localStorage.setItem('current_table_info', JSON.stringify(tableData));
 
@@ -50,6 +49,7 @@ export function useQRTable() {
 								setShowLoginModal(true);
 							}
 							
+							setIsLoading(false);
 							return;
 						} else {
 							throw new Error('Invalid QR token');
@@ -58,6 +58,7 @@ export function useQRTable() {
 						setError('Invalid or expired QR code');
 						setIsValidTable(false);
 						setTableInfo(null);
+						setIsLoading(false);
 						return;
 					}
 				}
@@ -174,6 +175,7 @@ export function useQRTable() {
 						setTableInfo(tableData);
 						setIsValidTable(true);
 						setError(null);
+						setIsLoading(false);
 						return;
 					} catch (e) {
 						// Invalid saved data, clear it

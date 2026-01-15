@@ -92,15 +92,15 @@ function Menu() {
             return;
         }
 
-        // Check if item has required modifiers
-        if (!isRecommendation && item?.modifiers && item.modifiers.length > 0) {
-            const hasRequiredModifiers = item.modifiers.some((modifier: any) => modifier.required === true);
-            
-            if (hasRequiredModifiers) {
-                // Navigate to item detail page for modifier selection
-                viewItemDetails(itemId);
-                return;
-            }
+        // Check if item has any modifiers - redirect to detail page for modifier selection
+        if (item?.modifiers && item.modifiers.length > 0) {
+            // Navigate to item detail page for modifier selection
+            toast.info('This item has customization options', {
+                position: 'top-center',
+                autoClose: 2000,
+            });
+            viewItemDetails(itemId);
+            return;
         }
 
         // Get tableId from tableInfo or localStorage

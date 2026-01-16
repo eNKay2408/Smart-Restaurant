@@ -24,6 +24,7 @@ import AdminMenuManagement from "./pages/admin/MenuManagement";
 import AdminMenuItemForm from "./pages/admin/MenuItemForm";
 import AdminTableManagement from "./pages/admin/TableManagement";
 import AdminKDS from "./pages/admin/KDS";
+import AdminOrders from "./pages/admin/Orders";
 import AdminReports from "./pages/admin/Reports";
 import AdminCategoryManagement from "./pages/admin/CategoryManagement";
 import AdminModifierManagement from "./pages/admin/ModifierManagement";
@@ -165,7 +166,7 @@ function App() {
 						path="/admin/orders"
 						element={
 							<ProtectedRoute requiredRole="admin">
-								<AdminKDS />
+								<AdminOrders />
 							</ProtectedRoute>
 						}
 					/>

@@ -34,14 +34,14 @@ export interface Order {
 	items: OrderItem[];
 	orderNotes?: string;
 	status:
-		| "pending"
-		| "accepted"
-		| "rejected"
-		| "preparing"
-		| "ready"
-		| "served"
-		| "completed"
-		| "cancelled";
+	| "pending"
+	| "accepted"
+	| "rejected"
+	| "preparing"
+	| "ready"
+	| "served"
+	| "completed"
+	| "cancelled";
 	waiterId?: {
 		_id: string;
 		fullName: string;
@@ -50,6 +50,7 @@ export interface Order {
 	subtotal: number;
 	tax: number;
 	discount: number;
+	tipAmount?: number;
 	total: number;
 	paymentStatus: "pending" | "paid" | "failed" | "refunded";
 	paymentMethod?: string;

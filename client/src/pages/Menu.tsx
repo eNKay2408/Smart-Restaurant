@@ -34,6 +34,38 @@ function Menu() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
+    // Sync URL with filters and pagination
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const urlPage = params.get('page');
+        const urlSearch = params.get('search');
+        const urlCategory = params.get('category');
+        const urlSort = params.get('sort');
+
+        // Initialize from URL on mount
+        if (urlPage) setCurrentPage(parseInt(urlPage));
+        if (urlSearch) searchItems(urlSearch);
+        if (urlCategory) filterByCategory(urlCategory);
+        if (urlSort) sortItems(urlSort as any);
+    }, []); // Only run on mount
+
+    // Update URL when filters or page changes
+    useEffect(() => {
+        const params = new URLSearchParams();
+
+        if (currentPage > 1) params.set('page', currentPage.toString());
+        if (filters.searchQuery) params.set('search', filters.searchQuery);
+        if (filters.selectedCategory) params.set('category', filters.selectedCategory);
+        if (filters.sortBy !== 'name') params.set('sort', filters.sortBy);
+
+        const newSearch = params.toString();
+        const currentSearch = location.search.slice(1); // Remove '?'
+
+        if (newSearch !== currentSearch) {
+            navigate(`${location.pathname}?${newSearch}`, { replace: true });
+        }
+    }, [currentPage, filters.searchQuery, filters.selectedCategory, filters.sortBy]);
+
     // Check if navigated from rejected order
     useEffect(() => {
         if (location.state?.message) {
@@ -380,7 +412,7 @@ function Menu() {
                                                                             </div>
                                                                             <div className="flex-1 min-w-0">
                                                                                 <div className="flex justify-between items-start mb-1">
-                                                                                    <h3 
+                                                                                    <h3
                                                                                         className="text-lg font-semibold text-gray-900 truncate cursor-pointer hover:text-amber-700"
                                                                                         onClick={() => viewItemDetails(item._id)}
                                                                                     >
@@ -388,13 +420,13 @@ function Menu() {
                                                                                     </h3>
                                                                                     <p className="text-lg font-bold text-amber-700 ml-4">${item.price.toFixed(2)}</p>
                                                                                 </div>
-                                                                                <p 
+                                                                                <p
                                                                                     className="text-sm text-gray-600 line-clamp-2 cursor-pointer"
                                                                                     onClick={() => viewItemDetails(item._id)}
                                                                                 >
                                                                                     {item.description}
                                                                                 </p>
-                                                                                
+
                                                                                 <div className="flex items-center justify-between mt-3">
                                                                                     <span className="text-xs text-amber-600 font-medium">👨‍🍳 Chef's Choice</span>
                                                                                     <button
@@ -405,11 +437,10 @@ function Menu() {
                                                                                             }
                                                                                         }}
                                                                                         disabled={!isAvailable || addingToCart === item._id}
-                                                                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                                                                            isAvailable
-                                                                                                ? 'bg-amber-600 text-white hover:bg-amber-700'
-                                                                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                                                        } ${addingToCart === item._id ? 'opacity-50 cursor-wait' : ''}`}
+                                                                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isAvailable
+                                                                                            ? 'bg-amber-600 text-white hover:bg-amber-700'
+                                                                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                                            } ${addingToCart === item._id ? 'opacity-50 cursor-wait' : ''}`}
                                                                                     >
                                                                                         {addingToCart === item._id ? (
                                                                                             <span className="flex items-center">
@@ -620,7 +651,13 @@ function Menu() {
                     <Link
                         to={(() => {
                             const latestOrderId = localStorage.getItem('latestOrderId');
-                            return latestOrderId ? `/order-status/${latestOrderId}` : '/order-status';
+                            if (latestOrderId) {
+                                return `/order-status/${latestOrderId}`;
+                            } else if (tableInfo?.tableId) {
+                                // Pass table_id to fetch active order for this table
+                                return `/order-status?table_id=${tableInfo.tableId}`;
+                            }
+                            return '/order-status';
                         })()}
                         className="flex flex-col items-center justify-center text-gray-400"
                     >

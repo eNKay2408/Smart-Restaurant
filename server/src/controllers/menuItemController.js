@@ -97,6 +97,44 @@ export const getMenuItems = async (req, res) => {
             console.log(`🔍 Fuzzy search for "${search}": ${searchResults.length} results found`);
         }
 
+        // Add popularity data (order count) if sorting by popularity
+        if (sortBy === 'popularity') {
+            const Order = (await import('../models/Order.js')).default;
+
+            // Get order counts for all menu items
+            const orderCounts = await Order.aggregate([
+                {
+                    $match: {
+                        status: { $in: ['accepted', 'preparing', 'ready', 'served', 'completed'] }
+                    }
+                },
+                { $unwind: '$items' },
+                {
+                    $group: {
+                        _id: '$items.menuItemId',
+                        orderCount: { $sum: '$items.quantity' }
+                    }
+                }
+            ]);
+
+            // Create a map of menuItemId -> orderCount
+            const orderCountMap = {};
+            orderCounts.forEach(item => {
+                orderCountMap[item._id.toString()] = item.orderCount;
+            });
+
+            // Add orderCount to each menu item
+            processedMenuItems = processedMenuItems.map(item => ({
+                ...item,
+                orderCount: orderCountMap[item._id.toString()] || 0
+            }));
+
+            // Sort by orderCount (descending)
+            processedMenuItems.sort((a, b) => (b.orderCount || 0) - (a.orderCount || 0));
+
+            console.log(`📊 Sorted by popularity (most ordered first)`);
+        }
+
         res.json({
             success: true,
             count: processedMenuItems.length,

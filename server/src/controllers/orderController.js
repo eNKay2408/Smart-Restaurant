@@ -610,3 +610,65 @@ export const deleteOrder = async (req, res) => {
 		});
 	}
 };
+
+// @desc    Apply promotion to order
+// @route   POST /api/orders/:orderId/apply-promotion
+// @access  Public
+export const applyPromotionToOrder = async (req, res) => {
+	try {
+		const { orderId } = req.params;
+		const { promotionId, promotionCode, discount, tip, tax, total } = req.body;
+
+		// Find order
+		const order = await Order.findById(orderId);
+		if (!order) {
+			return res.status(404).json({
+				success: false,
+				message: 'Order not found'
+			});
+		}
+
+		// Update order with promotion and payment details
+		order.discount = discount || 0;
+		order.tipAmount = tip || 0;
+		order.tax = tax || 0;
+		order.total = total;
+
+		await order.save();
+
+		// Increment promotion usage count if promotion was applied
+		if (promotionId) {
+			try {
+				const Promotion = (await import('../models/Promotion.js')).default;
+				await Promotion.findByIdAndUpdate(promotionId, {
+					$inc: { usedCount: 1 }
+				});
+				console.log(`✅ Incremented usage for promotion: ${promotionCode}`);
+			} catch (promoError) {
+				console.error('Failed to increment promotion usage:', promoError);
+				// Don't fail the whole request if promotion update fails
+			}
+		}
+
+		console.log(`✅ Applied promotion to order ${order.orderNumber}:`, {
+			discount,
+			tip,
+			tax,
+			total
+		});
+
+		res.status(200).json({
+			success: true,
+			message: 'Promotion applied successfully',
+			data: order
+		});
+
+	} catch (error) {
+		console.error('Apply promotion error:', error);
+		res.status(500).json({
+			success: false,
+			message: error.message || 'Failed to apply promotion'
+		});
+	}
+};
+

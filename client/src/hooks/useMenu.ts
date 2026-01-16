@@ -144,9 +144,9 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 					comparison = a.price - b.price;
 					break;
 				case 'popularity':
-					const aPopularity = a.totalOrders || 0;
-					const bPopularity = b.totalOrders || 0;
-					comparison = bPopularity - aPopularity; // Higher popularity first by default
+					const aPopularity = (a as any).orderCount || 0;
+					const bPopularity = (b as any).orderCount || 0;
+					comparison = bPopularity - aPopularity; // Higher popularity first
 					break;
 				case 'newest':
 					comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();

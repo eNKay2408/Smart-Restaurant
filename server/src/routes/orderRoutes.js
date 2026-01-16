@@ -8,6 +8,7 @@ import {
 	rejectOrder,
 	updateOrderStatus,
 	deleteOrder,
+	applyPromotionToOrder,
 } from "../controllers/orderController.js";
 import {
 	requestCashPayment,
@@ -168,6 +169,10 @@ router.get(
  *       200:
  *         description: Order details
  */
+
+// Promotion route - MUST be before /:id to avoid 404
+router.post("/:id/apply-promotion", applyPromotionToOrder);
+
 router.get("/:id", getOrder); // Public access for order tracking
 
 /**

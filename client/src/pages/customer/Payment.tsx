@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { paymentService } from "../../services/paymentService";
 import cartService from "../../services/cartService";
 import orderService from "../../services/orderService";
+import { promotionService, PromotionValidationResult } from "../../services/promotionService";
 import { toast } from "react-toastify";
 import StripePaymentForm from "../../components/StripePaymentForm";
 
@@ -31,6 +32,8 @@ const Payment: React.FC = () => {
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
 	const [showStripePayment, setShowStripePayment] = useState(false);
+	const [promoCode, setPromoCode] = useState('');
+	const [appliedPromo, setAppliedPromo] = useState<PromotionValidationResult | null>(null);
 
 	const paymentMethods: PaymentMethod[] = [
 		{
@@ -81,15 +84,17 @@ const Payment: React.FC = () => {
 			},
 		];
 
-	// Calculate from real order data
+	// Calculate from real order data - Apply discount BEFORE tax and tip
 	const actualSubtotal = order?.total || total || 50.0;
 	const subtotal = actualSubtotal;
-	const tax = subtotal * 0.08;
+	const discount = appliedPromo ? appliedPromo.discountAmount : 0;
+	const subtotalAfterDiscount = subtotal - discount;
+	const tax = subtotalAfterDiscount * 0.08;
 	const tipAmount =
 		showCustomTip && customTip
 			? parseFloat(customTip) || 0
-			: subtotal * (tipPercentage / 100);
-	const finalTotal = subtotal + tax + tipAmount;
+			: subtotalAfterDiscount * (tipPercentage / 100);
+	const finalTotal = subtotalAfterDiscount + tax + tipAmount;
 	const perPersonAmount = splitBill ? finalTotal / splitAmount : finalTotal;
 
 	const handleTipSelection = (percentage: number) => {
@@ -101,6 +106,40 @@ const Payment: React.FC = () => {
 	const handleCustomTip = () => {
 		setShowCustomTip(true);
 		setTipPercentage(0);
+	};
+
+	const handleApplyPromo = async () => {
+		if (!promoCode.trim()) {
+			toast.error('Please enter a promo code');
+			return;
+		}
+
+		if (!order?.restaurantId) {
+			toast.error('Restaurant information is missing');
+			return;
+		}
+
+		try {
+			const result = await promotionService.validatePromotionCode(
+				promoCode,
+				subtotal,
+				order.restaurantId
+			);
+
+			if (result.success && result.data) {
+				setAppliedPromo(result.data);
+				setPromoCode('');
+				toast.success(`✅ Promo code "${result.data.code}" applied!`);
+			}
+		} catch (error: any) {
+			console.error('Promo validation error:', error);
+			toast.error(error.message || 'Invalid promo code');
+		}
+	};
+
+	const handleRemovePromo = () => {
+		setAppliedPromo(null);
+		toast.info('Promo code removed');
 	};
 
 	// Listen for payment confirmation from waiter
@@ -176,6 +215,23 @@ const Payment: React.FC = () => {
 			setIsProcessing(true);
 
 			try {
+				// Apply promotion and tip BEFORE requesting cash payment
+				if (appliedPromo || tipAmount > 0) {
+					await fetch(`http://localhost:5000/api/orders/${order._id}/apply-promotion`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							promotionId: appliedPromo?.promotionId,
+							promotionCode: appliedPromo?.code,
+							discount: discount,
+							tip: tipAmount,
+							tax: tax,
+							total: finalTotal
+						})
+					});
+					console.log('✅ Promotion and tip applied before cash payment');
+				}
+
 				// Cash payment - request waiter assistance via API
 				const response = await fetch(
 					`http://localhost:5000/api/orders/${order._id}/request-cash-payment`,
@@ -218,6 +274,27 @@ const Payment: React.FC = () => {
 	};
 
 	const handleStripePaymentSuccess = async () => {
+		// Update order with promotion and tip
+		if (order._id && (appliedPromo || tipAmount > 0)) {
+			try {
+				await fetch(`http://localhost:5000/api/orders/${order._id}/apply-promotion`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						promotionId: appliedPromo?.promotionId,
+						promotionCode: appliedPromo?.code,
+						discount: discount,
+						tip: tipAmount,
+						tax: tax,
+						total: finalTotal
+					})
+				});
+				console.log('✅ Promotion and tip applied to order');
+			} catch (error) {
+				console.error('Failed to apply promotion:', error);
+			}
+		}
+
 		// Clear table cart after successful payment
 		if (tableId) {
 			try {
@@ -419,6 +496,12 @@ const Payment: React.FC = () => {
 							<span>Subtotal</span>
 							<span>${subtotal.toFixed(2)}</span>
 						</div>
+						{appliedPromo && (
+							<div className="flex justify-between text-green-600">
+								<span>Discount ({appliedPromo.code})</span>
+								<span>-${discount.toFixed(2)}</span>
+							</div>
+						)}
 						<div className="flex justify-between text-gray-600">
 							<span>Tax (8%)</span>
 							<span>${tax.toFixed(2)}</span>
@@ -446,6 +529,50 @@ const Payment: React.FC = () => {
 
 				{!showReceipt && (
 					<>
+						{/* Promo Code Section */}
+						<div className="bg-white mt-2 px-4 py-6 border-b border-gray-200">
+							<h3 className="text-lg font-semibold text-gray-900 mb-4">
+								Promo Code
+							</h3>
+
+							{appliedPromo ? (
+								<div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+									<div className="flex items-center">
+										<span className="text-green-600 mr-2">✓</span>
+										<span className="font-medium text-green-800">{appliedPromo.code}</span>
+										<span className="text-green-600 ml-2 text-sm">
+											-{appliedPromo.discountType === 'percentage'
+												? `${appliedPromo.discountValue}%`
+												: `$${appliedPromo.discountValue}`}
+										</span>
+									</div>
+									<button
+										onClick={handleRemovePromo}
+										className="text-red-500 hover:text-red-600 text-sm font-medium"
+									>
+										Remove
+									</button>
+								</div>
+							) : (
+								<div className="flex space-x-2">
+									<input
+										type="text"
+										value={promoCode}
+										onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+										placeholder="Enter promo code"
+										className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+									/>
+									<button
+										onClick={handleApplyPromo}
+										disabled={!promoCode.trim()}
+										className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+									>
+										Apply
+									</button>
+								</div>
+							)}
+						</div>
+
 						{/* Tip Selection */}
 						<div className="bg-white mt-2 px-4 py-6 border-b border-gray-200">
 							<h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -456,11 +583,10 @@ const Payment: React.FC = () => {
 									<button
 										key={percentage}
 										onClick={() => handleTipSelection(percentage)}
-										className={`py-2 px-3 rounded-lg border font-medium transition-colors ${
-											tipPercentage === percentage && !showCustomTip
-												? "bg-blue-600 text-white border-blue-600"
-												: "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-										}`}
+										className={`py-2 px-3 rounded-lg border font-medium transition-colors ${tipPercentage === percentage && !showCustomTip
+											? "bg-blue-600 text-white border-blue-600"
+											: "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+											}`}
 									>
 										{percentage}%
 									</button>
@@ -470,11 +596,10 @@ const Payment: React.FC = () => {
 							<div className="flex space-x-2">
 								<button
 									onClick={handleCustomTip}
-									className={`px-4 py-2 rounded-lg border font-medium transition-colors ${
-										showCustomTip
-											? "bg-blue-600 text-white border-blue-600"
-											: "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-									}`}
+									className={`px-4 py-2 rounded-lg border font-medium transition-colors ${showCustomTip
+										? "bg-blue-600 text-white border-blue-600"
+										: "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+										}`}
 								>
 									Custom
 								</button>
@@ -498,14 +623,12 @@ const Payment: React.FC = () => {
 								</h3>
 								<button
 									onClick={() => setSplitBill(!splitBill)}
-									className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-										splitBill ? "bg-blue-600" : "bg-gray-300"
-									}`}
+									className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${splitBill ? "bg-blue-600" : "bg-gray-300"
+										}`}
 								>
 									<span
-										className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-											splitBill ? "translate-x-6" : "translate-x-1"
-										}`}
+										className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${splitBill ? "translate-x-6" : "translate-x-1"
+											}`}
 									/>
 								</button>
 							</div>
@@ -544,13 +667,11 @@ const Payment: React.FC = () => {
 								{paymentMethods.map((method) => (
 									<label
 										key={method.id}
-										className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
-											selectedPaymentMethod === method.id
-												? "border-blue-500 bg-blue-50"
-												: "border-gray-200 hover:bg-gray-50"
-										} ${
-											!method.enabled ? "opacity-50 cursor-not-allowed" : ""
-										}`}
+										className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${selectedPaymentMethod === method.id
+											? "border-blue-500 bg-blue-50"
+											: "border-gray-200 hover:bg-gray-50"
+											} ${!method.enabled ? "opacity-50 cursor-not-allowed" : ""
+											}`}
 									>
 										<input
 											type="radio"
@@ -594,10 +715,9 @@ const Payment: React.FC = () => {
 								Processing Payment...
 							</div>
 						) : (
-							`Pay ${
-								splitBill
-									? `$${perPersonAmount.toFixed(2)} (Your share)`
-									: `$${finalTotal.toFixed(2)}`
+							`Pay ${splitBill
+								? `$${perPersonAmount.toFixed(2)} (Your share)`
+								: `$${finalTotal.toFixed(2)}`
 							}`
 						)}
 					</button>

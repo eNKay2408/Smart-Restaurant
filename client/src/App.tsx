@@ -29,6 +29,7 @@ import AdminReports from "./pages/admin/Reports";
 import AdminCategoryManagement from "./pages/admin/CategoryManagement";
 import AdminModifierManagement from "./pages/admin/ModifierManagement";
 import AdminUserManagement from "./pages/admin/UserManagement";
+import AdminPromotionManagement from "./pages/admin/PromotionManagement";
 import AdminProfile from "./pages/admin/Profile";
 
 // Customer Pages
@@ -199,6 +200,14 @@ function App() {
 						element={
 							<ProtectedRoute requiredRole="admin">
 								<AdminModifierManagement />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/admin/promotions"
+						element={
+							<ProtectedRoute requiredRole="admin">
+								<AdminPromotionManagement />
 							</ProtectedRoute>
 						}
 					/>

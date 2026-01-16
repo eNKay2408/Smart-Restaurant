@@ -1,12 +1,12 @@
 import express from "express";
 import { body } from "express-validator";
 import {
-    createPaymentIntent,
-    confirmPayment,
-    getPaymentStatus,
-    handleWebhook,
-    refundPayment,
-    cashPayment,
+	createPaymentIntent,
+	confirmPayment,
+	getPaymentStatus,
+	handleWebhook,
+	refundPayment,
+	cashPayment,
 } from "../controllers/paymentController.js";
 import { protect, authorize } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validator.js";
@@ -15,26 +15,26 @@ const router = express.Router();
 
 // Validation rules
 const createPaymentIntentValidation = [
-    body("orderId").notEmpty().withMessage("Order ID is required"),
-    body("paymentMethod")
-        .optional()
-        .isIn(["card", "cash", "stripe", "zalopay", "momo", "vnpay"])
-        .withMessage("Invalid payment method"),
+	body("orderId").notEmpty().withMessage("Order ID is required"),
+	body("paymentMethod")
+		.optional()
+		.isIn(["card", "cash", "stripe", "zalopay", "momo", "vnpay"])
+		.withMessage("Invalid payment method"),
 ];
 
 const confirmPaymentValidation = [
-    body("paymentIntentId")
-        .notEmpty()
-        .withMessage("Payment intent ID is required"),
+	body("paymentIntentId")
+		.notEmpty()
+		.withMessage("Payment intent ID is required"),
 ];
 
 const refundValidation = [
-    body("orderId").notEmpty().withMessage("Order ID is required"),
-    body("reason").optional().isString(),
+	body("orderId").notEmpty().withMessage("Order ID is required"),
+	body("reason").optional().isString(),
 ];
 
 const cashPaymentValidation = [
-    body("orderId").notEmpty().withMessage("Order ID is required"),
+	body("orderId").notEmpty().withMessage("Order ID is required"),
 ];
 
 // Public routes
@@ -65,10 +65,10 @@ const cashPaymentValidation = [
  *         description: Payment intent created successfully
  */
 router.post(
-    "/create-intent",
-    createPaymentIntentValidation,
-    validate,
-    createPaymentIntent
+	"/create-intent",
+	createPaymentIntentValidation,
+	validate,
+	createPaymentIntent
 );
 
 /**
@@ -125,7 +125,8 @@ router.get("/status/:orderId", getPaymentStatus);
  *       200:
  *         description: Webhook processed
  */
-router.post("/webhook", express.raw({ type: "application/json" }), handleWebhook);
+// Note: Raw body parser is applied globally in app.js for this route
+router.post("/webhook", handleWebhook);
 
 // Protected routes
 
@@ -154,12 +155,12 @@ router.post("/webhook", express.raw({ type: "application/json" }), handleWebhook
  *         description: Cash payment recorded
  */
 router.post(
-    "/cash",
-    protect,
-    authorize("admin", "waiter"),
-    cashPaymentValidation,
-    validate,
-    cashPayment
+	"/cash",
+	protect,
+	authorize("admin", "waiter"),
+	cashPaymentValidation,
+	validate,
+	cashPayment
 );
 
 /**
@@ -192,12 +193,12 @@ router.post(
  *         description: Refund processed successfully
  */
 router.post(
-    "/refund",
-    protect,
-    authorize("admin"),
-    refundValidation,
-    validate,
-    refundPayment
+	"/refund",
+	protect,
+	authorize("admin"),
+	refundValidation,
+	validate,
+	refundPayment
 );
 
 export default router;

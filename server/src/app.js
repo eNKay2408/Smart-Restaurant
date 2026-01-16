@@ -41,16 +41,18 @@ connectDB();
 const app = express();
 
 // Security middleware - Configure helmet to allow CORS for static files
-app.use(helmet({
-	crossOriginResourcePolicy: { policy: "cross-origin" },
-	crossOriginEmbedderPolicy: false
-}));
+app.use(
+	helmet({
+		crossOriginResourcePolicy: { policy: "cross-origin" },
+		crossOriginEmbedderPolicy: false,
+	})
+);
 
 // CORS configuration
 const allowedOrigins = [
 	"http://localhost:5173",
 	"http://localhost:5174",
-	process.env.CLIENT_URL
+	process.env.CLIENT_URL,
 ].filter(Boolean);
 
 app.use(
@@ -63,12 +65,17 @@ app.use(
 // Rate limiting - more lenient in development
 const limiter = rateLimit({
 	windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-	max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (process.env.NODE_ENV === 'development' ? 1000 : 100),
+	max:
+		parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) ||
+		(process.env.NODE_ENV === "development" ? 1000 : 100),
 	message: "Too many requests from this IP, please try again later",
 	skip: (req) => {
 		// Skip rate limiting in development for localhost
-		if (process.env.NODE_ENV === 'development') {
-			const isLocalhost = req.ip === '::1' || req.ip === '127.0.0.1' || req.ip === '::ffff:127.0.0.1';
+		if (process.env.NODE_ENV === "development") {
+			const isLocalhost =
+				req.ip === "::1" ||
+				req.ip === "127.0.0.1" ||
+				req.ip === "::ffff:127.0.0.1";
 			return isLocalhost;
 		}
 		return false;
@@ -77,6 +84,11 @@ const limiter = rateLimit({
 app.use("/api/", limiter);
 
 // Body parser middleware
+// IMPORTANT: Stripe webhook endpoint needs raw body for signature verification
+// This must come BEFORE the JSON parser
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
+
+// Regular JSON parser for all other routes
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -84,12 +96,12 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(compression());
 
 // Serve static files (images, etc.)
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from "path";
+import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use('/uploads', express.static(path.join(__dirname, '../public/images')));
-app.use('/images', express.static(path.join(__dirname, '../public/images')));
+app.use("/uploads", express.static(path.join(__dirname, "../public/images")));
+app.use("/images", express.static(path.join(__dirname, "../public/images")));
 
 // Logging middleware
 if (process.env.NODE_ENV === "development") {
@@ -112,10 +124,11 @@ app.get("/health", (req, res) => {
 app.get("/api/test", (req, res) => {
 	res.json({
 		success: true,
-		message: "API connection successful! Frontend and Backend are connected properly.",
+		message:
+			"API connection successful! Frontend and Backend are connected properly.",
 		timestamp: new Date().toISOString(),
 		server: "Smart Restaurant API",
-		version: "1.0.0"
+		version: "1.0.0",
 	});
 });
 
@@ -182,8 +195,9 @@ const server = httpServer.listen(PORT, () => {
 ║                                                       ║
 ║   🍽️  Smart Restaurant API Server                    ║
 ║                                                       ║
-║   Environment: ${process.env.NODE_ENV?.toUpperCase() || "DEVELOPMENT"
-		}                              ║
+║   Environment: ${
+		process.env.NODE_ENV?.toUpperCase() || "DEVELOPMENT"
+	}                              ║
 ║   Port: ${PORT}                                        ║
 ║   URL: http://localhost:${PORT}                        ║
 ║   Socket.IO: ✅ Enabled                                ║

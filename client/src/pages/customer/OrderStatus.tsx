@@ -155,19 +155,42 @@ const OrderStatus: React.FC = () => {
                 // Fetch specific order by ID
                 response = await orderService.getOrder(orderId);
             } else if (tableIdFromQuery) {
-                // Fetch latest order for table
-                const ordersResponse = await orderService.getOrders({ tableId: tableIdFromQuery });
+                // Fetch latest ACTIVE order for table (not completed/rejected)
+                const ordersResponse = await orderService.getOrders({
+                    tableId: tableIdFromQuery,
+                    // Don't filter by status in query - we'll filter client-side to get most recent active
+                });
 
                 if (!ordersResponse.success || !ordersResponse.data || ordersResponse.data.length === 0) {
-                    throw new Error('No active orders found for this table');
+                    throw new Error('No orders found for this table');
                 }
 
-                // Get the most recent order
-                const latestOrder = ordersResponse.data[0];
+                // Filter for active orders (not completed/rejected AND not paid)
+                const activeOrders = ordersResponse.data.filter((order: any) => {
+                    // Exclude completed, rejected, or cancelled orders
+                    if (['completed', 'rejected', 'cancelled'].includes(order.status)) {
+                        return false;
+                    }
+                    // Exclude orders that have been paid
+                    if (['paid', 'completed'].includes(order.paymentStatus)) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                if (activeOrders.length === 0) {
+                    // No active orders - show error instead of old order
+                    throw new Error('No active orders for this table. Please place a new order.');
+                }
+
+                // Get the most recent active order (already sorted by createdAt desc from backend)
+                const latestActiveOrder = activeOrders[0];
                 response = {
                     success: true,
-                    data: latestOrder
+                    data: latestActiveOrder
                 };
+
+                console.log(`📋 Found ${activeOrders.length} active orders for table`);
             } else {
                 throw new Error('No order ID or table ID provided');
             }

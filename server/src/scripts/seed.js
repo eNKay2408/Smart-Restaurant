@@ -97,6 +97,7 @@ const seedDatabase = async () => {
             email: 'customer@example.com',
             password: 'Customer123',
             role: 'customer',
+            restaurantId: restaurant._id, // Add restaurantId
             isEmailVerified: true,
         });
         console.log('✅ Created Customer');

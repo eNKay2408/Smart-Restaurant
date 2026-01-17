@@ -5,6 +5,7 @@ import { menuService } from '../../services/menuService';
 import { categoryService } from '../../services/categoryService';
 import type { MenuItem as BackendMenuItem } from '../../types/menu.types';
 import { getPrimaryImageUrl, getImageUrl } from '../../utils/imageHelper';
+import Fuse from 'fuse.js';
 
 // Use backend MenuItem type
 type MenuItem = BackendMenuItem & {
@@ -78,12 +79,23 @@ const AdminMenuManagement: React.FC = () => {
             filtered = filtered.filter(item => item.category === selectedCategory);
         }
 
-        // Filter by search query
+        // Filter by search query using fuzzy search
         if (searchQuery) {
-            filtered = filtered.filter(item =>
-                item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                item.description?.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+            const fuseOptions = {
+                keys: [
+                    { name: 'name', weight: 0.6 },
+                    { name: 'description', weight: 0.4 }
+                ],
+                threshold: 0.4,
+                distance: 100,
+                minMatchCharLength: 2,
+                includeScore: true,
+                ignoreLocation: true
+            };
+
+            const fuse = new Fuse(filtered, fuseOptions);
+            const searchResults = fuse.search(searchQuery);
+            filtered = searchResults.map(result => result.item);
         }
 
         // Sort items

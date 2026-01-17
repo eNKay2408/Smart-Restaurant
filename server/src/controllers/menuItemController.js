@@ -1,4 +1,5 @@
 import MenuItem from '../models/MenuItem.js';
+import Fuse from 'fuse.js';
 
 // @desc    Get all menu items with filters
 // @route   GET /api/menu-items
@@ -22,10 +23,7 @@ export const getMenuItems = async (req, res) => {
         if (categoryId) filter.categoryId = categoryId;
         if (status) filter.status = status;
 
-        // Text search
-        if (search) {
-            filter.$text = { $search: search };
-        }
+        // Don't add search to filter - we'll use fuzzy search after fetching
 
         // Build sort
         const sortOptions = {};
@@ -57,7 +55,7 @@ export const getMenuItems = async (req, res) => {
         const total = await MenuItem.countDocuments(filter);
 
         // Process menu items to combine embedded and referenced modifiers
-        const processedMenuItems = menuItems.map(item => {
+        let processedMenuItems = menuItems.map(item => {
             let allModifiers = [];
 
             // Prioritize referenced modifiers (new format) over embedded modifiers (legacy)
@@ -75,9 +73,71 @@ export const getMenuItems = async (req, res) => {
             };
         });
 
+        // Apply fuzzy search if search query exists
+        if (search && search.trim()) {
+            const fuseOptions = {
+                keys: [
+                    { name: 'name', weight: 0.5 },           // Highest weight for name
+                    { name: 'description', weight: 0.3 },    // Medium weight for description
+                    { name: 'allergens', weight: 0.2 }       // Lower weight for allergens
+                ],
+                threshold: 0.4,          // 0.0 = perfect match, 1.0 = match anything
+                distance: 100,           // Maximum distance for fuzzy matching
+                minMatchCharLength: 2,   // Minimum characters to match
+                includeScore: true,      // Include match score in results
+                ignoreLocation: true     // Search in entire string, not just beginning
+            };
+
+            const fuse = new Fuse(processedMenuItems, fuseOptions);
+            const searchResults = fuse.search(search.trim());
+
+            // Extract items from Fuse.js results
+            processedMenuItems = searchResults.map(result => result.item);
+
+            console.log(`🔍 Fuzzy search for "${search}": ${searchResults.length} results found`);
+        }
+
+        // Add popularity data (order count) if sorting by popularity
+        if (sortBy === 'popularity') {
+            const Order = (await import('../models/Order.js')).default;
+
+            // Get order counts for all menu items
+            const orderCounts = await Order.aggregate([
+                {
+                    $match: {
+                        status: { $in: ['accepted', 'preparing', 'ready', 'served', 'completed'] }
+                    }
+                },
+                { $unwind: '$items' },
+                {
+                    $group: {
+                        _id: '$items.menuItemId',
+                        orderCount: { $sum: '$items.quantity' }
+                    }
+                }
+            ]);
+
+            // Create a map of menuItemId -> orderCount
+            const orderCountMap = {};
+            orderCounts.forEach(item => {
+                orderCountMap[item._id.toString()] = item.orderCount;
+            });
+
+            // Add orderCount to each menu item
+            processedMenuItems = processedMenuItems.map(item => ({
+                ...item,
+                orderCount: orderCountMap[item._id.toString()] || 0
+            }));
+
+            // Sort by orderCount (descending)
+            processedMenuItems.sort((a, b) => (b.orderCount || 0) - (a.orderCount || 0));
+
+            console.log(`📊 Sorted by popularity (most ordered first)`);
+        }
+
         res.json({
             success: true,
-            count: menuItems.length,
+            count: processedMenuItems.length,
             total,
             page: parseInt(page),
             pages: Math.ceil(total / parseInt(limit)),

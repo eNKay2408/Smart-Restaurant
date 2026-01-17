@@ -72,6 +72,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 icon: '👥'
             },
             {
+                path: '/admin/promotions',
+                name: 'Promotions',
+                icon: '🎟️'
+            },
+            {
                 path: '/admin/reports',
                 name: 'Reports',
                 icon: '📈'
@@ -156,8 +161,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                                 <Link
                                     to={item.path}
                                     className={`flex items-center px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${isActivePath(item.path)
-                                            ? 'bg-blue-600 text-white shadow-sm'
-                                            : 'text-gray-700 hover:bg-gray-100'
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'text-gray-700 hover:bg-gray-100'
                                         }`}
                                 >
                                     <span className="text-lg mr-2">{item.icon}</span>
@@ -172,8 +177,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                                                 key={subIndex}
                                                 to={subItem.path}
                                                 className={`block px-4 py-2 text-sm transition-colors ${location.pathname === subItem.path
-                                                        ? 'bg-blue-50 text-blue-700 font-medium'
-                                                        : 'text-gray-600 hover:bg-gray-50'
+                                                    ? 'bg-blue-50 text-blue-700 font-medium'
+                                                    : 'text-gray-600 hover:bg-gray-50'
                                                     }`}
                                             >
                                                 {subItem.name}

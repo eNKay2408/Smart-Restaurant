@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { menuService } from '../services/menuService';
 import { categoryService } from '../services/categoryService';
+import Fuse from 'fuse.js';
 import type {
 	MenuItem,
 	MenuCategory,
@@ -101,18 +102,24 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 			filtered = filtered.filter(item => item.status === 'available' && item.isActive);
 		}
 
-		// Filter by search query
+		// Filter by search query using fuzzy search
 		if (filters.searchQuery.trim()) {
-			const query = filters.searchQuery.toLowerCase().trim();
-			filtered = filtered.filter(item =>
-				item.name.toLowerCase().includes(query) ||
-				item.description.toLowerCase().includes(query) ||
-				(typeof item.categoryId === 'object' &&
-					item.categoryId.name.toLowerCase().includes(query)) ||
-				(item.allergens && item.allergens.some(allergen =>
-					allergen.toLowerCase().includes(query)
-				))
-			);
+			const fuseOptions = {
+				keys: [
+					{ name: 'name', weight: 0.5 },
+					{ name: 'description', weight: 0.3 },
+					{ name: 'allergens', weight: 0.2 }
+				],
+				threshold: 0.4,
+				distance: 100,
+				minMatchCharLength: 2,
+				includeScore: true,
+				ignoreLocation: true
+			};
+
+			const fuse = new Fuse(filtered, fuseOptions);
+			const searchResults = fuse.search(filters.searchQuery.trim());
+			filtered = searchResults.map(result => result.item);
 		}
 
 		// Filter by category
@@ -137,9 +144,9 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 					comparison = a.price - b.price;
 					break;
 				case 'popularity':
-					const aPopularity = a.totalOrders || 0;
-					const bPopularity = b.totalOrders || 0;
-					comparison = bPopularity - aPopularity; // Higher popularity first by default
+					const aPopularity = (a as any).orderCount || 0;
+					const bPopularity = (b as any).orderCount || 0;
+					comparison = bPopularity - aPopularity; // Higher popularity first
 					break;
 				case 'newest':
 					comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -172,7 +179,9 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 		if (query.trim()) {
 			setIsLoading(true);
 			try {
-				const response = await menuService.searchMenuItems(query, restaurantId);
+				const response = await menuService.searchMenuItems(query, {
+					restaurantId
+				});
 				if (response.success) {
 					setMenuItems(response.data);
 				}
@@ -196,7 +205,9 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 		if (categoryId) {
 			setIsLoading(true);
 			try {
-				const response = await menuService.getMenuItemsByCategory(categoryId, restaurantId);
+				const response = await menuService.getMenuItemsByCategory(categoryId, {
+					restaurantId
+				});
 				if (response.success) {
 					setMenuItems(response.data);
 				}
@@ -232,12 +243,7 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 		setIsLoading(true);
 		try {
 			// Map frontend sort options to backend
-			let backendSortBy: string = sortBy;
-			if (sortBy === 'popularity') {
-				backendSortBy = 'totalOrders';
-			} else if (sortBy === 'newest') {
-				backendSortBy = 'createdAt';
-			}
+			let backendSortBy: 'name' | 'price' | 'popularity' | 'rating' | 'createdAt' = sortBy === 'newest' ? 'createdAt' : sortBy;
 
 			const response = await menuService.getMenuItems({
 				restaurantId,

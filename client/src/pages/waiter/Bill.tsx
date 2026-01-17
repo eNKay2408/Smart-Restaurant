@@ -60,6 +60,7 @@ function Bill() {
 				})),
 			subtotal: order.subtotal,
 			tax: order.tax,
+			tip: order.tipAmount || 0,
 			discount: order.discount,
 			total: order.total,
 			paymentStatus: order.paymentStatus,
@@ -93,6 +94,7 @@ function Bill() {
 		csv += `\n`;
 		csv += `Subtotal,,,,,$${order.subtotal}\n`;
 		csv += `Tax,,,,,$${order.tax}\n`;
+		csv += `Tip,,,,,$${order.tipAmount || 0}\n`;
 		csv += `Discount,,,,,$${order.discount}\n`;
 		csv += `Total,,,,,$${order.total}\n`;
 
@@ -222,8 +224,8 @@ function Bill() {
 								<p className="font-semibold">Payment Status:</p>
 								<p
 									className={`font-bold ${order.paymentStatus === "paid"
-											? "text-green-600"
-											: "text-yellow-600"
+										? "text-green-600"
+										: "text-yellow-600"
 										}`}
 								>
 									{order.paymentStatus.toUpperCase()}
@@ -303,6 +305,12 @@ function Bill() {
 									<span className="text-gray-600">Tax:</span>
 									<span className="font-semibold">${order.tax.toFixed(2)}</span>
 								</div>
+								{order.tipAmount > 0 && (
+									<div className="flex justify-between mb-2">
+										<span className="text-gray-600">Tip:</span>
+										<span className="font-semibold">${order.tipAmount.toFixed(2)}</span>
+									</div>
+								)}
 								{order.discount > 0 && (
 									<div className="flex justify-between mb-2 text-green-600">
 										<span>Discount:</span>

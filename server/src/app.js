@@ -153,6 +153,61 @@ app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/menu-items", menuItemRoutes);
 app.use("/api/tables", tableRoutes);
+
+// Direct promotion route - MUST be before /api/orders to avoid 404
+app.post('/api/orders/:id/apply-promotion', async (req, res) => {
+	try {
+		const { id: orderId } = req.params;
+		const { promotionId, promotionCode, discount, tip, tax, total } = req.body;
+
+		const Order = (await import('./models/Order.js')).default;
+
+		const order = await Order.findById(orderId);
+		if (!order) {
+			return res.status(404).json({
+				success: false,
+				message: 'Order not found'
+			});
+		}
+
+		order.discount = discount || 0;
+		order.tipAmount = tip || 0;
+		order.tax = tax || 0;
+		order.total = total;
+
+		await order.save();
+
+		if (promotionId) {
+			try {
+				const Promotion = (await import('./models/Promotion.js')).default;
+				await Promotion.findByIdAndUpdate(promotionId, {
+					$inc: { usedCount: 1 }
+				});
+				console.log(`✅ Incremented usage for promotion: ${promotionCode}`);
+			} catch (err) {
+				console.error('Promotion update failed:', err);
+			}
+		}
+
+		console.log(`✅ Applied promotion to order ${order.orderNumber}:`, {
+			discount, tip, tax, total
+		});
+
+		res.status(200).json({
+			success: true,
+			message: 'Promotion applied successfully',
+			data: order
+		});
+
+	} catch (error) {
+		console.error('Apply promotion error:', error);
+		res.status(500).json({
+			success: false,
+			message: error.message || 'Failed to apply promotion'
+		});
+	}
+});
+
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/modifiers", modifierRoutes);
@@ -195,9 +250,8 @@ const server = httpServer.listen(PORT, () => {
 ║                                                       ║
 ║   🍽️  Smart Restaurant API Server                    ║
 ║                                                       ║
-║   Environment: ${
-		process.env.NODE_ENV?.toUpperCase() || "DEVELOPMENT"
-	}                              ║
+║   Environment: ${process.env.NODE_ENV?.toUpperCase() || "DEVELOPMENT"
+		}                              ║
 ║   Port: ${PORT}                                        ║
 ║   URL: http://localhost:${PORT}                        ║
 ║   Socket.IO: ✅ Enabled                                ║

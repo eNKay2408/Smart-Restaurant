@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import cartService, { Cart as CartType } from '../../services/cartService';
 import orderService from '../../services/orderService';
 import { tableService } from '../../services/tableService';
-import { promotionService, PromotionValidationResult } from '../../services/promotionService';
 import { useQRTable } from '../../hooks/useQRTable';
 import { toast } from 'react-toastify';
 
@@ -16,8 +15,6 @@ const Cart: React.FC = () => {
     const [cart, setCart] = useState<CartType | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [promoCode, setPromoCode] = useState('');
-    const [appliedPromo, setAppliedPromo] = useState<PromotionValidationResult | null>(null);
     const [placingOrder, setPlacingOrder] = useState(false);
     const [tableInfo, setTableInfo] = useState<{ tableNumber: number; area?: string; tableId?: string } | null>(null);
 
@@ -150,39 +147,7 @@ const Cart: React.FC = () => {
         }
     };
 
-    const handleApplyPromo = async () => {
-        if (!promoCode.trim()) {
-            toast.error('Please enter a promo code');
-            return;
-        }
 
-        if (!cart?.restaurantId) {
-            toast.error('Restaurant information is missing');
-            return;
-        }
-
-        try {
-            // Call real API to validate promo code
-            const result = await promotionService.validatePromotionCode(
-                promoCode,
-                subtotal,
-                cart.restaurantId
-            );
-
-            if (result.success && result.data) {
-                setAppliedPromo(result.data);
-                setPromoCode('');
-                toast.success(`Promo code "${result.data.code}" applied successfully!`);
-            }
-        } catch (error: any) {
-            console.error('Promo validation error:', error);
-            toast.error(error.message || 'Invalid promo code');
-        }
-    };
-
-    const handleRemovePromo = () => {
-        setAppliedPromo(null);
-    };
 
     const handleCheckout = async () => {
         if (!cart || cart.items.length === 0) {
@@ -273,8 +238,7 @@ const Cart: React.FC = () => {
     const subtotal = cart?.total || 0;
     const tax = subtotal * 0.08; // 8% tax
     const tip = subtotal * 0.18; // 18% tip
-    const discount = appliedPromo ? appliedPromo.discountAmount : 0;
-    const total = subtotal + tax + tip - discount;
+    const total = subtotal + tax + tip;
 
     // Loading state
     if (loading) {
@@ -462,47 +426,7 @@ const Cart: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Promo Code Section */}
-                <div className="bg-white mt-2 px-4 py-6 border-t border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Promo Code</h3>
 
-                    {appliedPromo ? (
-                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="flex items-center">
-                                <span className="text-green-600 mr-2">✓</span>
-                                <span className="font-medium text-green-800">{appliedPromo.code}</span>
-                                <span className="text-green-600 ml-2 text-sm">
-                                    -{appliedPromo.discountType === 'percentage'
-                                        ? `${appliedPromo.discountValue}%`
-                                        : `$${appliedPromo.discountValue}`}
-                                </span>
-                            </div>
-                            <button
-                                onClick={handleRemovePromo}
-                                className="text-red-500 hover:text-red-600 text-sm"
-                            >
-                                Remove
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="flex space-x-2">
-                            <input
-                                type="text"
-                                value={promoCode}
-                                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                                placeholder="Enter promo code"
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
-                            <button
-                                onClick={handleApplyPromo}
-                                disabled={!promoCode.trim()}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Apply
-                            </button>
-                        </div>
-                    )}
-                </div>
 
                 {/* Order Summary */}
                 <div className="bg-white mt-2 px-4 py-6 border-t border-gray-200">
@@ -531,13 +455,6 @@ const Cart: React.FC = () => {
                             <span>Subtotal</span>
                             <span>${subtotal.toFixed(2)}</span>
                         </div>
-
-                        {appliedPromo && (
-                            <div className="flex justify-between text-green-600">
-                                <span>Discount ({appliedPromo.code})</span>
-                                <span>-${discount.toFixed(2)}</span>
-                            </div>
-                        )}
 
                         <div className="flex justify-between text-gray-600">
                             <span>Tax</span>

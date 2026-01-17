@@ -8,13 +8,15 @@ interface QRLoginModalProps {
     onClose: () => void;
     onGuestContinue: () => void;
     tableNumber?: number;
+    tableId?: string;
 }
 
 const QRLoginModal: React.FC<QRLoginModalProps> = ({ 
     isOpen, 
     onClose, 
     onGuestContinue,
-    tableNumber 
+    tableNumber,
+    tableId
 }) => {
     const navigate = useNavigate();
     const [showLoginForm, setShowLoginForm] = useState(false);
@@ -41,8 +43,11 @@ const QRLoginModal: React.FC<QRLoginModalProps> = ({
             });
 
             if (response.success) {
-                // Store that user is authenticated for this session
+                // Store that user is authenticated for this session and table
                 localStorage.setItem('qr_session_authenticated', 'true');
+                if (tableId) {
+                    localStorage.setItem('last_authenticated_table', tableId);
+                }
                 onClose();
             }
         } catch (error: any) {
@@ -66,6 +71,9 @@ const QRLoginModal: React.FC<QRLoginModalProps> = ({
         // Store guest session
         localStorage.setItem('guest_user', JSON.stringify(guestUser));
         localStorage.setItem('qr_session_authenticated', 'guest');
+        if (tableId) {
+            localStorage.setItem('last_authenticated_table', tableId);
+        }
         
         onGuestContinue();
         onClose();

@@ -228,6 +228,7 @@ function Menu() {
             <QRLoginModal
                 isOpen={showLoginModal}
                 onClose={closeLoginModal}
+                tableId={tableInfo?.tableId}
                 onGuestContinue={handleGuestContinue}
                 tableNumber={tableInfo?.tableNumber}
             />

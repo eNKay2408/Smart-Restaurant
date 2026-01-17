@@ -79,35 +79,47 @@ export function useQRTable() {
 								tableId,
 								restaurantId,
 								tableNumber: tableNumber ? parseInt(tableNumber) : (typeof response.data.tableNumber === 'string' ? parseInt(response.data.tableNumber) : response.data.tableNumber),
-								area: response.data.location || area
-							};
+							area: response.data.location || area || undefined
+						};
 
-							// Save to localStorage for persistence
-							localStorage.setItem('current_table_info', JSON.stringify(tableData));
+						// Save to localStorage for persistence
+						localStorage.setItem('current_table_info', JSON.stringify(tableData));
 
-							setTableInfo(tableData);
-							setIsValidTable(true);
-							setError(null);
-							return;
-						} else {
-							throw new Error('Table not found');
+						setTableInfo(tableData);
+						setIsValidTable(true);
+						setError(null);
+						
+						// Check authentication for this table
+						const savedTableId = localStorage.getItem('last_authenticated_table');
+						const isAuthenticated = localStorage.getItem('qr_session_authenticated');
+						if (!isAuthenticated || savedTableId !== tableId) {
+							if (savedTableId && savedTableId !== tableId) {
+								localStorage.removeItem('qr_session_authenticated');
+								localStorage.removeItem('guest_user');
+							}
+							setShowLoginModal(true);
 						}
-					} catch (tableError: any) {
-						setError('Table not found or inactive');
-						setIsValidTable(false);
-						setTableInfo(null);
+						
 						return;
-					}
+				} else {
+					throw new Error('Table not found');
 				}
+			} catch (tableError: any) {
+				setError('Table not found or inactive');
+				setIsValidTable(false);
+				setTableInfo(null);
+				return;
+			}
+		}
 
-				// Method 3: Extract from URL path (e.g., /menu/table/123)
-				const pathSegments = location.pathname.split('/');
-				const tableIndex = pathSegments.indexOf('table');
+		// Method 3: Extract from URL path (e.g., /menu/table/123)
+		const pathSegments = location.pathname.split('/');
+		const tableIndex = pathSegments.indexOf('table');
 
-				if (tableIndex !== -1 && pathSegments[tableIndex + 1]) {
-					const pathTableId = pathSegments[tableIndex + 1];
+		if (tableIndex !== -1 && pathSegments[tableIndex + 1]) {
+			const pathTableId = pathSegments[tableIndex + 1];
 
-					try {
+			try {
 						const response = await tableService.getTable(pathTableId);
 
 						if (response.success) {
@@ -175,39 +187,50 @@ export function useQRTable() {
 						setTableInfo(tableData);
 						setIsValidTable(true);
 						setError(null);
-						setIsLoading(false);
-						return;
-					} catch (e) {
-						// Invalid saved data, clear it
-						localStorage.removeItem('current_table_info');
+					
+					// Check authentication even for saved table info
+					const savedTableId = localStorage.getItem('last_authenticated_table');
+					const isAuthenticated = localStorage.getItem('qr_session_authenticated');
+					if (!isAuthenticated || savedTableId !== tableData.tableId) {
+						if (savedTableId && savedTableId !== tableData.tableId) {
+							localStorage.removeItem('qr_session_authenticated');
+							localStorage.removeItem('guest_user');
+						}
+						setShowLoginModal(true);
 					}
+					
+					setIsLoading(false);
+					return;
+				} catch (e) {
+					// Invalid saved data, clear it
+					localStorage.removeItem('current_table_info');
 				}
-
-				// No table information found - this might be normal for non-QR access
-				setTableInfo(null);
-				setIsValidTable(false);
-				setError(null); // Don't treat this as an error
-
-			} catch (err: any) {
-				setError('Failed to process table information');
-				setIsValidTable(false);
-				setTableInfo(null);
-				console.error('QR Table error:', err);
-			} finally {
-				setIsLoading(false);
 			}
-		};
 
-		extractTableInfo();
-	}, [searchParams, location]);
+			// No table information found - this might be normal for non-QR access
+			setTableInfo(null);
+			setIsValidTable(false);
+			setError(null); // Don't treat this as an error
 
-	// Track table changes (for analytics/logging)
-	useEffect(() => {
-		if (tableInfo?.tableId) {
-			const lastTableId = localStorage.getItem('last_table_id');
+		} catch (err: any) {
+			setError('Failed to process table information');
+			setIsValidTable(false);
+			setTableInfo(null);
+			console.error('QR Table error:', err);
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
-			if (lastTableId && lastTableId !== tableInfo.tableId) {
-				console.log('🔄 Switched to table:', tableInfo.tableId);
+	extractTableInfo();
+}, [searchParams, location]);
+
+// Track table changes (for analytics/logging)
+useEffect(() => {
+	if (tableInfo?.tableId) {
+		const lastTableId = localStorage.getItem('last_table_id');
+
+		if (lastTableId && lastTableId !== tableInfo.tableId) {
 			}
 
 			// Save current table as last table
@@ -231,6 +254,7 @@ export function useQRTable() {
 		localStorage.removeItem('current_table_info');
 		localStorage.removeItem('qr_session_authenticated');
 		localStorage.removeItem('guest_user');
+		localStorage.removeItem('last_authenticated_table');
 		setTableInfo(null);
 		setIsValidTable(false);
 		setError(null);

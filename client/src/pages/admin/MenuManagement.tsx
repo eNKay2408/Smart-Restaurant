@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { menuService } from '../../services/menuService';
 import { categoryService } from '../../services/categoryService';
@@ -14,6 +14,9 @@ type MenuItem = BackendMenuItem & {
 };
 
 const AdminMenuManagement: React.FC = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -70,6 +73,37 @@ const AdminMenuManagement: React.FC = () => {
         fetchCategories();
         fetchMenuItems();
     }, []);
+
+    // Initialize filters from URL parameters on mount
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const urlPage = params.get('page');
+        const urlSearch = params.get('search');
+        const urlCategory = params.get('category');
+        const urlSort = params.get('sort');
+
+        if (urlPage) setCurrentPage(parseInt(urlPage));
+        if (urlSearch) setSearchQuery(urlSearch);
+        if (urlCategory && urlCategory !== 'All') setSelectedCategory(urlCategory);
+        if (urlSort) setSortBy(urlSort as any);
+    }, []); // Only run on mount
+
+    // Update URL when filters or page changes
+    useEffect(() => {
+        const params = new URLSearchParams();
+
+        if (currentPage > 1) params.set('page', currentPage.toString());
+        if (searchQuery) params.set('search', searchQuery);
+        if (selectedCategory && selectedCategory !== 'All') params.set('category', selectedCategory);
+        if (sortBy !== 'newest') params.set('sort', sortBy);
+
+        const newSearch = params.toString();
+        const currentSearch = location.search.slice(1); // Remove '?'
+
+        if (newSearch !== currentSearch) {
+            navigate(`${location.pathname}?${newSearch}`, { replace: true });
+        }
+    }, [currentPage, searchQuery, selectedCategory, sortBy, navigate, location.pathname, location.search]);
 
     useEffect(() => {
         let filtered = menuItems;

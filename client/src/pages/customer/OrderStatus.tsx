@@ -250,14 +250,14 @@ const OrderStatus: React.FC = () => {
             return;
         }
 
-        // Check if items are still being prepared (pending or preparing)
-        // Allow payment when items are 'ready' or 'served'
+        // Check if items are still being prepared (pending, preparing, or ready)
+        // Allow payment ONLY when all items are 'served'
         const hasIncompleteItems = order.items.some((item: any) => 
-            item.status === 'pending' || item.status === 'preparing'
+            item.status === 'pending' || item.status === 'preparing' || item.status === 'ready'
         );
         if (hasIncompleteItems) {
-            console.log('⏳ Blocked: Has incomplete items (pending/preparing)');
-            toast.warning('Please wait until all items are ready before requesting the bill.', {
+            console.log('⏳ Blocked: Has incomplete items (pending/preparing/ready)');
+            toast.warning('Please wait until all items are served before requesting the bill.', {
                 position: 'top-center',
                 autoClose: 5000,
             });
@@ -343,6 +343,12 @@ const OrderStatus: React.FC = () => {
 
     const currentStatus = order.status;
     const isCompleted = currentStatus === 'completed' || currentStatus === 'served';
+
+    // Check if all items are served (not just ready)
+    const allItemsServed = order.items.every((item: any) => 
+        item.status === 'served' && item.status !== 'rejected'
+    );
+    const canViewReceipt = allItemsServed && currentStatus !== 'rejected' && currentStatus !== 'cancelled';
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -524,7 +530,12 @@ const OrderStatus: React.FC = () => {
 
                     <button
                         onClick={handleViewReceipt}
-                        className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                        disabled={!canViewReceipt}
+                        className={`w-full py-3 rounded-lg font-semibold transition-colors ${
+                            canViewReceipt
+                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                        }`}
                     >
                         View Receipt
                     </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import orderService from "../../services/orderService";
 import { useSocket } from "../../hooks/useSocket";
 import type { Order } from "../../types/order.types";
@@ -29,12 +30,21 @@ interface ExtendedOrder extends Omit<Order, 'items' | 'paymentStatus'> {
 }
 
 function AdminOrders() {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [orders, setOrders] = useState<ExtendedOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+
+    // Get initial filter from URL or default to "pending"
+    const initialFilter = (searchParams.get("filter") as "all" | "pending" | "accepted" | "preparing" | "ready" | "served" | "completed") || "pending";
     const [filter, setFilter] = useState<
         "all" | "pending" | "accepted" | "preparing" | "ready" | "served" | "completed"
-    >("pending");
+    >(initialFilter);
+
+    // Update URL when filter changes
+    useEffect(() => {
+        setSearchParams({ filter }, { replace: true });
+    }, [filter, setSearchParams]);
 
     // Get user from localStorage to get restaurantId
     const user = JSON.parse(localStorage.getItem("user") || "{}");

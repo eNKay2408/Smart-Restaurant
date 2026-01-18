@@ -357,18 +357,7 @@ const seedDatabase = async () => {
                 prepTime: 10,
                 status: 'available',
                 isRecommended: true,
-                modifiers: [
-                    {
-                        name: 'Add-ons',
-                        type: 'multiple',
-                        required: false,
-                        options: [
-                            { name: 'Grilled Chicken', priceAdjustment: 5 },
-                            { name: 'Shrimp', priceAdjustment: 7 },
-                            { name: 'Extra Parmesan', priceAdjustment: 2 },
-                        ],
-                    },
-                ],
+                totalOrders: 156,
             },
             {
                 name: 'Mushroom Soup',
@@ -379,7 +368,7 @@ const seedDatabase = async () => {
                 restaurantId: restaurant._id,
                 prepTime: 8,
                 status: 'available',
-            },
+                totalOrders: 89            },
             {
                 name: 'Spring Rolls',
                 description: 'Crispy Vietnamese spring rolls with sweet chili sauce',
@@ -390,7 +379,7 @@ const seedDatabase = async () => {
                 prepTime: 12,
                 status: 'available',
                 allergens: ['Gluten', 'Shellfish'],
-            },
+                totalOrders: 132            },
             {
                 name: 'Bruschetta',
                 description: 'Toasted bread with fresh tomatoes, basil, and garlic',
@@ -401,7 +390,7 @@ const seedDatabase = async () => {
                 prepTime: 8,
                 status: 'available',
                 isRecommended: true,
-            },
+                totalOrders: 178            },
 
             // Main Dishes (6 items)
             {
@@ -440,7 +429,7 @@ const seedDatabase = async () => {
                         ],
                     },
                 ],
-            },
+                totalOrders: 243            },
             {
                 name: 'Beef Steak',
                 description: 'Premium beef steak cooked to perfection',
@@ -469,7 +458,7 @@ const seedDatabase = async () => {
                         ],
                     },
                 ],
-            },
+                totalOrders: 298            },
             {
                 name: 'Pasta Carbonara',
                 description: 'Classic Italian pasta with bacon and cream',
@@ -485,7 +474,7 @@ const seedDatabase = async () => {
                 prepTime: 12,
                 status: 'available',
                 allergens: ['Gluten', 'Dairy', 'Eggs'],
-            },
+                totalOrders: 167            },
             {
                 name: 'Chicken Teriyaki',
                 description: 'Grilled chicken with teriyaki sauce and rice',
@@ -500,7 +489,7 @@ const seedDatabase = async () => {
                 restaurantId: restaurant._id,
                 prepTime: 18,
                 status: 'available',
-            },
+                totalOrders: 201            },
             {
                 name: 'Seafood Paella',
                 description: 'Spanish rice dish with mixed seafood',
@@ -512,7 +501,7 @@ const seedDatabase = async () => {
                 status: 'available',
                 allergens: ['Shellfish', 'Fish'],
                 isRecommended: true,
-            },
+                totalOrders: 145            },
             {
                 name: 'Lamb Chops',
                 description: 'Grilled lamb chops with rosemary and garlic',
@@ -522,7 +511,7 @@ const seedDatabase = async () => {
                 restaurantId: restaurant._id,
                 prepTime: 22,
                 status: 'available',
-            },
+                totalOrders: 94            },
 
             // Salads (3 items)
             {
@@ -540,7 +529,7 @@ const seedDatabase = async () => {
                 prepTime: 8,
                 status: 'available',
                 allergens: ['Dairy'],
-            },
+                totalOrders: 189            },
             {
                 name: 'Quinoa Bowl',
                 description: 'Healthy quinoa with roasted vegetables and tahini',
@@ -551,7 +540,7 @@ const seedDatabase = async () => {
                 prepTime: 10,
                 status: 'available',
                 isRecommended: true,
-            },
+                totalOrders: 176            },
             {
                 name: 'Caprese Salad',
                 description: 'Fresh mozzarella, tomatoes, and basil with balsamic',
@@ -562,7 +551,7 @@ const seedDatabase = async () => {
                 prepTime: 7,
                 status: 'available',
                 allergens: ['Dairy'],
-            },
+                totalOrders: 112            },
 
             // Drinks (4 items)
             {
@@ -579,7 +568,7 @@ const seedDatabase = async () => {
                 restaurantId: restaurant._id,
                 prepTime: 3,
                 status: 'available',
-            },
+                totalOrders: 234            },
             {
                 name: 'Iced Coffee',
                 description: 'Vietnamese style iced coffee',
@@ -594,20 +583,7 @@ const seedDatabase = async () => {
                 restaurantId: restaurant._id,
                 prepTime: 5,
                 status: 'available',
-                modifiers: [
-                    {
-                        name: 'Sugar Level',
-                        type: 'single',
-                        required: true,
-                        options: [
-                            { name: 'No Sugar', priceAdjustment: 0 },
-                            { name: 'Less Sugar', priceAdjustment: 0 },
-                            { name: 'Normal', priceAdjustment: 0 },
-                            { name: 'Extra Sweet', priceAdjustment: 0 },
-                        ],
-                    },
-                ],
-            },
+                totalOrders: 267            },
             {
                 name: 'Mango Smoothie',
                 description: 'Fresh mango blended with yogurt and honey',
@@ -618,7 +594,7 @@ const seedDatabase = async () => {
                 prepTime: 5,
                 status: 'available',
                 allergens: ['Dairy'],
-            },
+                totalOrders: 198            },
             {
                 name: 'Green Tea Latte',
                 description: 'Matcha green tea with steamed milk',
@@ -629,7 +605,7 @@ const seedDatabase = async () => {
                 prepTime: 5,
                 status: 'available',
                 allergens: ['Dairy'],
-            },
+                totalOrders: 156            },
 
             // Desserts (3 items)
             {
@@ -648,7 +624,7 @@ const seedDatabase = async () => {
                 status: 'available',
                 isRecommended: true,
                 allergens: ['Gluten', 'Dairy', 'Eggs'],
-            },
+                totalOrders: 312            },
             {
                 name: 'Tiramisu',
                 description: 'Classic Italian coffee-flavored dessert',
@@ -659,7 +635,7 @@ const seedDatabase = async () => {
                 prepTime: 5,
                 status: 'available',
                 allergens: ['Gluten', 'Dairy', 'Eggs'],
-            },
+                totalOrders: 187            },
             {
                 name: 'Crème Brûlée',
                 description: 'Classic French vanilla custard with caramelized sugar',
@@ -671,7 +647,7 @@ const seedDatabase = async () => {
                 status: 'available',
                 allergens: ['Dairy', 'Eggs'],
                 isRecommended: true,
-            },
+                totalOrders: 221            },
         ]);
         console.log('✅ Created 20 Menu Items with Local Images');
 

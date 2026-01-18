@@ -255,12 +255,6 @@ function Login() {
 
                     {/* Footer */}
                     <div className="mt-6 text-center">
-                        <p className="text-sm text-purple-200 mb-2">
-                            Don't have an account?{' '}
-                            <Link to="/register" className="text-white font-semibold hover:underline">
-                                Sign Up
-                            </Link>
-                        </p>
                         <p className="text-sm text-purple-200">
                             Smart Restaurant Management System
                         </p>

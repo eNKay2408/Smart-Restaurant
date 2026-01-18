@@ -243,7 +243,14 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 		setIsLoading(true);
 		try {
 			// Map frontend sort options to backend
-			let backendSortBy: 'name' | 'price' | 'popularity' | 'rating' | 'createdAt' = sortBy === 'newest' ? 'createdAt' : sortBy;
+			let backendSortBy: 'name' | 'price' | 'popularity' | 'rating' | 'createdAt';
+			if (sortBy === 'newest') {
+				backendSortBy = 'createdAt';
+			} else if (sortBy === 'mostOrdered') {
+				backendSortBy = 'popularity'; // Backend uses popularity for totalOrders
+			} else {
+				backendSortBy = sortBy;
+			}
 
 			const response = await menuService.getMenuItems({
 				restaurantId,

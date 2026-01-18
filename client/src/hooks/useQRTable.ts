@@ -43,11 +43,11 @@ export function useQRTable() {
 							setIsValidTable(true);
 							setError(null);
 							
-							// Check if user needs to authenticate
-							const isAuthenticated = localStorage.getItem('qr_session_authenticated');
-							if (!isAuthenticated) {
-								setShowLoginModal(true);
-							}
+							// Always show login modal when scanning a QR code
+							// Clear authentication to force new login every time
+							localStorage.removeItem('qr_session_authenticated');
+							localStorage.removeItem('guest_user');
+							setShowLoginModal(true);
 							
 							setIsLoading(false);
 							return;
@@ -79,7 +79,7 @@ export function useQRTable() {
 								tableId,
 								restaurantId,
 								tableNumber: tableNumber ? parseInt(tableNumber) : (typeof response.data.tableNumber === 'string' ? parseInt(response.data.tableNumber) : response.data.tableNumber),
-								area: response.data.location || area
+								area: response.data.location || area || undefined
 							};
 
 							// Save to localStorage for persistence
@@ -88,6 +88,13 @@ export function useQRTable() {
 							setTableInfo(tableData);
 							setIsValidTable(true);
 							setError(null);
+							
+							// Always show login modal when QR params are present in URL
+							// Clear authentication to force new login every time
+							localStorage.removeItem('qr_session_authenticated');
+							localStorage.removeItem('guest_user');
+							setShowLoginModal(true);
+							
 							return;
 						} else {
 							throw new Error('Table not found');
@@ -175,18 +182,19 @@ export function useQRTable() {
 						setTableInfo(tableData);
 						setIsValidTable(true);
 						setError(null);
-						setIsLoading(false);
-						return;
-					} catch (e) {
-						// Invalid saved data, clear it
+					
+						// This is regular navigation (no QR params in URL)
+						// Don't show modal - just restore table info from localStorage
+					} catch (parseError) {
+						// Invalid saved data
 						localStorage.removeItem('current_table_info');
 					}
+				} else {
+					// No table information found - this might be normal for non-QR access
+					setTableInfo(null);
+					setIsValidTable(false);
+					setError(null); // Don't treat this as an error
 				}
-
-				// No table information found - this might be normal for non-QR access
-				setTableInfo(null);
-				setIsValidTable(false);
-				setError(null); // Don't treat this as an error
 
 			} catch (err: any) {
 				setError('Failed to process table information');
@@ -207,7 +215,7 @@ export function useQRTable() {
 			const lastTableId = localStorage.getItem('last_table_id');
 
 			if (lastTableId && lastTableId !== tableInfo.tableId) {
-				console.log('🔄 Switched to table:', tableInfo.tableId);
+				// Table changed - could trigger analytics event here
 			}
 
 			// Save current table as last table
@@ -231,6 +239,7 @@ export function useQRTable() {
 		localStorage.removeItem('current_table_info');
 		localStorage.removeItem('qr_session_authenticated');
 		localStorage.removeItem('guest_user');
+		localStorage.removeItem('last_authenticated_table');
 		setTableInfo(null);
 		setIsValidTable(false);
 		setError(null);

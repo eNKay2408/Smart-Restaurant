@@ -228,6 +228,7 @@ function Menu() {
             <QRLoginModal
                 isOpen={showLoginModal}
                 onClose={closeLoginModal}
+                tableId={tableInfo?.tableId}
                 onGuestContinue={handleGuestContinue}
                 tableNumber={tableInfo?.tableNumber}
             />
@@ -343,7 +344,7 @@ function Menu() {
                                     >
                                         <option value="name">Name (A-Z)</option>
                                         <option value="price">Price (Low to High)</option>
-                                        <option value="popularity">Most Popular</option>
+                                        <option value="mostOrdered">Most Ordered</option>
                                         <option value="newest">Newest</option>
                                     </select>
                                 </div>
@@ -488,9 +489,18 @@ function Menu() {
                                                 return (
                                                     <div
                                                         key={item._id}
-                                                        className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
+                                                        className={`bg-white rounded-xl shadow-sm border ${item.isRecommended ? 'border-amber-400 border-2' : 'border-gray-200'} p-4 hover:shadow-md transition-shadow relative`}
                                                         onClick={() => viewItemDetails(item._id)}
                                                     >
+                                                        {/* Chef's Recommendation Badge */}
+                                                        {item.isRecommended && (
+                                                            <div className="absolute -top-2 -right-2 z-10">
+                                                                <div className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center">
+                                                                    <span className="mr-1">👨‍🍳</span>
+                                                                    Chef's Pick
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                         <div className="flex space-x-4">
                                                             {/* Item Image */}
                                                             <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">

@@ -50,6 +50,11 @@ const MenuItemDetail: React.FC = () => {
 
             try {
                 setLoading(true);
+                // Reset states when switching items
+                setQuantity(1);
+                setSpecialInstructions('');
+                setModifierGroups([]);
+                
                 const response = await menuService.getMenuItem(itemId);
 
                 if (response.success && response.data) {
@@ -70,6 +75,9 @@ const MenuItemDetail: React.FC = () => {
                             }))
                         }));
                         setModifierGroups(transformedModifiers);
+                    } else {
+                        // Explicitly clear modifiers if item has none
+                        setModifierGroups([]);
                     }
 
                     // Fetch related items from same category

@@ -237,7 +237,7 @@ const Cart: React.FC = () => {
     // Calculate totals
     const subtotal = cart?.total || 0;
     const tax = subtotal * 0.08; // 8% tax
-    const tip = subtotal * 0.18; // 18% tip
+    const tip = subtotal * 0.00; // 0% tip (default, can be customized at payment)
     const total = subtotal + tax + tip;
 
     // Loading state
@@ -462,7 +462,7 @@ const Cart: React.FC = () => {
                         </div>
 
                         <div className="flex justify-between text-gray-600">
-                            <span>Tip (18%)</span>
+                            <span>Tip (0%)</span>
                             <span>${tip.toFixed(2)}</span>
                         </div>
 

@@ -21,6 +21,8 @@ const OrderStatus: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [needsAssistance, setNeedsAssistance] = useState(false);
+    const [showRejectionModal, setShowRejectionModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
 
     const statusSteps = [
         {
@@ -78,23 +80,9 @@ const OrderStatus: React.FC = () => {
             if (data.order && data.order._id === orderId) {
                 // Check if order was fully rejected
                 if (data.order.status === 'rejected') {
-                    toast.error('Your order has been rejected by the waiter', {
-                        position: 'top-center',
-                        autoClose: 5000,
-                        hideProgressBar: false,
-                        closeOnClick: true,
-                        pauseOnHover: true,
-                        draggable: true,
-                    });
-
-                    // Navigate back to menu after a short delay
-                    setTimeout(() => {
-                        navigate('/menu', {
-                            state: {
-                                message: 'Your order was rejected. Please order again.'
-                            }
-                        });
-                    }, 3000);
+                    setRejectionReason(data.order.rejectionReason || 'No reason provided');
+                    setShowRejectionModal(true);
+                    setOrder(data.order);
                     return;
                 }
 
@@ -232,6 +220,49 @@ const OrderStatus: React.FC = () => {
     };
 
     const handleViewReceipt = () => {
+        // Debug: Log all item statuses
+        console.log('🧾 View Receipt clicked');
+        console.log('📋 Order items:', order.items.map((item: any) => ({
+            name: item.name,
+            status: item.status
+        })));
+
+        // Check if any items are rejected
+        const hasRejectedItems = order.items.some((item: any) => item.status === 'rejected');
+        if (hasRejectedItems) {
+            console.log('❌ Blocked: Has rejected items');
+            toast.error('Cannot proceed to payment. Some items in your order were rejected.', {
+                position: 'top-center',
+                autoClose: 5000,
+            });
+            return;
+        }
+
+        // Check if items are still being prepared (pending, preparing, or ready)
+        // Allow payment ONLY when all items are 'served'
+        const hasIncompleteItems = order.items.some((item: any) => 
+            item.status === 'pending' || item.status === 'preparing' || item.status === 'ready'
+        );
+        if (hasIncompleteItems) {
+            console.log('⏳ Blocked: Has incomplete items (pending/preparing/ready)');
+            toast.warning('Please wait until all items are served before requesting the bill.', {
+                position: 'top-center',
+                autoClose: 5000,
+            });
+            return;
+        }
+
+        // Check if order status is appropriate for payment
+        if (order.status === 'rejected' || order.status === 'cancelled') {
+            console.log('❌ Blocked: Order is rejected or cancelled');
+            toast.error('This order cannot be paid. Please contact staff for assistance.', {
+                position: 'top-center',
+                autoClose: 5000,
+            });
+            return;
+        }
+
+        console.log('✅ Payment allowed, navigating to payment page');
         navigate('/payment', {
             state: {
                 orderId: order._id,
@@ -247,6 +278,15 @@ const OrderStatus: React.FC = () => {
 
     const handleHome = () => {
         navigate('/');
+    };
+
+    const handleCloseRejectionModal = () => {
+        setShowRejectionModal(false);
+        navigate('/menu', {
+            state: {
+                message: 'Your order was rejected. Please order again.'
+            }
+        });
     };
 
     const getCurrentStatusIndex = () => {
@@ -301,6 +341,12 @@ const OrderStatus: React.FC = () => {
     const currentStatus = order.status;
     const isCompleted = currentStatus === 'completed' || currentStatus === 'served';
 
+    // Check if all items are served (not just ready)
+    const allItemsServed = order.items.every((item: any) => 
+        item.status === 'served' && item.status !== 'rejected'
+    );
+    const canViewReceipt = allItemsServed && currentStatus !== 'rejected' && currentStatus !== 'cancelled';
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -308,11 +354,12 @@ const OrderStatus: React.FC = () => {
                 <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center">
                         <button
-                            onClick={handleHome}
+                            onClick={handleBackToMenu}
                             className="mr-3 p-2 hover:bg-gray-100 rounded-full"
+                            title="Back to Menu"
                         >
                             <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
                         <div>
@@ -480,7 +527,12 @@ const OrderStatus: React.FC = () => {
 
                     <button
                         onClick={handleViewReceipt}
-                        className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                        disabled={!canViewReceipt}
+                        className={`w-full py-3 rounded-lg font-semibold transition-colors ${
+                            canViewReceipt
+                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                        }`}
                     >
                         View Receipt
                     </button>
@@ -520,6 +572,31 @@ const OrderStatus: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Rejection Modal */}
+            {showRejectionModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <div className="text-center">
+                            <div className="text-6xl mb-4">❌</div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-3">Order Rejected</h2>
+                            <p className="text-gray-600 mb-2">Your order has been rejected by the waiter.</p>
+                            
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                                <p className="text-sm font-semibold text-red-800 mb-1">Reason:</p>
+                                <p className="text-red-700">{rejectionReason}</p>
+                            </div>
+
+                            <button
+                                onClick={handleCloseRejectionModal}
+                                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

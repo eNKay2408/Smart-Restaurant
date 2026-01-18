@@ -563,7 +563,7 @@ export const updateOrderStatus = async (req, res) => {
 		// Only update items that are still pending (don't override already served items)
 		if (status === "served" || status === "ready" || status === "completed") {
 			order.items.forEach(item => {
-				if (item.status === "pending" || item.status === "preparing") {
+				if (item.status === "pending" || item.status === "preparing" || item.status === "ready") {
 					item.status = status;
 				}
 			});

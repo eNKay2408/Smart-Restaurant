@@ -119,7 +119,7 @@ const OrderHistory: React.FC = () => {
     };
 
     const handleBack = () => {
-        navigate(-1);
+        navigate('/menu');
     };
 
     if (loading) {

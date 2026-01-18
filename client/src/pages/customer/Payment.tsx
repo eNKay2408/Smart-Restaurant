@@ -23,7 +23,7 @@ const Payment: React.FC = () => {
 
 	const [selectedPaymentMethod, setSelectedPaymentMethod] =
 		useState<string>("card");
-	const [tipPercentage, setTipPercentage] = useState(18);
+	const [tipPercentage, setTipPercentage] = useState(0);
 	const [customTip, setCustomTip] = useState("");
 	const [showCustomTip, setShowCustomTip] = useState(false);
 	const [splitBill, setSplitBill] = useState(false);
@@ -59,7 +59,7 @@ const Payment: React.FC = () => {
 		},
 	];
 
-	const tipOptions = [15, 18, 20, 22];
+	const tipOptions = [0, 5, 10, 15, 18, 20, 22];
 
 	// Validate order on mount - prevent payment for rejected or incomplete orders
 	useEffect(() => {

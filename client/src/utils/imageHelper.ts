@@ -13,11 +13,11 @@ export const getImageUrl = (relativePath: string | undefined | null): string => 
         return relativePath;
     }
 
-    // Get base URL from environment or default to localhost
-    const baseURL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    // Get API URL from environment or default to localhost
+    const apiURL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
 
-    // Remove /api from base URL since static files are served from root
-    const serverURL = baseURL.replace('/api', '');
+    // Remove /api from API URL to get server URL since static files are served from root
+    const serverURL = apiURL.replace('/api', '');
 
     // Ensure relativePath starts with /
     const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;

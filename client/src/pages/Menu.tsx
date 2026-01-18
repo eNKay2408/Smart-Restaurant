@@ -344,7 +344,7 @@ function Menu() {
                                     >
                                         <option value="name">Name (A-Z)</option>
                                         <option value="price">Price (Low to High)</option>
-                                        <option value="popularity">Most Popular</option>
+                                        <option value="mostOrdered">Most Ordered</option>
                                         <option value="newest">Newest</option>
                                     </select>
                                 </div>

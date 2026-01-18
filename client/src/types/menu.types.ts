@@ -54,7 +54,7 @@ export interface MenuFilters {
 	dietary?: DietaryFilter[];
 }
 
-export type SortOption = 'name' | 'price' | 'popularity' | 'newest';
+export type SortOption = 'name' | 'price' | 'mostOrdered' | 'newest';
 
 export type DietaryFilter = 'vegetarian' | 'vegan' | 'glutenFree';
 

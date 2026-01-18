@@ -143,12 +143,11 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 				case 'price':
 					comparison = a.price - b.price;
 					break;
-				case 'popularity':
-					const aPopularity = (a as any).orderCount || 0;
-					const bPopularity = (b as any).orderCount || 0;
-					comparison = bPopularity - aPopularity; // Higher popularity first
-					break;
-				case 'newest':
+			case 'mostOrdered':
+				const aTotalOrders = a.totalOrders || 0;
+				const bTotalOrders = b.totalOrders || 0;
+				comparison = bTotalOrders - aTotalOrders; // Higher orders first
+				break;				case 'newest':
 					comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 					break;
 				default:
@@ -243,7 +242,14 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 		setIsLoading(true);
 		try {
 			// Map frontend sort options to backend
-			let backendSortBy: 'name' | 'price' | 'popularity' | 'rating' | 'createdAt' = sortBy === 'newest' ? 'createdAt' : sortBy;
+			let backendSortBy: 'name' | 'price' | 'popularity' | 'rating' | 'createdAt';
+			if (sortBy === 'newest') {
+				backendSortBy = 'createdAt';
+			} else if (sortBy === 'mostOrdered') {
+				backendSortBy = 'popularity'; // Backend uses popularity for totalOrders
+			} else {
+				backendSortBy = sortBy;
+			}
 
 			const response = await menuService.getMenuItems({
 				restaurantId,

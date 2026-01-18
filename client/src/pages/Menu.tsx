@@ -377,6 +377,107 @@ function Menu() {
                                 </div>
                             ) : (
                                 <>
+                                    {/* Chef's Recommendations */}
+                                    {filters.selectedCategory === null && filters.searchQuery === '' && (
+                                        <div className="mb-6">
+                                            {filteredItems.filter(item => item.isRecommended && item.status === 'available').length > 0 && (
+                                                <div className="mb-4">
+                                                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                                                        <span className="text-2xl mr-2">👨‍🍳</span>
+                                                        Chef's Recommendations
+                                                    </h3>
+                                                    <div className="grid grid-cols-1 gap-3">
+                                                        {filteredItems
+                                                            .filter(item => item.isRecommended && item.status === 'available')
+                                                            .slice(0, 3)
+                                                            .map((item) => {
+                                                                const categoryName = getCategoryName(item.categoryId);
+                                                                const isAvailable = item.status === 'available' && item.isActive;
+
+                                                                return (
+                                                                    <div
+                                                                        key={item._id}
+                                                                        className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl shadow-sm border-2 border-amber-200 p-4 hover:shadow-md transition-shadow"
+                                                                    >
+                                                                        <div className="flex space-x-4">
+                                                                            <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                                                {item.images && item.images.length > 0 ? (
+                                                                                    <img
+                                                                                        src={getPrimaryImageUrl(item.images, item.primaryImageIndex)}
+                                                                                        alt={item.name}
+                                                                                        className="w-full h-full object-cover"
+                                                                                    />
+                                                                                ) : (
+                                                                                    <span className="text-3xl">{getCategoryEmoji(categoryName)}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className="flex justify-between items-start mb-1">
+                                                                                    <h3
+                                                                                        className="text-lg font-semibold text-gray-900 truncate cursor-pointer hover:text-amber-700"
+                                                                                        onClick={() => viewItemDetails(item._id)}
+                                                                                    >
+                                                                                        {item.name}
+                                                                                    </h3>
+                                                                                    <p className="text-lg font-bold text-amber-700 ml-4">${item.price.toFixed(2)}</p>
+                                                                                </div>
+                                                                                <p
+                                                                                    className="text-sm text-gray-600 line-clamp-2 cursor-pointer"
+                                                                                    onClick={() => viewItemDetails(item._id)}
+                                                                                >
+                                                                                    {item.description}
+                                                                                </p>
+
+                                                                                {/* Order Count */}
+                                                                                {(item.totalOrders || 0) > 0 && (
+                                                                                    <div className="flex items-center gap-1 mb-2">
+                                                                                        <svg className="w-3.5 h-3.5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                                                                                            <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+                                                                                        </svg>
+                                                                                        <span className="text-xs font-semibold text-orange-600">
+                                                                                            {item.totalOrders} orders
+                                                                                        </span>
+                                                                                    </div>
+                                                                                )}
+
+                                                                                <div className="flex items-center justify-between mt-3">
+                                                                                    <span className="text-xs text-amber-600 font-medium">👨‍🍳 Chef's Choice</span>
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            if (isAvailable) {
+                                                                                                addToCart(item._id, true); // Pass true for recommendations
+                                                                                            }
+                                                                                        }}
+                                                                                        disabled={!isAvailable || addingToCart === item._id}
+                                                                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isAvailable
+                                                                                            ? 'bg-amber-600 text-white hover:bg-amber-700'
+                                                                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                                            } ${addingToCart === item._id ? 'opacity-50 cursor-wait' : ''}`}
+                                                                                    >
+                                                                                        {addingToCart === item._id ? (
+                                                                                            <span className="flex items-center">
+                                                                                                <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                                                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                                                </svg>
+                                                                                                Adding...
+                                                                                            </span>
+                                                                                        ) : '+ Add'}
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                    <div className="border-t border-gray-200 my-6"></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Regular Menu Items with Pagination */}
                                     <div className="space-y-4">
                                         {filteredItems
@@ -432,13 +533,17 @@ function Menu() {
                                                                 </div>
 
                                                                 <div className="flex items-center space-x-2 mb-2">
-                                                                    <div className="flex text-yellow-400 text-sm">
-                                                                        {[...Array(5)].map((_, i) => (
-                                                                            <span key={i} className={i < Math.round(item.averageRating || 0) ? 'text-yellow-400' : 'text-gray-300'}>★</span>
-                                                                        ))}
-                                                                    </div>
-                                                                    {(item.totalReviews || 0) > 0 && (
-                                                                        <span className="text-sm text-gray-500">({item.totalReviews} {item.totalReviews === 1 ? 'review' : 'reviews'})</span>
+                                                                    {/* Order Count (Popularity) */}
+                                                                    {(item.totalOrders || 0) > 0 && (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                                                                                <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+                                                                            </svg>
+                                                                            <span className="text-sm font-semibold text-orange-600">
+                                                                                {item.totalOrders}
+                                                                            </span>
+                                                                            <span className="text-xs text-gray-500">orders</span>
+                                                                        </div>
                                                                     )}
                                                                 </div>
 

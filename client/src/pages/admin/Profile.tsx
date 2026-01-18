@@ -263,8 +263,8 @@ const AdminProfile: React.FC = () => {
                             <button
                                 onClick={() => setActiveTab('profile')}
                                 className={`px-4 py-4 font-medium text-sm border-b-2 transition-colors ${activeTab === 'profile'
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
                                     }`}
                             >
                                 Profile Information
@@ -272,8 +272,8 @@ const AdminProfile: React.FC = () => {
                             <button
                                 onClick={() => setActiveTab('password')}
                                 className={`px-4 py-4 font-medium text-sm border-b-2 transition-colors ${activeTab === 'password'
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
                                     }`}
                             >
                                 Change Password
@@ -343,8 +343,8 @@ const AdminProfile: React.FC = () => {
                                     type="submit"
                                     disabled={savingProfile}
                                     className={`w-full py-3 rounded-lg font-semibold transition-colors ${savingProfile
-                                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
                                         }`}
                                 >
                                     {savingProfile ? 'Saving...' : 'Save Changes'}
@@ -449,8 +449,8 @@ const AdminProfile: React.FC = () => {
                                     type="submit"
                                     disabled={savingPassword}
                                     className={`w-full py-3 rounded-lg font-semibold transition-colors ${savingPassword
-                                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
                                         }`}
                                 >
                                     {savingPassword ? 'Updating...' : 'Update Password'}

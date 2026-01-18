@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { authService } from '../services/authService';
 
@@ -6,6 +6,7 @@ function VerifyEmail() {
     const { token } = useParams<{ token: string }>();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
     const [message, setMessage] = useState('');
+    const hasVerified = useRef(false); // Prevent double call in StrictMode
 
     useEffect(() => {
         const verifyEmail = async () => {
@@ -14,6 +15,13 @@ function VerifyEmail() {
                 setMessage('Invalid verification link');
                 return;
             }
+
+            // Prevent double call in React StrictMode
+            if (hasVerified.current) {
+                console.log('⚠️ Verification already called, skipping...');
+                return;
+            }
+            hasVerified.current = true;
 
             try {
                 const response = await authService.verifyEmail(token);
@@ -27,7 +35,7 @@ function VerifyEmail() {
                 }
             } catch (error: any) {
                 setStatus('error');
-                setMessage(error.message || 'The verification link is invalid or has expired');
+                setMessage(error.response?.data?.message || error.message || 'The verification link is invalid or has expired');
             }
         };
 

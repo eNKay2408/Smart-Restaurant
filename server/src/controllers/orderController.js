@@ -539,6 +539,24 @@ export const updateOrderStatus = async (req, res) => {
 			order.servedAt = new Date();
 		} else if (status === "completed") {
 			order.completedAt = new Date();
+
+			// Update totalOrders for each menu item when order is completed
+			// This helps track popularity for "Most Popular" sorting
+			try {
+				for (const item of order.items) {
+					if (item.status !== "rejected") {
+						await MenuItem.findByIdAndUpdate(
+							item.menuItemId,
+							{ $inc: { totalOrders: item.quantity } },
+							{ new: true }
+						);
+						console.log(`📊 Incremented totalOrders for ${item.name} by ${item.quantity}`);
+					}
+				}
+			} catch (error) {
+				console.error("Failed to update menu item totalOrders:", error);
+				// Don't fail the whole request if this fails
+			}
 		}
 
 		// Update ALL item statuses to match order status (except for merged orders)

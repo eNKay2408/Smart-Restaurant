@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import AdminLayout from '../../components/AdminLayout';
 import { promotionService, Promotion } from '../../services/promotionService';
@@ -6,6 +7,7 @@ import { useRestaurant } from '../../contexts/RestaurantContext';
 
 const PromotionManagement: React.FC = () => {
     const { restaurantId } = useRestaurant();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [promotions, setPromotions] = useState<Promotion[]>([]);
     const [filteredPromotions, setFilteredPromotions] = useState<Promotion[]>([]);
     const [loading, setLoading] = useState(true);
@@ -13,10 +15,23 @@ const PromotionManagement: React.FC = () => {
     const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
     const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
 
-    // Filters
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'expired'>('all');
-    const [typeFilter, setTypeFilter] = useState<'all' | 'percentage' | 'fixed'>('all');
+    // Initialize filters from URL parameters
+    const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'expired'>(
+        (searchParams.get('status') as any) || 'all'
+    );
+    const [typeFilter, setTypeFilter] = useState<'all' | 'percentage' | 'fixed'>(
+        (searchParams.get('type') as any) || 'all'
+    );
+
+    // Update URL when filters change
+    useEffect(() => {
+        const params: any = {};
+        if (searchQuery) params.search = searchQuery;
+        if (statusFilter !== 'all') params.status = statusFilter;
+        if (typeFilter !== 'all') params.type = typeFilter;
+        setSearchParams(params, { replace: true });
+    }, [searchQuery, statusFilter, typeFilter, setSearchParams]);
 
     const [formData, setFormData] = useState({
         code: '',

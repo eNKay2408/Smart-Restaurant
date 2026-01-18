@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../config/axiosConfig';
@@ -7,7 +8,7 @@ interface User {
     _id: string;
     fullName: string;
     email: string;
-    role: 'admin' | 'waiter' | 'kitchen';
+    role: 'admin' | 'waiter' | 'kitchen' | 'customer';
     phone?: string;
     isActive: boolean;
     isEmailVerified: boolean;
@@ -24,6 +25,7 @@ interface UserFormData {
 }
 
 const UserManagement: React.FC = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -37,7 +39,17 @@ const UserManagement: React.FC = () => {
     });
     const [formErrors, setFormErrors] = useState<any>({});
     const [submitting, setSubmitting] = useState(false);
-    const [filter, setFilter] = useState<'all' | 'waiter' | 'kitchen'>('all');
+
+    // Initialize filter from URL or default to 'all'
+    const initialFilter = (searchParams.get('filter') as 'all' | 'waiter' | 'kitchen') || 'all';
+    const [filter, setFilter] = useState<'all' | 'waiter' | 'kitchen'>(initialFilter);
+
+    // Update URL when filter changes
+    useEffect(() => {
+        const params: any = {};
+        if (filter !== 'all') params.filter = filter;
+        setSearchParams(params, { replace: true });
+    }, [filter, setSearchParams]);
 
     useEffect(() => {
         fetchUsers();

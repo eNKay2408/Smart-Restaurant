@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { menuService } from '../../services/menuService';
 import { categoryService } from '../../services/categoryService';
@@ -14,19 +14,31 @@ type MenuItem = BackendMenuItem & {
 };
 
 const AdminMenuManagement: React.FC = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    
+    const [searchParams, setSearchParams] = useSearchParams();
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState('All');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'price-asc' | 'price-desc' | 'popularity'>('newest');
+
+    // Initialize state from URL parameters
+    const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'All');
+    const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+    const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
+    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'price-asc' | 'price-desc' | 'popularity'>(
+        (searchParams.get('sort') as any) || 'newest'
+    );
     const itemsPerPage = 10;
+
+    // Update URL when filters change
+    useEffect(() => {
+        const params: any = {};
+        if (selectedCategory && selectedCategory !== 'All') params.category = selectedCategory;
+        if (searchQuery) params.search = searchQuery;
+        if (currentPage > 1) params.page = currentPage.toString();
+        if (sortBy !== 'newest') params.sort = sortBy;
+        setSearchParams(params, { replace: true });
+    }, [selectedCategory, searchQuery, currentPage, sortBy, setSearchParams]);
 
     // Fetch menu items from backend
     const fetchMenuItems = async () => {
@@ -148,10 +160,10 @@ const AdminMenuManagement: React.FC = () => {
                     // Sort by price (high to low)
                     return b.price - a.price;
                 case 'popularity':
-                    // Sort by popularity (based on order count or rating)
-                    const aPopularity = (a.totalOrders || 0) + (a.averageRating || 0) * 10;
-                    const bPopularity = (b.totalOrders || 0) + (b.averageRating || 0) * 10;
-                    return bPopularity - aPopularity;
+                    // Sort by total orders (most popular first)
+                    const aOrders = a.totalOrders || 0;
+                    const bOrders = b.totalOrders || 0;
+                    return bOrders - aOrders;
                 default:
                     return 0;
             }
@@ -361,6 +373,7 @@ const AdminMenuManagement: React.FC = () => {
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Modifiers</th>
+                                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Stats</th>
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -429,6 +442,34 @@ const AdminMenuManagement: React.FC = () => {
                                             ) : (
                                                 <span className="text-xs text-gray-400 italic">No modifiers</span>
                                             )}
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="space-y-1">
+                                                {/* Orders Count */}
+                                                <div className="flex items-center gap-1">
+                                                    <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+                                                    </svg>
+                                                    <span className="text-sm font-semibold text-orange-600">
+                                                        {item.totalOrders || 0}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500">orders</span>
+                                                </div>
+                                                {/* Rating */}
+                                                {(item.totalReviews || 0) > 0 ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                        <span className="text-sm font-semibold text-yellow-600">
+                                                            {item.averageRating?.toFixed(1) || '0.0'}
+                                                        </span>
+                                                        <span className="text-xs text-gray-500">({item.totalReviews})</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400 italic">No reviews</span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="py-4 px-6">{getStatusBadge(item.status)}</td>
                                         <td className="py-4 px-6">

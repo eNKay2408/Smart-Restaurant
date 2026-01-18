@@ -30,6 +30,8 @@ export const register = async (req, res) => {
         const verificationToken = user.generateEmailVerificationToken();
         await user.save();
 
+        console.log('🔑 Generated verification token for', user.email, ':', verificationToken);
+
         // Send verification email
         try {
             await emailService.sendVerificationEmail(user.email, verificationToken);
@@ -316,15 +318,29 @@ export const verifyEmail = async (req, res) => {
     try {
         const { token } = req.params;
 
+        console.log('🔍 Verifying email with token:', token);
+
         const user = await User.findOne({
             emailVerificationToken: token,
             emailVerificationExpires: { $gt: Date.now() },
         });
 
+        console.log('🔍 User found with token:', user ? `Yes (${user.email})` : 'No');
+
         if (!user) {
+            console.log('❌ Token not found in database');
             return res.status(400).json({
                 success: false,
-                message: 'Invalid or expired verification token',
+                message: 'Invalid or expired verification token. If you just verified, you can login now.',
+            });
+        }
+
+        // Check if already verified
+        if (user.isEmailVerified) {
+            console.log('✅ Email already verified:', user.email);
+            return res.json({
+                success: true,
+                message: 'Email already verified. You can login now.',
             });
         }
 
@@ -332,6 +348,8 @@ export const verifyEmail = async (req, res) => {
         user.emailVerificationToken = null;
         user.emailVerificationExpires = null;
         await user.save();
+
+        console.log('✅ Email verified successfully for:', user.email);
 
         res.json({
             success: true,

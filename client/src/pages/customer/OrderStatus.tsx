@@ -21,6 +21,8 @@ const OrderStatus: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [needsAssistance, setNeedsAssistance] = useState(false);
+    const [showRejectionModal, setShowRejectionModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
 
     const statusSteps = [
         {
@@ -78,23 +80,9 @@ const OrderStatus: React.FC = () => {
             if (data.order && data.order._id === orderId) {
                 // Check if order was fully rejected
                 if (data.order.status === 'rejected') {
-                    toast.error('Your order has been rejected by the waiter', {
-                        position: 'top-center',
-                        autoClose: 5000,
-                        hideProgressBar: false,
-                        closeOnClick: true,
-                        pauseOnHover: true,
-                        draggable: true,
-                    });
-
-                    // Navigate back to menu after a short delay
-                    setTimeout(() => {
-                        navigate('/menu', {
-                            state: {
-                                message: 'Your order was rejected. Please order again.'
-                            }
-                        });
-                    }, 3000);
+                    setRejectionReason(data.order.rejectionReason || 'No reason provided');
+                    setShowRejectionModal(true);
+                    setOrder(data.order);
                     return;
                 }
 
@@ -290,6 +278,15 @@ const OrderStatus: React.FC = () => {
 
     const handleHome = () => {
         navigate('/');
+    };
+
+    const handleCloseRejectionModal = () => {
+        setShowRejectionModal(false);
+        navigate('/menu', {
+            state: {
+                message: 'Your order was rejected. Please order again.'
+            }
+        });
     };
 
     const getCurrentStatusIndex = () => {
@@ -575,6 +572,31 @@ const OrderStatus: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Rejection Modal */}
+            {showRejectionModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <div className="text-center">
+                            <div className="text-6xl mb-4">❌</div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-3">Order Rejected</h2>
+                            <p className="text-gray-600 mb-2">Your order has been rejected by the waiter.</p>
+                            
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                                <p className="text-sm font-semibold text-red-800 mb-1">Reason:</p>
+                                <p className="text-red-700">{rejectionReason}</p>
+                            </div>
+
+                            <button
+                                onClick={handleCloseRejectionModal}
+                                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

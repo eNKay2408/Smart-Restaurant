@@ -232,6 +232,49 @@ const OrderStatus: React.FC = () => {
     };
 
     const handleViewReceipt = () => {
+        // Debug: Log all item statuses
+        console.log('🧾 View Receipt clicked');
+        console.log('📋 Order items:', order.items.map((item: any) => ({
+            name: item.name,
+            status: item.status
+        })));
+
+        // Check if any items are rejected
+        const hasRejectedItems = order.items.some((item: any) => item.status === 'rejected');
+        if (hasRejectedItems) {
+            console.log('❌ Blocked: Has rejected items');
+            toast.error('Cannot proceed to payment. Some items in your order were rejected.', {
+                position: 'top-center',
+                autoClose: 5000,
+            });
+            return;
+        }
+
+        // Check if items are still being prepared (pending or preparing)
+        // Allow payment when items are 'ready' or 'served'
+        const hasIncompleteItems = order.items.some((item: any) => 
+            item.status === 'pending' || item.status === 'preparing'
+        );
+        if (hasIncompleteItems) {
+            console.log('⏳ Blocked: Has incomplete items (pending/preparing)');
+            toast.warning('Please wait until all items are ready before requesting the bill.', {
+                position: 'top-center',
+                autoClose: 5000,
+            });
+            return;
+        }
+
+        // Check if order status is appropriate for payment
+        if (order.status === 'rejected' || order.status === 'cancelled') {
+            console.log('❌ Blocked: Order is rejected or cancelled');
+            toast.error('This order cannot be paid. Please contact staff for assistance.', {
+                position: 'top-center',
+                autoClose: 5000,
+            });
+            return;
+        }
+
+        console.log('✅ Payment allowed, navigating to payment page');
         navigate('/payment', {
             state: {
                 orderId: order._id,

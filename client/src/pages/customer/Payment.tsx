@@ -61,6 +61,63 @@ const Payment: React.FC = () => {
 
 	const tipOptions = [15, 18, 20, 22];
 
+	// Validate order on mount - prevent payment for rejected or incomplete orders
+	useEffect(() => {
+		if (!order) return;
+
+		console.log('💳 Payment page loaded');
+		console.log('📋 Order items:', order.items?.map((item: any) => ({
+			name: item.name,
+			status: item.status
+		})));
+
+		// Check if any items are rejected
+		const hasRejectedItems = order.items?.some((item: any) => item.status === 'rejected');
+		if (hasRejectedItems) {
+			console.log('❌ Payment blocked: Has rejected items');
+			toast.error('Cannot process payment. Some items were rejected.', {
+				position: 'top-center',
+				autoClose: 3000,
+			});
+			setTimeout(() => {
+				navigate(`/order-status/${order._id}`, { replace: true });
+			}, 1000);
+			return;
+		}
+
+		// Check if items are still being prepared (pending or preparing)
+		// Allow payment when items are 'ready' or 'served'
+		const hasIncompleteItems = order.items?.some((item: any) => 
+			item.status === 'pending' || item.status === 'preparing'
+		);
+		if (hasIncompleteItems) {
+			console.log('⏳ Payment blocked: Has incomplete items');
+			toast.warning('Please wait until all items are ready.', {
+				position: 'top-center',
+				autoClose: 3000,
+			});
+			setTimeout(() => {
+				navigate(`/order-status/${order._id}`, { replace: true });
+			}, 1000);
+			return;
+		}
+
+		// Check order status
+		if (order.status === 'rejected' || order.status === 'cancelled') {
+			console.log('❌ Payment blocked: Order rejected/cancelled');
+			toast.error('This order cannot be paid.', {
+				position: 'top-center',
+				autoClose: 3000,
+			});
+			setTimeout(() => {
+				navigate('/menu', { replace: true });
+			}, 1000);
+			return;
+		}
+
+		console.log('✅ Payment validation passed');
+	}, [order, navigate]);
+
 	// Get table number and ID from order data
 	const tableNumber = order?.tableId?.tableNumber || "N/A";
 	const tableId = order?.tableId?._id || order?.tableId;

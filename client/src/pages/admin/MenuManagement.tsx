@@ -423,7 +423,7 @@ const AdminMenuManagement: React.FC = () => {
 									<option value="oldest">Oldest First</option>
 									<option value="price-asc">Price: Low to High</option>
 									<option value="price-desc">Price: High to Low</option>
-									<option value="popularity">Most Popular</option>
+									<option value="popularity">Most Ordered</option>
 								</select>
 							</div>
 

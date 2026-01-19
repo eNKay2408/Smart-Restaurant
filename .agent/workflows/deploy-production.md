@@ -13,6 +13,21 @@ description: Hướng dẫn deploy Smart Restaurant lên public host
 
 ---
 
+## 🎯 **QUICK START - Deploy với Full Seed Data**
+
+Bạn muốn deploy với seed data đầy đủ (20 menu items, categories, orders, etc.)?
+
+### Workflow Tóm Tắt:
+
+1. **Deploy Backend** → Render (miễn phí)
+2. **Deploy Frontend** → Vercel (miễn phí)
+3. **Seed Database** → Chạy `npm run seed` trong Render Shell
+4. **Upload Images** (Optional) → Chạy `npm run upload-images`
+
+📖 **Chi tiết**: Xem [DEPLOY_README.md](../DEPLOY_README.md)
+
+---
+
 ## 🎯 Option 1: Deploy lên Render (MIỄN PHÍ)
 
 ### Bước 1: Chuẩn bị Database - MongoDB Atlas

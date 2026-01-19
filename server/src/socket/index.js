@@ -6,12 +6,21 @@ import { Server } from "socket.io";
  * @returns {Object} Socket.IO server instance
  */
 export const initializeSocket = (httpServer) => {
+	// Allow multiple origins for development and production
+	const allowedOrigins = [
+		"http://localhost:5173",
+		"http://localhost:5174",
+		process.env.CLIENT_URL
+	].filter(Boolean);
+
 	const io = new Server(httpServer, {
 		cors: {
-			origin: process.env.CLIENT_URL || "http://localhost:5173",
+			origin: allowedOrigins,
 			methods: ["GET", "POST"],
 			credentials: true,
 		},
+		// Better compatibility with hosting platforms
+		transports: ['websocket', 'polling']
 	});
 
 	// Socket.IO connection handler

@@ -143,9 +143,11 @@ export function useMenu(restaurantId?: string): UseMenuReturn {
 				case 'price':
 					comparison = a.price - b.price;
 					break;
-				case 'popularity':
-					const aPopularity = (a as any).totalOrders || 0;
-					const bPopularity = (b as any).totalOrders || 0;
+				case 'mostOrdered':
+					// Backend returns 'orderCount' when sorted by popularity
+					// Also fallback to 'totalOrders' field if available
+					const aPopularity = (a as any).orderCount || (a as any).totalOrders || 0;
+					const bPopularity = (b as any).orderCount || (b as any).totalOrders || 0;
 					comparison = bPopularity - aPopularity; // Higher popularity first
 					break;
 				case 'newest':

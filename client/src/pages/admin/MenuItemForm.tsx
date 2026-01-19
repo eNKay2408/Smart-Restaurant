@@ -573,9 +573,12 @@ const AdminMenuItemForm: React.FC = () => {
                                             uploadFormData.append('image', file);
                                             uploadFormData.append('itemName', formData.name || 'menu-item');
 
+                                            // Get API base URL from environment
+                                            const apiBaseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+
                                             // Upload to server
                                             const token = localStorage.getItem('token');
-                                            const response = await fetch('http://localhost:5000/api/upload/menu-items', {
+                                            const response = await fetch(`${apiBaseUrl}/api/upload/menu-items`, {
                                                 method: 'POST',
                                                 headers: {
                                                     'Authorization': `Bearer ${token}`
@@ -587,7 +590,11 @@ const AdminMenuItemForm: React.FC = () => {
 
                                             if (data.success) {
                                                 // Add image URL to photos array
-                                                const imageUrl = `http://localhost:5000${data.data.url}`;
+                                                // If URL is from Cloudinary, use it directly; otherwise prepend server URL
+                                                let imageUrl = data.data.url;
+                                                if (!imageUrl.startsWith('http')) {
+                                                    imageUrl = `${apiBaseUrl}${imageUrl}`;
+                                                }
                                                 setFormData(prev => ({
                                                     ...prev,
                                                     photos: [...prev.photos, imageUrl]
@@ -626,7 +633,7 @@ const AdminMenuItemForm: React.FC = () => {
                                         <div className="w-full h-32 bg-gray-100 border border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
                                             {photo ? (
                                                 <img
-                                                    src={photo.startsWith('http') ? photo : `http://localhost:5000${photo}`}
+                                                    src={photo.startsWith('http') ? photo : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${photo}`}
                                                     alt={`Photo ${index + 1}`}
                                                     className="w-full h-full object-cover"
                                                     onError={(e) => {

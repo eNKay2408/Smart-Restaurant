@@ -135,8 +135,8 @@ export const createReview = async (req, res) => {
         await updateMenuItemRating(menuItemId);
 
         const populatedReview = await Review.findById(review._id)
-            .populate('customerId', 'fullName avatar')
-            .populate('menuItemId', 'name');
+            .populate({ path: 'customerId', select: 'fullName avatar', strictPopulate: false })
+            .populate({ path: 'menuItemId', select: 'name', strictPopulate: false });
 
         res.status(201).json({
             success: true,
@@ -229,7 +229,7 @@ export const getMenuItemReviews = async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const reviews = await Review.find({ menuItemId })
-            .populate('customerId', 'fullName avatar')
+            .populate({ path: 'customerId', select: 'fullName avatar', strictPopulate: false })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
@@ -335,8 +335,8 @@ export const getMyReviews = async (req, res) => {
         const customerId = req.user.id;
 
         const reviews = await Review.find({ customerId })
-            .populate('menuItemId', 'name images')
-            .populate('orderId', 'orderNumber')
+            .populate({ path: 'menuItemId', select: 'name images', strictPopulate: false })
+            .populate({ path: 'orderId', select: 'orderNumber', strictPopulate: false })
             .sort({ createdAt: -1 });
 
         res.json({

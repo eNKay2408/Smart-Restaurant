@@ -19,8 +19,8 @@ export const getPromotions = async (req, res, next) => {
         }
 
         const promotions = await Promotion.find(filter)
-            .populate('applicableCategories', 'name')
-            .populate('applicableMenuItems', 'name')
+            .populate({ path: 'applicableCategories', select: 'name', strictPopulate: false })
+            .populate({ path: 'applicableMenuItems', select: 'name', strictPopulate: false })
             .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -41,8 +41,8 @@ export const getPromotions = async (req, res, next) => {
 export const getPromotion = async (req, res, next) => {
     try {
         const promotion = await Promotion.findById(req.params.id)
-            .populate('applicableCategories', 'name')
-            .populate('applicableMenuItems', 'name');
+            .populate({ path: 'applicableCategories', select: 'name', strictPopulate: false })
+            .populate({ path: 'applicableMenuItems', select: 'name', strictPopulate: false });
 
         if (!promotion) {
             return res.status(404).json({

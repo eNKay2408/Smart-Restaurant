@@ -18,9 +18,9 @@ import {
 export const requestCashPayment = async (req, res) => {
     try {
         const order = await Order.findById(req.params.id)
-            .populate("tableId", "tableNumber area")
-            .populate("customerId", "fullName email")
-            .populate("restaurantId", "name");
+            .populate({ path: "tableId", select: "tableNumber area", strictPopulate: false })
+            .populate({ path: "customerId", select: "fullName email", strictPopulate: false })
+            .populate({ path: "restaurantId", select: "name", strictPopulate: false });
 
         if (!order) {
             return res.status(404).json({
@@ -84,9 +84,9 @@ export const confirmCashPayment = async (req, res) => {
         const { amountReceived, tipAmount } = req.body;
 
         const order = await Order.findById(req.params.id)
-            .populate("tableId", "tableNumber area")
-            .populate("customerId", "fullName email")
-            .populate("restaurantId", "name");
+            .populate({ path: "tableId", select: "tableNumber area", strictPopulate: false })
+            .populate({ path: "customerId", select: "fullName email", strictPopulate: false })
+            .populate({ path: "restaurantId", select: "name", strictPopulate: false });
 
         if (!order) {
             return res.status(404).json({

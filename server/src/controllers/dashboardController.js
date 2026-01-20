@@ -88,7 +88,7 @@ export const getRecentOrders = async (req, res) => {
 		const limit = parseInt(req.query.limit) || 10;
 
 		const orders = await Order.find()
-			.populate("tableId", "tableNumber")
+			.populate({ path: "tableId", select: "tableNumber", strictPopulate: false })
 			.sort({ createdAt: -1 })
 			.limit(limit)
 			.select("status totalAmount createdAt items");

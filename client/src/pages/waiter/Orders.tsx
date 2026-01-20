@@ -5,6 +5,7 @@ import { useSocket } from "../../hooks/useSocket";
 import type { Order } from "../../types/order.types";
 import { toast } from "react-toastify";
 import AdminLayout from "../../components/AdminLayout";
+import { API_URL } from "../../config/constants";
 
 function WaiterOrders() {
 	const navigate = useNavigate();
@@ -200,7 +201,7 @@ function WaiterOrders() {
 		const { orderId, total } = confirmPaymentData;
 
 		try {
-			const response = await fetch(`http://localhost:5000/api/orders/${orderId}/confirm-cash-payment`, {
+			const response = await fetch(`${API_URL}/orders/${orderId}/confirm-cash-payment`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

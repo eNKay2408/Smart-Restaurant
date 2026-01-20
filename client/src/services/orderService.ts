@@ -5,10 +5,11 @@ import type {
 	OrdersResponse,
 	CreateOrderRequest,
 } from "../types/order.types";
+import { SOCKET_URL } from "../config/constants";
 
 class OrderService {
 	private socket: Socket | null = null;
-	private readonly socketUrl = 'http://localhost:5000';
+	private readonly socketUrl = SOCKET_URL;
 
 	/**
 	 * Initialize Socket.IO connection

@@ -70,11 +70,8 @@ const OrderStatus: React.FC = () => {
 
         const socket = orderService.initSocket();
 
-        // Join order room
-        orderService.joinOrderRoom(orderId);
-
-        // Listen to real-time order status updates
-        socket.on('order:statusUpdate', (data: any) => {
+        // Create handler functions
+        const handleStatusUpdate = (data: any) => {
             console.log('📡 Order updated:', data);
 
             if (data.order && data.order._id === orderId) {
@@ -88,10 +85,9 @@ const OrderStatus: React.FC = () => {
 
                 setOrder(data.order);
             }
-        });
+        };
 
-        // Listen for partial rejection events
-        socket.on('order:partialRejection', (data: any) => {
+        const handlePartialRejection = (data: any) => {
             console.log('⚠️ Partial rejection received:', data);
             console.log('📦 Order items:', data.order?.items);
             console.log('🔍 Item statuses:', data.order?.items?.map((item: any) => ({
@@ -114,15 +110,32 @@ const OrderStatus: React.FC = () => {
                 setOrder(data.order);
                 console.log('✅ Order state updated with:', data.order);
             }
-        });
-
-        // Cleanup on unmount
-        return () => {
-            socket.off('order:statusUpdate');
-            socket.off('order:partialRejection');
-            orderService.disconnect();
         };
-    }, [orderId]);
+
+        // Remove any existing listeners first to prevent duplicates
+        socket.off('order:statusUpdate');
+        socket.off('order:partialRejection');
+
+        // Register new listeners
+        socket.on('order:statusUpdate', handleStatusUpdate);
+        socket.on('order:partialRejection', handlePartialRejection);
+
+        // Join order room
+        if (orderId) {
+            orderService.joinOrderRoom(orderId);
+        }
+
+        console.log('✅ Customer socket listeners registered for order:', orderId);
+
+        // Cleanup on unmount or orderId change
+        return () => {
+            console.log('🔌 Cleaning up customer socket listeners');
+            socket.off('order:statusUpdate', handleStatusUpdate);
+            socket.off('order:partialRejection', handlePartialRejection);
+            // Don't disconnect socket on cleanup, just remove listeners
+            // orderService.disconnect();
+        };
+    }, [orderId, tableIdFromQuery]);
 
     // Timer for elapsed time
     useEffect(() => {
@@ -240,7 +253,7 @@ const OrderStatus: React.FC = () => {
 
         // Check if items are still being prepared (pending, preparing, or ready)
         // Allow payment ONLY when all items are 'served'
-        const hasIncompleteItems = order.items.some((item: any) => 
+        const hasIncompleteItems = order.items.some((item: any) =>
             item.status === 'pending' || item.status === 'preparing' || item.status === 'ready'
         );
         if (hasIncompleteItems) {
@@ -342,7 +355,7 @@ const OrderStatus: React.FC = () => {
     const isCompleted = currentStatus === 'completed' || currentStatus === 'served';
 
     // Check if all items are served (not just ready)
-    const allItemsServed = order.items.every((item: any) => 
+    const allItemsServed = order.items.every((item: any) =>
         item.status === 'served' && item.status !== 'rejected'
     );
     const canViewReceipt = allItemsServed && currentStatus !== 'rejected' && currentStatus !== 'cancelled';
@@ -528,11 +541,10 @@ const OrderStatus: React.FC = () => {
                     <button
                         onClick={handleViewReceipt}
                         disabled={!canViewReceipt}
-                        className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                            canViewReceipt
+                        className={`w-full py-3 rounded-lg font-semibold transition-colors ${canViewReceipt
                                 ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                        }`}
+                            }`}
                     >
                         View Receipt
                     </button>
@@ -581,7 +593,7 @@ const OrderStatus: React.FC = () => {
                             <div className="text-6xl mb-4">❌</div>
                             <h2 className="text-2xl font-bold text-gray-900 mb-3">Order Rejected</h2>
                             <p className="text-gray-600 mb-2">Your order has been rejected by the waiter.</p>
-                            
+
                             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                                 <p className="text-sm font-semibold text-red-800 mb-1">Reason:</p>
                                 <p className="text-red-700">{rejectionReason}</p>

@@ -50,22 +50,36 @@ const PendingPayments: React.FC = () => {
         // Initialize Socket.IO
         const socket = orderService.initSocket();
 
-        // Listen for new cash payment requests
-        socket.on('payment:cashRequested', (data: any) => {
+        // Create handler functions
+        const handleCashRequested = (data: any) => {
             console.log('💵 New cash payment request:', data);
             toast.info(`Table ${data.order?.tableId?.tableNumber} requests cash payment`);
-            loadPendingPayments();
-        });
+            // Call API directly to avoid stale closure
+            orderService.getOrders({ paymentStatus: 'pending_cash' }).then(response => {
+                if (response.success) {
+                    setPendingPayments(response.data || []);
+                }
+            });
+        };
+
+        const handlePaymentCompleted = (data: any) => {
+            console.log('✅ Payment completed:', data);
+            orderService.getOrders({ paymentStatus: 'pending_cash' }).then(response => {
+                if (response.success) {
+                    setPendingPayments(response.data || []);
+                }
+            });
+        };
+
+        // Listen for new cash payment requests
+        socket.on('payment:cashRequested', handleCashRequested);
 
         // Listen for payment completed
-        socket.on('payment:completed', (data: any) => {
-            console.log('✅ Payment completed:', data);
-            loadPendingPayments();
-        });
+        socket.on('payment:completed', handlePaymentCompleted);
 
         return () => {
-            socket.off('payment:cashRequested');
-            socket.off('payment:completed');
+            socket.off('payment:cashRequested', handleCashRequested);
+            socket.off('payment:completed', handlePaymentCompleted);
         };
     }, []);
 
@@ -187,8 +201,8 @@ const PendingPayments: React.FC = () => {
                                         onClick={() => handleConfirmPayment(payment._id, payment.total)}
                                         disabled={confirmingId === payment._id}
                                         className={`px-6 py-3 rounded-lg font-semibold transition-colors ${confirmingId === payment._id
-                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                : 'bg-green-600 text-white hover:bg-green-700'
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            : 'bg-green-600 text-white hover:bg-green-700'
                                             }`}
                                     >
                                         {confirmingId === payment._id ? (

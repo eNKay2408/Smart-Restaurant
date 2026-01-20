@@ -219,12 +219,7 @@ const AdminMenuManagement: React.FC = () => {
 				label: "Sold Out",
 				icon: "🔴",
 			},
-			low_stock: {
-				bg: "bg-yellow-100",
-				text: "text-yellow-800",
-				label: "Low Stock",
-				icon: "🟡",
-			},
+			
 		};
 
 		const config = statusConfig[status as keyof typeof statusConfig];
@@ -676,7 +671,7 @@ const AdminMenuManagement: React.FC = () => {
 													<option value="available">Available</option>
 													<option value="unavailable">Unavailable</option>
 													<option value="sold_out">Sold Out</option>
-													<option value="low_stock">Low Stock</option>
+	
 												</select>
 											</div>
 										</td>

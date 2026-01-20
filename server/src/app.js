@@ -67,7 +67,7 @@ const limiter = rateLimit({
 	windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
 	max:
 		parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) ||
-		(process.env.NODE_ENV === "development" ? 1000 : 100),
+		(process.env.NODE_ENV === "development" ? 10000 : 100), // Much higher for development
 	message: "Too many requests from this IP, please try again later",
 	skip: (req) => {
 		// Skip rate limiting in development for localhost
@@ -76,7 +76,7 @@ const limiter = rateLimit({
 				req.ip === "::1" ||
 				req.ip === "127.0.0.1" ||
 				req.ip === "::ffff:127.0.0.1";
-			return isLocalhost;
+			return isLocalhost; // Always skip for localhost in development
 		}
 		return false;
 	},

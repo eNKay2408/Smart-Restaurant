@@ -260,7 +260,7 @@ const Payment: React.FC = () => {
 			console.log("🔌 Cleaning up payment listener");
 			socket.off("payment:confirmed", handlePaymentConfirmed);
 		};
-	}, [order?._id, order?.tableId, waitingForConfirmation, navigate]);
+	}, [order?._id, waitingForConfirmation]); //Removed navigate and order.tableId to prevent re-registration
 
 	const handlePayment = async () => {
 		if (!order?._id) {

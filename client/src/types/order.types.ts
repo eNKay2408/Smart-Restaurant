@@ -12,7 +12,7 @@ export interface OrderItem {
 		}>;
 	}>;
 	specialInstructions?: string;
-	status: "pending" | "preparing" | "ready" | "served";
+	status: "pending" | "preparing" | "ready" | "served" | "rejected";
 	subtotal: number;
 }
 
@@ -52,7 +52,7 @@ export interface Order {
 	discount: number;
 	tipAmount?: number;
 	total: number;
-	paymentStatus: "pending" | "paid" | "failed" | "refunded";
+	paymentStatus: "pending" | "paid" | "failed" | "refunded" |"pending_cash";
 	paymentMethod?: string;
 	createdAt: string;
 	updatedAt: string;

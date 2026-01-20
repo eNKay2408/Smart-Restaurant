@@ -67,7 +67,7 @@ function KDS() {
 		return () => {
 			// Cleanup if needed
 		};
-	}, []);
+	}, [onOrderAccepted, onOrderStatusUpdate]); // Added dependencies for socket hook methods
 
 	const fetchOrders = async () => {
 		try {
@@ -285,18 +285,18 @@ function KDS() {
 													<li
 														key={idx}
 														className={`border-b pb-2 ${item.status === 'rejected'
-																? 'border-red-700 opacity-60'
-																: item.status === 'served' || item.status === 'ready'
-																	? 'border-gray-700 opacity-50'
-																	: 'border-yellow-500'
+															? 'border-red-700 opacity-60'
+															: item.status === 'served' || item.status === 'ready'
+																? 'border-gray-700 opacity-50'
+																: 'border-yellow-500'
 															}`}
 													>
 														<div className="flex items-start justify-between">
 															<p className={`font-semibold text-lg ${item.status === 'rejected'
-																	? 'text-red-400 line-through'
-																	: item.status === 'served' || item.status === 'ready'
-																		? 'text-gray-500 line-through'
-																		: 'text-white'
+																? 'text-red-400 line-through'
+																: item.status === 'served' || item.status === 'ready'
+																	? 'text-gray-500 line-through'
+																	: 'text-white'
 																}`}>
 																{item.quantity}x {item.name}
 															</p>

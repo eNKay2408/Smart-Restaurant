@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import orderService from "../../services/orderService";
 import { useSocket } from "../../hooks/useSocket";
@@ -19,8 +19,14 @@ function WaiterOrders() {
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [rejectionReason, setRejectionReason] = useState("");
 	const [soundEnabled, setSoundEnabled] = useState(true); // ✅ Sound toggle
+	const soundEnabledRef = useRef(soundEnabled); // ✅ Ref to avoid stale closure
 	const [showConfirmPaymentModal, setShowConfirmPaymentModal] = useState(false);
 	const [confirmPaymentData, setConfirmPaymentData] = useState<{ orderId: string; total: number } | null>(null);
+
+	// Update ref when soundEnabled changes
+	useEffect(() => {
+		soundEnabledRef.current = soundEnabled;
+	}, [soundEnabled]);
 
 	// Get user from localStorage to get restaurantId
 	const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -65,13 +71,19 @@ function WaiterOrders() {
 		const handleNewOrder = (data: any) => {
 			console.log("🔔 New order received:", data);
 
-			if (soundEnabled) {
+			// Use ref to access current soundEnabled value
+			if (soundEnabledRef.current) {
 				playNotificationSound(); // ✅ Sound for new order
 			}
 			toast.success(`New order from Table ${data.order?.tableId?.tableNumber}!`, {
 				autoClose: 5000,
 			});
-			fetchOrders();
+			// Call fetchOrders directly without relying on closure
+			orderService.getOrders({}).then(response => {
+				if (response.success && response.data) {
+					setOrders(response.data);
+				}
+			});
 		};
 
 		const handleStatusUpdate = (data: any) => {
@@ -79,7 +91,7 @@ function WaiterOrders() {
 
 			// Play sound only for READY status (kitchen finished)
 			if (data.order?.status === 'ready') {
-				if (soundEnabled) {
+				if (soundEnabledRef.current) {
 					playNotificationSound(); // ✅ Sound for ready order
 				}
 				toast.info(`Table ${data.order?.tableId?.tableNumber} order is ready!`, {
@@ -87,26 +99,38 @@ function WaiterOrders() {
 				});
 			}
 
-			fetchOrders();
+			orderService.getOrders({}).then(response => {
+				if (response.success && response.data) {
+					setOrders(response.data);
+				}
+			});
 		};
 
 		// Listen for cash payment requests
 		const handleCashPaymentRequest = (data: any) => {
 			console.log("💵 Cash payment requested:", data);
 
-			if (soundEnabled) {
+			if (soundEnabledRef.current) {
 				playNotificationSound(); // ✅ Sound for cash payment
 			}
 			toast.warning(`Table ${data.order?.tableId?.tableNumber} requests cash payment!`, {
 				autoClose: 5000,
 			});
-			fetchOrders();
+			orderService.getOrders({}).then(response => {
+				if (response.success && response.data) {
+					setOrders(response.data);
+				}
+			});
 		};
 
 		// Listen for payment completed
 		const handlePaymentCompleted = (data: any) => {
 			console.log("✅ Payment completed:", data);
-			fetchOrders();
+			orderService.getOrders({}).then(response => {
+				if (response.success && response.data) {
+					setOrders(response.data);
+				}
+			});
 		};
 
 		// Register all listeners DIRECTLY on socket
@@ -124,7 +148,7 @@ function WaiterOrders() {
 			socket.off("payment:cashRequested", handleCashPaymentRequest);
 			socket.off("payment:completed", handlePaymentCompleted);
 		};
-	}, [socket, fetchOrders, soundEnabled]); // ✅ Added soundEnabled
+	}, [socket]); // Removed fetchOrders and soundEnabled to prevent re-registration
 
 	const handleAccept = async (orderId: string) => {
 		try {
@@ -419,10 +443,10 @@ function WaiterOrders() {
 
 												return (
 													<li key={idx} className={`text-sm flex items-center justify-between gap-2 ${isRejected
-															? 'text-gray-400 line-through opacity-60'
-															: isServedOrReady
-																? 'text-gray-400 line-through'
-																: 'text-gray-900 font-semibold'
+														? 'text-gray-400 line-through opacity-60'
+														: isServedOrReady
+															? 'text-gray-400 line-through'
+															: 'text-gray-900 font-semibold'
 														}`}>
 														<span>• {item.quantity}x {item.name}</span>
 														<div className="flex items-center gap-1">

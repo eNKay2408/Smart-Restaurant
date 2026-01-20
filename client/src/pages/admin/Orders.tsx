@@ -89,17 +89,30 @@ function AdminOrders() {
             toast.info(`New order from Table ${data.order?.tableId?.tableNumber}!`, {
                 autoClose: 5000,
             });
-            fetchOrders();
+            // Call orderService.getOrders directly to avoid dependency on fetchOrders
+            orderService.getOrders({}).then(response => {
+                if (response.success && response.data) {
+                    setOrders(response.data as ExtendedOrder[]);
+                }
+            });
         };
 
         const handleStatusUpdate = (data: any) => {
             console.log("📢 Order status updated:", data);
-            fetchOrders();
+            orderService.getOrders({}).then(response => {
+                if (response.success && response.data) {
+                    setOrders(response.data as ExtendedOrder[]);
+                }
+            });
         };
 
         const handlePaymentCompleted = (data: any) => {
             console.log("✅ Payment completed:", data);
-            fetchOrders();
+            orderService.getOrders({}).then(response => {
+                if (response.success && response.data) {
+                    setOrders(response.data as ExtendedOrder[]);
+                }
+            });
         };
 
         // Register all listeners
@@ -115,7 +128,7 @@ function AdminOrders() {
             socket.off("order:statusUpdate", handleStatusUpdate);
             socket.off("payment:completed", handlePaymentCompleted);
         };
-    }, [socket, fetchOrders]);
+    }, [socket]); // Removed fetchOrders to prevent re-registration
 
     const getStatusColor = (status: string) => {
         switch (status) {

@@ -6,6 +6,7 @@ import orderService from "../../services/orderService";
 import { promotionService, PromotionValidationResult } from "../../services/promotionService";
 import { toast } from "react-toastify";
 import StripePaymentForm from "../../components/StripePaymentForm";
+import { API_URL } from "../../config/constants";
 
 interface PaymentMethod {
 	id: string;
@@ -87,7 +88,7 @@ const Payment: React.FC = () => {
 
 		// Check if items are still being prepared (pending or preparing)
 		// Allow payment when items are 'ready' or 'served'
-		const hasIncompleteItems = order.items?.some((item: any) => 
+		const hasIncompleteItems = order.items?.some((item: any) =>
 			item.status === 'pending' || item.status === 'preparing'
 		);
 		if (hasIncompleteItems) {
@@ -334,7 +335,7 @@ const Payment: React.FC = () => {
 		// Update order with promotion and tip
 		if (order._id && (appliedPromo || tipAmount > 0)) {
 			try {
-				await fetch(`http://localhost:5000/api/orders/${order._id}/apply-promotion`, {
+				await fetch(`${API_URL}/orders/${order._id}/apply-promotion`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({

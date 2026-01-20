@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import orderService from '../../services/orderService';
 import { toast } from 'react-toastify';
+import { API_URL } from '../../config/constants';
 
 interface PendingPayment {
     _id: string;
@@ -77,7 +78,7 @@ const PendingPayments: React.FC = () => {
         setConfirmingId(orderId);
 
         try {
-            const response = await fetch(`http://localhost:5000/api/orders/${orderId}/confirm-cash-payment`, {
+            const response = await fetch(`${API_URL}/orders/${orderId}/confirm-cash-payment`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

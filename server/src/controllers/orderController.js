@@ -42,10 +42,26 @@ export const getOrders = async (req, res) => {
 		const skip = (parseInt(page) - 1) * parseInt(limit);
 
 		const orders = await Order.find(filter)
-			.populate("tableId", "tableNumber area")
-			.populate("customerId", "fullName email")
-			.populate("waiterId", "fullName")
-			.populate("items.menuItemId", "name price images")
+			.populate({
+				path: "tableId",
+				select: "tableNumber area",
+				strictPopulate: false
+			})
+			.populate({
+				path: "customerId",
+				select: "fullName email",
+				strictPopulate: false
+			})
+			.populate({
+				path: "waiterId",
+				select: "fullName",
+				strictPopulate: false
+			})
+			.populate({
+				path: "items.menuItemId",
+				select: "name price images",
+				strictPopulate: false
+			})
 			.sort(sortOptions)
 			.skip(skip)
 			.limit(parseInt(limit));
@@ -76,10 +92,26 @@ export const getOrders = async (req, res) => {
 export const getOrder = async (req, res) => {
 	try {
 		const order = await Order.findById(req.params.id)
-			.populate("tableId", "tableNumber area")
-			.populate("customerId", "fullName email avatar")
-			.populate("waiterId", "fullName")
-			.populate("items.menuItemId", "name price images");
+			.populate({
+				path: "tableId",
+				select: "tableNumber area",
+				strictPopulate: false
+			})
+			.populate({
+				path: "customerId",
+				select: "fullName email avatar",
+				strictPopulate: false
+			})
+			.populate({
+				path: "waiterId",
+				select: "fullName",
+				strictPopulate: false
+			})
+			.populate({
+				path: "items.menuItemId",
+				select: "name price images",
+				strictPopulate: false
+			});
 
 		if (!order) {
 			return res.status(404).json({
@@ -185,9 +217,9 @@ export const createOrder = async (req, res) => {
 			await existingOrder.save();
 
 			const populatedOrder = await Order.findById(existingOrder._id)
-				.populate("tableId", "tableNumber area")
-				.populate("customerId", "fullName email")
-				.populate("items.menuItemId", "name price images");
+				.populate({ path: "tableId", select: "tableNumber area", strictPopulate: false })
+				.populate({ path: "customerId", select: "fullName email", strictPopulate: false })
+				.populate({ path: "items.menuItemId", select: "name price images", strictPopulate: false });
 
 			// Clear cart after adding items to order
 			await Cart.findOneAndDelete({ tableId });
@@ -261,9 +293,9 @@ export const createOrder = async (req, res) => {
 		});
 
 		const populatedOrder = await Order.findById(order._id)
-			.populate("tableId", "tableNumber area")
-			.populate("customerId", "fullName email")
-			.populate("items.menuItemId", "name price images");
+			.populate({ path: "tableId", select: "tableNumber area", strictPopulate: false })
+			.populate({ path: "customerId", select: "fullName email", strictPopulate: false })
+			.populate({ path: "items.menuItemId", select: "name price images", strictPopulate: false });
 
 		// Update table status to occupied
 		await Table.findByIdAndUpdate(tableId, { status: "occupied", currentOrder: order._id });
@@ -321,10 +353,10 @@ export const acceptOrder = async (req, res) => {
 		await order.save();
 
 		const populatedOrder = await Order.findById(order._id)
-			.populate("tableId", "tableNumber area")
-			.populate("customerId", "fullName email")
-			.populate("waiterId", "fullName")
-			.populate("items.menuItemId", "name price images");
+			.populate({ path: "tableId", select: "tableNumber area", strictPopulate: false })
+			.populate({ path: "customerId", select: "fullName email", strictPopulate: false })
+			.populate({ path: "waiterId", select: "fullName", strictPopulate: false })
+			.populate({ path: "items.menuItemId", select: "name price images", strictPopulate: false });
 
 		// Emit real-time events
 		const io = req.app.get("io");
@@ -388,10 +420,10 @@ export const rejectOrder = async (req, res) => {
 			await order.save();
 
 			const populatedOrder = await Order.findById(order._id)
-				.populate("tableId", "tableNumber area")
-				.populate("customerId", "fullName email")
-				.populate("waiterId", "fullName")
-				.populate("items.menuItemId", "name price images");
+				.populate({ path: "tableId", select: "tableNumber area", strictPopulate: false })
+				.populate({ path: "customerId", select: "fullName email", strictPopulate: false })
+				.populate({ path: "waiterId", select: "fullName", strictPopulate: false })
+				.populate({ path: "items.menuItemId", select: "name price images", strictPopulate: false });
 
 			// Emit full rejection event
 			const io = req.app.get("io");
@@ -445,10 +477,10 @@ export const rejectOrder = async (req, res) => {
 			await order.save();
 
 			const populatedOrder = await Order.findById(order._id)
-				.populate("tableId", "tableNumber area")
-				.populate("customerId", "fullName email")
-				.populate("waiterId", "fullName")
-				.populate("items.menuItemId", "name price images");
+				.populate({ path: "tableId", select: "tableNumber area", strictPopulate: false })
+				.populate({ path: "customerId", select: "fullName email", strictPopulate: false })
+				.populate({ path: "waiterId", select: "fullName", strictPopulate: false })
+				.populate({ path: "items.menuItemId", select: "name price images", strictPopulate: false });
 
 			// Emit partial rejection event
 			const io = req.app.get("io");
@@ -573,10 +605,10 @@ export const updateOrderStatus = async (req, res) => {
 		await order.save();
 
 		const populatedOrder = await Order.findById(order._id)
-			.populate("tableId", "tableNumber area")
-			.populate("customerId", "fullName email")
-			.populate("waiterId", "fullName")
-			.populate("items.menuItemId", "name price images");
+			.populate({ path: "tableId", select: "tableNumber area", strictPopulate: false })
+			.populate({ path: "customerId", select: "fullName email", strictPopulate: false })
+			.populate({ path: "waiterId", select: "fullName", strictPopulate: false })
+			.populate({ path: "items.menuItemId", select: "name price images", strictPopulate: false });
 
 		// Emit real-time event
 		const io = req.app.get("io");

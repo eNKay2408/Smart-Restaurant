@@ -41,11 +41,12 @@ export const getMenuItems = async (req, res) => {
         // const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const menuItems = await MenuItem.find(filter)
-            .populate('categoryId', 'name')
+            .populate({ path: 'categoryId', select: 'name', strictPopulate: false })
             .populate({
                 path: 'modifierIds',
                 model: 'Modifier',
-                select: 'name type required displayOrder options isActive'
+                select: 'name type required displayOrder options isActive',
+                strictPopulate: false
             })
             .sort(sortOptions);
         // Remove pagination limits to show all items
@@ -160,11 +161,12 @@ export const getMenuItem = async (req, res) => {
         console.log('🔍 Fetching menu item:', req.params.id);
 
         const menuItem = await MenuItem.findById(req.params.id)
-            .populate('categoryId', 'name')
+            .populate({ path: 'categoryId', select: 'name', strictPopulate: false })
             .populate({
                 path: 'modifierIds',
                 model: 'Modifier',
-                select: 'name type required displayOrder options isActive'
+                select: 'name type required displayOrder options isActive',
+                strictPopulate: false
             });
 
         if (!menuItem) {

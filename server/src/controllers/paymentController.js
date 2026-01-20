@@ -10,10 +10,11 @@ export const createPaymentIntent = async (req, res) => {
 		const { orderId, paymentMethod = "card" } = req.body;
 
 		// Find order
-		const order = await Order.findById(orderId).populate(
-			"tableId",
-			"tableNumber"
-		);
+		const order = await Order.findById(orderId).populate({
+			path: "tableId",
+			select: "tableNumber",
+			strictPopulate: false
+		});
 
 		if (!order) {
 			return res.status(404).json({

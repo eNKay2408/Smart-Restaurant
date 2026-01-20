@@ -25,18 +25,18 @@ export const getCart = async (req, res, next) => {
                     { customerId: { $exists: true } }
                 ]
             })
-                .populate('items.menuItemId', 'name price imageUrl status')
-                .populate('tableId', 'tableNumber location');
+                .populate({ path: 'items.menuItemId', select: 'name price imageUrl status', strictPopulate: false })
+                .populate({ path: 'tableId', select: 'tableNumber location', strictPopulate: false });
         } else if (userId) {
             // Logged-in user: find by customerId
             cart = await Cart.findOne({ customerId: userId })
-                .populate('items.menuItemId', 'name price imageUrl status')
-                .populate('tableId', 'tableNumber location');
+                .populate({ path: 'items.menuItemId', select: 'name price imageUrl status', strictPopulate: false })
+                .populate({ path: 'tableId', select: 'tableNumber location', strictPopulate: false });
         } else if (sessionId) {
             // Guest: find by sessionId
             cart = await Cart.findOne({ sessionId })
-                .populate('items.menuItemId', 'name price imageUrl status')
-                .populate('tableId', 'tableNumber location');
+                .populate({ path: 'items.menuItemId', select: 'name price imageUrl status', strictPopulate: false })
+                .populate({ path: 'tableId', select: 'tableNumber location', strictPopulate: false });
         } else {
             return res.status(400).json({
                 success: false,
@@ -175,7 +175,7 @@ export const addItemToCart = async (req, res, next) => {
         }
 
         await cart.save();
-        await cart.populate('items.menuItemId', 'name price imageUrl status');
+        await cart.populate({ path: 'items.menuItemId', select: 'name price imageUrl status', strictPopulate: false });
 
         res.status(200).json({
             success: true,
@@ -248,7 +248,7 @@ export const updateCartItem = async (req, res, next) => {
         item.subtotal = cart.calculateItemSubtotal(item);
 
         await cart.save();
-        await cart.populate('items.menuItemId', 'name price imageUrl status');
+        await cart.populate({ path: 'items.menuItemId', select: 'name price imageUrl status', strictPopulate: false });
 
         res.status(200).json({
             success: true,
@@ -298,7 +298,7 @@ export const removeCartItem = async (req, res, next) => {
         // Remove item
         cart.items.pull(itemId);
         await cart.save();
-        await cart.populate('items.menuItemId', 'name price imageUrl status');
+        await cart.populate({ path: 'items.menuItemId', select: 'name price imageUrl status', strictPopulate: false });
 
         res.status(200).json({
             success: true,
@@ -375,7 +375,7 @@ export const mergeCart = async (req, res, next) => {
             guestCart.customerId = userId;
             guestCart.sessionId = null;
             await guestCart.save();
-            await guestCart.populate('items.menuItemId', 'name price imageUrl status');
+            await guestCart.populate({ path: 'items.menuItemId', select: 'name price imageUrl status', strictPopulate: false });
 
             return res.status(200).json({
                 success: true,
@@ -407,7 +407,7 @@ export const mergeCart = async (req, res, next) => {
 
         // Save merged cart
         await userCart.save();
-        await userCart.populate('items.menuItemId', 'name price imageUrl status');
+        await userCart.populate({ path: 'items.menuItemId', select: 'name price imageUrl status', strictPopulate: false });
 
         res.status(200).json({
             success: true,

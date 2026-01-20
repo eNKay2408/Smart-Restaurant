@@ -5,7 +5,7 @@
   "main": "src/app.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "seed": "node src/scripts/seed.js",
     "seed:prod": "node src/scripts/seed-production.js",

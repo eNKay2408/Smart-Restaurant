@@ -139,12 +139,21 @@ class AuthService {
 
 			return response.data;
 		} catch (error: any) {
-			if (error.response && error.response.data) {
-				throw error.response.data;
+			console.error('Registration error:', error);
+
+			// Extract error message from response
+			if (error.response?.data) {
+				const errorData = error.response.data;
+				throw {
+					success: false,
+					message: errorData.message || "An error occurred during registration. Please try again.",
+				};
 			}
+
+			// Network or other errors
 			throw {
 				success: false,
-				message: "An error occurred during registration. Please try again.",
+				message: error.message || "An error occurred during registration. Please try again.",
 			};
 		}
 	}

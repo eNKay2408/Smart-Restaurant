@@ -52,12 +52,27 @@ app.use(
 const allowedOrigins = [
 	"http://localhost:5173",
 	"http://localhost:5174",
+	"https://smartrestaurant-8k6v.vercel.app", // Vercel production
+	"https://smartrestaurant-8k6v-*.vercel.app", // Vercel preview deployments
 	process.env.CLIENT_URL,
 ].filter(Boolean);
 
+console.log('🔧 CORS allowed origins:', allowedOrigins);
+
 app.use(
 	cors({
-		origin: allowedOrigins,
+		origin: function (origin, callback) {
+			// Allow requests with no origin (like mobile apps or curl requests)
+			if (!origin) return callback(null, true);
+
+			// Check if origin is in allowed list or matches Vercel pattern
+			if (allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
+				callback(null, true);
+			} else {
+				console.warn('❌ CORS blocked origin:', origin);
+				callback(new Error('Not allowed by CORS'));
+			}
+		},
 		credentials: true,
 	})
 );

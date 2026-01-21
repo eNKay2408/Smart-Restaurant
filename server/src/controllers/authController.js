@@ -40,17 +40,26 @@ export const register = async (req, res) => {
 			verificationToken,
 		);
 
-		// Send verification email
-		try {
-			await emailService.sendVerificationEmail(user.email, verificationToken);
-			console.log("✅ Verification email sent to:", user.email);
-		} catch (emailError) {
-			console.error(
-				"❌ Failed to send verification email:",
-				emailError.message,
+		// Send verification email in background (non-blocking)
+		const sendEmailWithTimeout = async () => {
+			const emailPromise = emailService.sendVerificationEmail(user.email, verificationToken);
+			const timeoutPromise = new Promise((_, reject) =>
+				setTimeout(() => reject(new Error('Email timeout after 5s')), 5000)
 			);
-			// Don't fail registration if email fails
-		}
+
+			try {
+				await Promise.race([emailPromise, timeoutPromise]);
+				console.log("✅ Verification email sent to:", user.email);
+			} catch (emailError) {
+				console.error(
+					"❌ Failed to send verification email:",
+					emailError.message,
+				);
+			}
+		};
+
+		// Don't wait for email - send in background
+		sendEmailWithTimeout().catch(err => console.error('Background email error:', err));
 
 		// Generate tokens
 		const accessToken = generateAccessToken(user._id);
@@ -260,14 +269,23 @@ export const forgotPassword = async (req, res) => {
 		const resetToken = user.generatePasswordResetToken();
 		await user.save();
 
-		// Send reset email
-		try {
-			await emailService.sendPasswordResetEmail(user.email, resetToken);
-			console.log("✅ Password reset email sent to:", user.email);
-		} catch (emailError) {
-			console.error("❌ Failed to send reset email:", emailError.message);
-			// Still return success to prevent email enumeration attacks
-		}
+		// Send reset email in background (non-blocking)
+		const sendResetEmailWithTimeout = async () => {
+			const emailPromise = emailService.sendPasswordResetEmail(user.email, resetToken);
+			const timeoutPromise = new Promise((_, reject) =>
+				setTimeout(() => reject(new Error('Email timeout after 5s')), 5000)
+			);
+
+			try {
+				await Promise.race([emailPromise, timeoutPromise]);
+				console.log("✅ Password reset email sent to:", user.email);
+			} catch (emailError) {
+				console.error("❌ Failed to send reset email:", emailError.message);
+			}
+		};
+
+		// Don't wait for email - send in background
+		sendResetEmailWithTimeout().catch(err => console.error('Background reset email error:', err));
 
 		res.json({
 			success: true,

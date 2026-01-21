@@ -125,6 +125,17 @@ export const login = async (req, res) => {
 			});
 		}
 
+		// Check email verification (only for customers - staff/admin can login without verification)
+		if (!user.isEmailVerified && user.role === 'customer') {
+			console.log("⚠️ Unverified customer tried to login:", user.email);
+			return res.status(403).json({
+				success: false,
+				message: "Please verify your email before logging in. Check your inbox for the verification link.",
+				requiresVerification: true,
+				email: user.email,
+			});
+		}
+
 		// Generate tokens
 		const accessToken = generateAccessToken(user._id);
 		const refreshToken = generateRefreshToken(user._id);

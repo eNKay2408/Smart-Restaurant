@@ -9,9 +9,12 @@ export const register = async (req, res) => {
 	try {
 		const { fullName, email, password, role } = req.body;
 
+		console.log('📝 Registration request received:', { fullName, email, role });
+
 		// Check if user already exists
 		const existingUser = await User.findOne({ email });
 		if (existingUser) {
+			console.log('⚠️ Email already registered:', email);
 			return res.status(400).json({
 				success: false,
 				message: "Email already registered",
